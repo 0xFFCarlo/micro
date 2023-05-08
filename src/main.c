@@ -183,6 +183,6 @@ int test_graphics()
 
 int main(int argc, char const *argv[])
 {
-  test_audio();
-  //test_graphics();
+  //test_audio();
+  test_graphics();
 }
