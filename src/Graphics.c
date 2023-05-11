@@ -15,6 +15,7 @@
 #include "stb_image.h"
 
 #define MICRO_MAX_TEXTURES 64
+#define MICRO_MAX_CANVASES 64
 #define MICRO_VERTEX_BUFFER_SIZE (6 * 256)
 #define MICRO_MAX_SHADER_LEN 4096
 
@@ -28,8 +29,16 @@ typedef struct microTexture
   GLuint id;
   int width, height, channels;
 } microTexture;
-static microTexture* loadedTextures[MICRO_MAX_TEXTURES];
+static microTexture microTextures[MICRO_MAX_TEXTURES];
 static unsigned char cleanedBuffer = GL_FALSE;
+
+typedef struct microCanvas
+{
+  GLuint framebufferId;
+  int microTextureId;
+  int width, height;
+} microCanvas;
+static microCanvas microCanvases[MICRO_MAX_CANVASES];
 
 //shader stuff
 static const char baseVertexShaderSrc[] = "#version 330 core\n"
@@ -77,6 +86,7 @@ float viewCenterX, viewCenterY;
 float viewWidth, viewHeight;
 float viewRotation;
 float viewMatrix[16];
+int viewFlipY = 0;
 
 ////////////////////////////
 //GL STATES
@@ -107,7 +117,7 @@ int microTextureLoadFromFile(const char* filepath)
 {
   //clean resources uffer the first time
   if (cleanedBuffer == GL_FALSE) {
-    memset(loadedTextures, 0, sizeof(microTexture*));
+    memset(microTextures, 0, sizeof(microTexture*));
     cleanedBuffer = GL_TRUE;
   }
 
@@ -153,7 +163,12 @@ int microTextureLoadFromFile(const char* filepath)
     printf("Details : %s\n", stbi_failure_reason());
     return -1;
   }
+  
+  return microTextureLoadFromMemory(data, width, height, channels, GL_LINEAR);
+}
 
+int microTextureLoadFromMemory(const unsigned char *data, const unsigned int width, const unsigned int height, const unsigned int channels, const unsigned int filter)
+{
   //Get the texture format
   unsigned int fmt = GL_RGBA;
   switch (channels) {
@@ -170,51 +185,64 @@ int microTextureLoadFromFile(const char* filepath)
   glGenTextures(1, &id);
 
   microGLStateBindTexture(id);
+  
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
 
-  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   
   glTexImage2D(GL_TEXTURE_2D, 0, fmt, width, height, 0, fmt,
       GL_UNSIGNED_BYTE, data);
-
-  //not needed anymore
-  free(data);
 
   //Check for opengl errors
   microGLCheckErrors();
 
   //find spot in the resources buffer
-  microTexture* texture = malloc(sizeof(microTexture));
-  texture->id = id;
-  texture->width = width;
-  texture->height = height;
-  texture->channels = channels;
+  microTexture texture;
+  texture.id = id;
+  texture.width = width;
+  texture.height = height;
+  texture.channels = channels;
   int spot = -1;
   for (int i = 0; i < MICRO_MAX_TEXTURES; i++) {
-    if (loadedTextures[i] == NULL) {
+    if (microTextures[i].id == -1) {
       spot = i;
-      loadedTextures[i] = texture;
+      microTextures[i] = texture;
+      break;
     }
   }
 
   return spot;    
 }
 
+void microTexttureSetFilter(int textureId, int filter)
+{
+  microGLStateBindTexture(microTextures[textureId].id);
+  if (filter == MICRO_FILTER_LINEAR) {
+    filter = GL_LINEAR;
+  } else if (filter == MICRO_FILTER_NEAREST) {
+    filter = GL_NEAREST;
+  } else {
+    printf("Error: filter %d not recognized\n", filter);
+    return;
+  }
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
+}
+
+
 void microTextureGetSize(int textureId, int *width, int *height)
 {
-  if (width != NULL) *width = loadedTextures[textureId]->width;
-  if (height != NULL) *height = loadedTextures[textureId]->height;
+  if (width != NULL) *width = microTextures[textureId].width;
+  if (height != NULL) *height = microTextures[textureId].height;
 }
 
 void microTextureFree(int textureId)
 {
-  if (loadedTextures[textureId] != NULL) {
-    glDeleteTextures(1, &loadedTextures[textureId]->id);
-    free(loadedTextures[textureId]);
-    loadedTextures[textureId] = NULL;
+  if (microTextures[textureId].id != -1) {
+    glDeleteTextures(1, &microTextures[textureId].id);
+    microTextures[textureId].id = -1;
   }
 }
 
@@ -376,11 +404,80 @@ void microShaderSetMatrix4(const char *name, float *matrix)
 
 
 ////////////////////////////
+/// CANVAS
+///////////////////////////
+int microCanvasCreate(int width, int height)
+{
+  //create framebuffer
+  GLuint framebufferId = 0;
+  glGenFramebuffers(1, &framebufferId);
+  glBindFramebuffer(GL_FRAMEBUFFER, framebufferId);
+  glViewport(0, 0, width, height);
+  assert(framebufferId != 0);
+
+  
+  //create black texture
+  const int textureId = microTextureLoadFromMemory(0, width, height, 4, GL_NEAREST);
+  assert(textureId != -1);
+  assert(microTextures[textureId].id != -1);
+  microGLCheckErrors();
+
+  //find spot in the resources buffer
+  microCanvas canvas;
+  canvas.framebufferId = framebufferId;
+  canvas.microTextureId = textureId;
+  canvas.width = width;
+  canvas.height = height;
+  int canvasId = -1;
+  for (int i = 0; i < MICRO_MAX_CANVASES; i++) {
+    if (microCanvases[i].framebufferId == -1) {
+      canvasId = i;
+      microCanvases[i] = canvas;
+    }
+  }
+  
+  // Set "renderedTexture" as our colour attachement #0
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, microTextures[textureId].id, 0);
+  microGLCheckErrors();
+
+  // Set the list of draw buffers.
+  //GLenum DrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
+  //glDrawBuffers(1, DrawBuffers); // "1" is the size of DrawBuffers
+  microGLCheckErrors();
+  
+  if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+    printf("Error creating framebuffer\n");
+    return -1;
+  }
+
+  return canvasId;
+}
+
+int microCanvasGetTextureId(int canvasId)
+{
+  return microCanvases[canvasId].microTextureId;
+}
+
+void microCanvasFree(int canvasId)
+{
+  glDeleteFramebuffers(1, &microCanvases[canvasId].framebufferId);
+  microCanvases[canvasId].framebufferId = -1;
+  microTextureFree(microCanvases[canvasId].microTextureId);
+}
+
+
+////////////////////////////
 // RENDERING
 ///////////////////////////
 void microGraphicsInit(SDL_Window *win)
 {
   window = win;
+
+  //clean textures and canvases
+  for (int i = 0; i < MICRO_MAX_TEXTURES; i++)
+    microTextures[i].id = -1;
+  for (int i = 0; i < MICRO_MAX_CANVASES; i++)
+    microCanvases[i].framebufferId = -1;
 
 	//Set OpenGL version
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
@@ -467,6 +564,23 @@ void microGraphicsQuit()
 void microGraphicsClear()
 {
   glClear(GL_COLOR_BUFFER_BIT);
+}
+
+void microGraphicsRenderToScreen()
+{
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  int windowWidth, windowHeight;
+  SDL_GetWindowSize(window, &windowWidth, &windowHeight);
+  glViewport(0, 0, windowWidth, windowHeight);
+  microGLCheckErrors();
+}
+
+void microGraphicsRenderToCanvas(int canvasId)
+{
+  assert(canvasId >= 0 && canvasId < MICRO_MAX_CANVASES);
+  glBindFramebuffer(GL_FRAMEBUFFER, microCanvases[canvasId].framebufferId);
+  glViewport(0, 0, microCanvases[canvasId].width, microCanvases[canvasId].height);
+  microGLCheckErrors();
 }
 
 void microGraphicsDisplay()
@@ -655,9 +769,9 @@ void microGraphicsDrawRectRot(int textureId, float tx, float ty, float tw, float
   {
     static int tex_w, tex_h;
     static int glTextureId;
-    assert(loadedTextures[textureId] != NULL);
+    assert(microTextures[textureId].id != -1);
     microTextureGetSize(textureId, &tex_w, &tex_h);
-    glTextureId = loadedTextures[textureId]->id;
+    glTextureId = microTextures[textureId].id;
 
     microGraphicsDraw(glTextureId,
         v1X, v1Y, v2X, v2Y, v3X, v3Y, v4X, v4Y,
@@ -686,9 +800,9 @@ void microGraphicsDrawRect(int textureId, float tx, float ty, float tw, float th
   {
     static int tex_w, tex_h;
     static int glTextureId;
-    assert(loadedTextures[textureId] != NULL);
+    assert(microTextures[textureId].id != -1);
     microTextureGetSize(textureId, &tex_w, &tex_h);
-    glTextureId = loadedTextures[textureId]->id;
+    glTextureId = microTextures[textureId].id;
     microGraphicsDraw(glTextureId, x, y, x + w, y, x + w, y + h, x, y + h,
         tx / (float)tex_w, ty / (float)tex_h, tw / (float)tex_w,
         th / (float)tex_h, r, g, b, a);
@@ -697,7 +811,7 @@ void microGraphicsDrawRect(int textureId, float tx, float ty, float tw, float th
 
 //VIEW
 void microViewSet(float viewportX, float viewportY, float viewportWidth, float viewportHeight,
-    float centerX, float centerY, float width, float height, float rotation)
+    float centerX, float centerY, float width, float height, float rotation, int flipY)
 {
   viewViewportX = viewportX;
   viewViewportY = viewportY;
@@ -708,6 +822,7 @@ void microViewSet(float viewportX, float viewportY, float viewportWidth, float v
   viewWidth = width;
   viewHeight = height;
   viewRotation = rotation;
+  viewFlipY = (flipY > 0);
 }
 
 void microViewUpdate()
@@ -725,7 +840,7 @@ void microViewUpdate()
 
   // Projection components
   float a = 2.f / viewWidth;
-  float b = -2.f / viewHeight;
+  float b = viewFlipY ? 2.f / viewHeight : -2.f / viewHeight; // Change the sign of b based on flipY
   float c = -a * NCenterX;
   float d = -b * NCenterY;
 
@@ -758,6 +873,11 @@ void microViewUpdate()
   //Apply view
   if (currentShader != -1)
     microShaderSetMatrix4("u_view", viewMatrix);
+}
+
+void microViewFlipY(int flipY)
+{
+  viewFlipY = (flipY > 0);
 }
 
 void microViewSetViewport(float x, float y, float width, float height)
