@@ -141,21 +141,23 @@ int test_graphics()
 
   float rotation = 0.0;
   
-  microViewSet(0, 0, windowWidth, windowHeight,
+  microViewSet((MicroView){
+      0, 0, windowWidth, windowHeight,
       windowWidth/2.0, windowHeight/2.0,
-      windowWidth, windowHeight, 0, 1);
+      windowWidth, windowHeight, 0, 1
+      });
 
   int canvasId = microCanvasCreate(400, 400);
   microGraphicsRenderToCanvas(canvasId);
   microViewFlipY(1);
-  microViewUpdate();
+  microViewApply();
   microGraphicsDrawRect(texid, 0, 0, texWidth, texHeight, 0, 0, 400, 400, 1.0, 1.0, 1.0, 1.0);
   microGraphicsDrawRect(texid, 0, 0, texWidth, texHeight, 0, 0, 100, 100, 1.0, 1.0, 1.0, 1.0);
   microGraphicsDrawRect(texid, 0, 0, texWidth, texHeight, 200, 0, 100, 100, 1.0, 1.0, 1.0, 1.0);
   microGraphicsDisplay();
   microGraphicsRenderToScreen();
   microViewFlipY(0);
-  microViewUpdate();
+  microViewApply();
 
   while (1)
   {

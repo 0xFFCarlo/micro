@@ -1,26 +1,35 @@
 #ifndef GRAPHICS_H
 #define GRAPHICS_H
 
-#include <SDL2/SDL_video.h>
-
 #define MICRO_FILTER_NEAREST 0
 #define MICRO_FILTER_LINEAR 1
 
-//texture
+/////////////////////////////
+// Texture
+/////////////////////////////
 extern int microTextureLoadFromFile(const char *filepath);
-extern int microTextureLoadFromMemory(const unsigned char *data, const unsigned int width, const unsigned int height, const unsigned int channels, const unsigned int filter);
+extern int microTextureLoadFromMemory(const unsigned char *data,
+    const unsigned int width, const unsigned int height,
+    const unsigned int channels, const unsigned int filter);
 extern void microTextureGetSize(int textureId, int *width, int *height);
-extern void microTextureFree(int textureId);
 extern void microTexttureSetFilter(int textureId, int filter);
+extern void microTextureFree(int textureId);
 
 
-//view
-extern void microViewSet(
-    float viewportX, float viewportY,
-    float viewportWidth, float viewportHeight,
-    float centerX, float centerY, float width,
-    float height, float rotation, int flipY);
-extern void microViewUpdate();
+/////////////////////////////
+// View
+/////////////////////////////
+typedef struct {
+  float viewportX, viewportY;
+  float viewportWidth, viewportHeight;
+  float centerX, centerY;
+  float width, height;
+  float rotation;
+  int flipY;
+} MicroView;
+extern void microViewSet(MicroView view);
+extern MicroView microViewGet();
+extern void microViewApply();
 extern void microViewFlipY(int flipY);
 extern void microViewSetViewport(float x, float y, float width, float height);
 extern void microViewSetCenter(float x, float y);
@@ -31,29 +40,35 @@ extern void microViewGetSize(float *width, float *height);
 extern float microViewGetRotation();
 
 
-//shaders
+/////////////////////////////
+// Shader
+/////////////////////////////
 extern int microShaderLoadFromFile(const char *vertexShaderPath, const char *fragmentShaderPath);
 extern int microShaderLoadFromSource(const char *vertexShaderSrc, const char *fragmentShaderSrc);
+extern int microShaderGetProgramID(int shaderId);
 extern void microShaderFree(int shaderId);
 extern void microShaderApply(int shaderId);
-extern void microShaderSetUniform1f(const char *name, float value);
-extern void microShaderSetUniform2f(const char *name, float value1, float value2);
-extern void microShaderSetUniform3f(const char *name, float value1, float value2, float value3);
-extern void microShaderSetUniform4f(const char *name, float value1, float value2, float value3, float value4);
-extern void microShaderSetUniform1i(const char *name, int value);
-extern void microShaderSetUniform2i(const char *name, int value1, int value2);
-extern void microShaderSetUniform3i(const char *name, int value1, int value2, int value3);
-extern void microShaderSetUniform4i(const char *name, int value1, int value2, int value3, int value4);
+extern int microShaderGetCurrent();
+extern void microShaderSetUniform(const char *name, ...);
 extern void microShaderSetMatrix4(const char *name, float *matrix);
+extern void microShaderGetUniform1(const char *name, double* v1);
+extern void microShaderGetUniform2(const char *name, double* v1, double* v2);
+extern void microShaderGetUniform3(const char *name, double* v1, double* v2, double* v3);
+extern void microShaderGetUniform4(const char *name, double* v1, double* v2, double* v3, double* v4);
 
 
-//canvas
+/////////////////////////////
+// Canvas
+/////////////////////////////
 extern int microCanvasCreate(int width, int height);
 extern int microCanvasGetTextureId(int canvasId);
 extern void microCanvasFree(int canvasId);
 
-//rendering
-extern void microGraphicsInit(SDL_Window *window);
+
+/////////////////////////////
+// Graphics
+/////////////////////////////
+extern void microGraphicsInit();
 extern void microGraphicsQuit();
 extern void microGraphicsClear();
 extern void microGraphicsDisplay();
@@ -69,5 +84,9 @@ extern void microGraphicsDrawRectRot(
     float x, float y, float w, float h,
     float originX, float originY,
     float rotation, float r, float g, float b, float a);
+
+extern void microWindowGetSize(int *width, int *height);
+extern void microSwapBuffers();
+
 
 #endif

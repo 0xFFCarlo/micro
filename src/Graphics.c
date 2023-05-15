@@ -1,3 +1,4 @@
+#include <SDL2/SDL.h>
 #include <SDL2/SDL_video.h>
 #if defined(__linux__)
 //#include <GLES3/gl3.h>
@@ -16,8 +17,12 @@
 
 #define MICRO_MAX_TEXTURES 64
 #define MICRO_MAX_CANVASES 64
+#define MICRO_MAX_SHADERS 64
+#define MICRO_MAX_ATTRIBUTES 16
+#define MICRO_MAX_UNIFORMS 16
+#define MICRO_MAX_NAME_LEN 32
 #define MICRO_VERTEX_BUFFER_SIZE (6 * 256)
-#define MICRO_MAX_SHADER_LEN 4096
+#define MICRO_MAX_SHADER_LEN 8000
 
 //GL states
 static int currentTexture = -1;
@@ -31,6 +36,17 @@ typedef struct microTexture
 } microTexture;
 static microTexture microTextures[MICRO_MAX_TEXTURES];
 static unsigned char cleanedBuffer = GL_FALSE;
+
+typedef struct microShader
+{
+  GLuint programId;
+  char uniformsNames[MICRO_MAX_UNIFORMS][MICRO_MAX_NAME_LEN];
+  int uniformsLocations[MICRO_MAX_UNIFORMS];
+  GLenum uniformsTypes[MICRO_MAX_UNIFORMS];
+  double uniformsValues[MICRO_MAX_UNIFORMS * 4];
+  int uniformsCount;
+} microShader;
+static microShader microShaders[MICRO_MAX_SHADERS];
 
 typedef struct microCanvas
 {
@@ -67,6 +83,8 @@ static const char baseFragmentShaderSrc[] = "#version 330 core\n"
 "  fragColor = texColor * o_color;\n"
 "}\n";
 
+static int defaultShaderId = -1;
+
 
 
 //renderer buffers
@@ -87,6 +105,7 @@ float viewWidth, viewHeight;
 float viewRotation;
 float viewMatrix[16];
 int viewFlipY = 0;
+int viewUpdated = 0;
 
 ////////////////////////////
 //GL STATES
@@ -212,6 +231,7 @@ int microTextureLoadFromMemory(const unsigned char *data, const unsigned int wid
       break;
     }
   }
+  assert(spot != -1);
 
   return spot;    
 }
@@ -270,10 +290,11 @@ void readShaderFile(const char* filepath, char* dst)
 
   //Read all the file into filedata
   fread(dst, sizeof(char) * fsize, 1, file);
+  dst[fsize] = '\0';
   fclose(file);
 }
 
-int microShaderLoad(const char *vertexShaderPath, const char *fragmentShaderPath)
+int microShaderLoadFromFile(const char *vertexShaderPath, const char *fragmentShaderPath)
 {
   char vertShaderSrc[MICRO_MAX_SHADER_LEN];
   char fragShaderSrc[MICRO_MAX_SHADER_LEN];
@@ -292,7 +313,6 @@ int microShaderLoadFromSource(const char *vertexShaderSrc, const char *fragmentS
 
   // Compile vertex shader
 
-  printf("Compiling vertex shader\n");
   const char* vertShaderSrcPtr = &vertexShaderSrc[0];
   glShaderSource(vertShader, 1, &vertShaderSrcPtr, NULL);
   glCompileShader(vertShader);
@@ -304,12 +324,13 @@ int microShaderLoadFromSource(const char *vertexShaderSrc, const char *fragmentS
   glGetShaderiv(vertShader, GL_INFO_LOG_LENGTH, &logLength);
   assert(logLength < 4096);
   glGetShaderInfoLog(vertShader, logLength, NULL, &errorLog[0]);
-  if (logLength != 0)
+  if (logLength != 0) {
+    printf("Error compiling vertex shader\n");
     printf("%s\n", &errorLog[0]);
+  }
 
   // Compile fragment shader
   
-  printf("Compiling fragment shader\n");
   const char* fragShaderSrcPtr = &fragmentShaderSrc[0];
   glShaderSource(fragShader, 1, &fragShaderSrcPtr, NULL);
   glCompileShader(fragShader);
@@ -320,10 +341,11 @@ int microShaderLoadFromSource(const char *vertexShaderSrc, const char *fragmentS
   glGetShaderiv(fragShader, GL_INFO_LOG_LENGTH, &logLength);
   assert(logLength < 4096);
   glGetShaderInfoLog(fragShader, logLength, NULL, &errorLog[0]);
-  if (logLength != 0)
+  if (logLength != 0) {
+    printf("Error compiling fragment shader\n");
     printf("%s\n", &errorLog[0]);
+  }
 
-  printf("Linking program\n");
   int program = glCreateProgram();
   glAttachShader(program, vertShader);
   glAttachShader(program, fragShader);
@@ -339,66 +361,186 @@ int microShaderLoadFromSource(const char *vertexShaderSrc, const char *fragmentS
   glDeleteShader(vertShader);
   glDeleteShader(fragShader);
 
-  return program;
+  microShader shader;
+  shader.programId = program;
+  assert(shader.programId != -1);
+
+  //Load uniforms
+  glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &shader.uniformsCount);
+  for (int i = 0; i < shader.uniformsCount; i++)
+  {
+    GLsizei length;
+    GLint size;
+    glGetActiveUniform(program, (GLuint)i, MICRO_MAX_NAME_LEN, &length, &size, &shader.uniformsTypes[i], shader.uniformsNames[i]);
+    shader.uniformsLocations[i] = glGetUniformLocation(program, shader.uniformsNames[i]);
+    shader.uniformsValues[i] = 0.0;
+  }
+  
+  //Find a spot to store the shader
+  int spot = -1;
+  for (int i = 0; i < MICRO_MAX_SHADERS; i++) {
+    if (microShaders[i].programId == -1) {
+      spot = i;
+      microShaders[i] = shader;
+      break;
+    }
+  }
+  assert(spot != -1);
+
+  return spot;
+}
+
+int microShaderGetProgramID(int shaderId)
+{
+  assert(shaderId != -1);
+  return microShaders[shaderId].programId;
+}
+
+int microShaderGetCurrent()
+{
+  return currentShader;
 }
 
 void microShaderFree(int shaderId)
 {
-  if (shaderId == -1) return;
+  if (shaderId == -1 || microShaders[shaderId].programId == -1) return;
   if (currentShader == shaderId) currentShader = -1;
-  glDeleteProgram(shaderId);
+  glDeleteProgram(microShaders[shaderId].programId);
+  microShaders[shaderId].programId = -1;
 }
 
 void microShaderApply(int shaderId)
 {
   if (currentShader == shaderId) return;
-  glUseProgram(shaderId);
+  glUseProgram(microShaders[shaderId].programId);
   currentShader = shaderId;
 }
 
-void microShaderSetUniform1f(const char *name, float value)
+void microShaderSetUniform(const char *name, ...)
 {
-  glUniform1f(glGetUniformLocation(currentShader, name), value);
+  int uniformLoc = -1;
+  int uniformId = -1;
+  microShader *shader = &microShaders[currentShader];
+  for (int i = 0; i < shader->uniformsCount; i++) {
+    if (strcmp(shader->uniformsNames[i], name) == 0) {
+      uniformId = i;
+      uniformLoc = shader->uniformsLocations[i];
+
+    }
+  }
+  assert(uniformId != -1); //Uniform not found
+  
+  va_list args;
+  va_start(args, name);
+  switch (shader->uniformsTypes[uniformId]) {
+    case GL_FLOAT:
+      shader->uniformsValues[uniformId * 4] = (double)va_arg(args, double);
+      glUniform1f(uniformLoc, shader->uniformsValues[uniformId * 4]);
+      break;
+    case GL_FLOAT_VEC2:
+      shader->uniformsValues[uniformId * 4] = (double)va_arg(args, double);
+      shader->uniformsValues[uniformId * 4 + 1] = (double)va_arg(args, double);
+      glUniform2f(uniformLoc, shader->uniformsValues[uniformId * 4],
+          shader->uniformsValues[uniformId * 4 + 1]);
+      break;
+    case GL_FLOAT_VEC3:
+      shader->uniformsValues[uniformId * 4] = (double)va_arg(args, double);
+      shader->uniformsValues[uniformId * 4 + 1] = (double)va_arg(args, double);
+      shader->uniformsValues[uniformId * 4 + 2] = (double)va_arg(args, double);
+      glUniform3f(uniformLoc, shader->uniformsValues[uniformId * 4],
+          shader->uniformsValues[uniformId * 4 + 1],
+          shader->uniformsValues[uniformId * 4 + 2]);
+      break;
+    case GL_FLOAT_VEC4:
+      shader->uniformsValues[uniformId * 4] = (double)va_arg(args, double);
+      shader->uniformsValues[uniformId * 4 + 1] = (double)va_arg(args, double);
+      shader->uniformsValues[uniformId * 4 + 2] = (double)va_arg(args, double);
+      shader->uniformsValues[uniformId * 4 + 3] = (double)va_arg(args, double);
+      glUniform4f(uniformLoc, shader->uniformsValues[uniformId * 4],
+          shader->uniformsValues[uniformId * 4 + 1],
+          shader->uniformsValues[uniformId * 4 + 2],
+          shader->uniformsValues[uniformId * 4 + 3]);
+      break;
+    case GL_FLOAT_MAT4:
+      assert(0); //Not implemented
+      break;
+    default:
+      assert(0); //Unsupported uniform type
+  }
 }
 
-void microShaderSetUniform2f(const char *name, float value1, float value2)
+void microShaderGetUniform1(const char *name, double* v1)
 {
-  glUniform2f(glGetUniformLocation(currentShader, name), value1, value2);
+  assert(currentShader != -1);
+  microShader *shader = &microShaders[currentShader];
+  for (int i = 0; i < shader->uniformsCount; i++) {
+    if (strcmp(shader->uniformsNames[i], name) == 0) {
+      *v1 = shader->uniformsValues[i * 4];
+      return;
+    }
+  }
+  assert(0); //Uniform not found
 }
 
-void microShaderSetUniform3f(const char *name, float value1, float value2, float value3)
+void microShaderGetUniform2(const char *name, double* v1, double* v2)
 {
-  glUniform3f(glGetUniformLocation(currentShader, name), value1, value2, value3);
+  assert(currentShader != -1);
+  microShader *shader = &microShaders[currentShader];
+  for (int i = 0; i < shader->uniformsCount; i++) {
+    if (strcmp(shader->uniformsNames[i], name) == 0) {
+      *v1 = shader->uniformsValues[i * 4];
+      *v2 = shader->uniformsValues[i * 4 + 1];
+      return;
+    }
+  }
+  assert(0); //Uniform not found
 }
 
-void microShaderSetUniform4f(const char *name, float value1, float value2, float value3, float value4)
+void microShaderGetUniform3(const char *name, double* v1, double* v2, double* v3)
 {
-  glUniform4f(glGetUniformLocation(currentShader, name), value1, value2, value3, value4);
+  assert(currentShader != -1);
+  microShader *shader = &microShaders[currentShader];
+  for (int i = 0; i < shader->uniformsCount; i++) {
+    if (strcmp(shader->uniformsNames[i], name) == 0) {
+      *v1 = shader->uniformsValues[i * 4];
+      *v2 = shader->uniformsValues[i * 4 + 1];
+      *v3 = shader->uniformsValues[i * 4 + 2];
+      return;
+    }
+  }
+  assert(0); //Uniform not found
 }
 
-void microShaderSetUniform1i(const char *name, int value)
+void microShaderGetUniform4(const char *name, double* v1, double* v2, double* v3, double* v4)
 {
-  glUniform1i(glGetUniformLocation(currentShader, name), value);
-}
-
-void microShaderSetUniform2i(const char *name, int value1, int value2)
-{
-  glUniform2i(glGetUniformLocation(currentShader, name), value1, value2);
-}
-
-void microShaderSetUniform3i(const char *name, int value1, int value2, int value3)
-{
-  glUniform3i(glGetUniformLocation(currentShader, name), value1, value2, value3);
-}
-
-void microShaderSetUniform4i(const char *name, int value1, int value2, int value3, int value4)
-{
-  glUniform4i(glGetUniformLocation(currentShader, name), value1, value2, value3, value4);
+  assert(currentShader != -1);
+  microShader *shader = &microShaders[currentShader];
+  for (int i = 0; i < shader->uniformsCount; i++) {
+    if (strcmp(shader->uniformsNames[i], name) == 0) {
+      *v1 = shader->uniformsValues[i * 4];
+      *v2 = shader->uniformsValues[i * 4 + 1];
+      *v3 = shader->uniformsValues[i * 4 + 2];
+      *v4 = shader->uniformsValues[i * 4 + 3];
+      return;
+    }
+  }
+  assert(0); //Uniform not found
 }
 
 void microShaderSetMatrix4(const char *name, float *matrix)
 {
-  glUniformMatrix4fv(glGetUniformLocation(currentShader, name), 1, GL_FALSE, matrix);
+  int uniformLoc = -1;
+  int uniformId = -1;
+  microShader *shader = &microShaders[currentShader];
+  for (int i = 0; i < shader->uniformsCount; i++) {
+    if (strcmp(shader->uniformsNames[i], name) == 0) {
+      uniformId = i;
+      uniformLoc = shader->uniformsLocations[i];
+
+    }
+  }
+  assert(uniformId != -1); //Uniform not found
+  glUniformMatrix4fv(uniformLoc, 1, GL_FALSE, matrix);
 }
 
 
@@ -433,8 +575,10 @@ int microCanvasCreate(int width, int height)
     if (microCanvases[i].framebufferId == -1) {
       canvasId = i;
       microCanvases[i] = canvas;
+      break;
     }
   }
+  assert(canvasId != -1);
   
   // Set "renderedTexture" as our colour attachement #0
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, microTextures[textureId].id, 0);
@@ -469,15 +613,32 @@ void microCanvasFree(int canvasId)
 ////////////////////////////
 // RENDERING
 ///////////////////////////
-void microGraphicsInit(SDL_Window *win)
+void microGraphicsInit()
 {
-  window = win;
+  if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+    printf("Failed to initialize th SDL2 library\n");
+    return;
+  }
+  //create window and opengl context
+  window = SDL_CreateWindow("micro",
+      SDL_WINDOWPOS_CENTERED,
+      SDL_WINDOWPOS_CENTERED,
+      800, 600,
+      SDL_WINDOW_FULLSCREEN | SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN
+      );
+
+  if (!window) {
+    printf("Failed to create the window\n");
+    return;
+  }
 
   //clean textures and canvases
   for (int i = 0; i < MICRO_MAX_TEXTURES; i++)
     microTextures[i].id = -1;
   for (int i = 0; i < MICRO_MAX_CANVASES; i++)
     microCanvases[i].framebufferId = -1;
+  for (int i = 0; i < MICRO_MAX_CANVASES; i++)
+    microShaders[i].programId = -1;
 
 	//Set OpenGL version
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
@@ -489,7 +650,10 @@ void microGraphicsInit(SDL_Window *win)
 	if (context == NULL) {
 		printf("Couldn't create OpenGL context\n");
 	}
-	SDL_GL_SetSwapInterval(0);
+
+  // Set VSYNC, try adaptive first and if not supported, use normal vsync
+	if (SDL_GL_SetSwapInterval(-1) == -1)
+    SDL_GL_SetSwapInterval(1);
 
 	char *glVersion = (char*)glGetString(GL_VERSION);
 	if (glVersion) {
@@ -505,12 +669,13 @@ void microGraphicsInit(SDL_Window *win)
 #endif
 
   //Load base shader
-  int shaderId = microShaderLoadFromSource(baseVertexShaderSrc, baseFragmentShaderSrc);
-  assert(shaderId != -1);
-  microShaderApply(shaderId);
-  const int positionLoc = glGetAttribLocation(shaderId, "position");
-  const int texCoordLoc = glGetAttribLocation(shaderId, "texcoord");
-  const int colorLoc = glGetAttribLocation(shaderId, "color");
+  defaultShaderId = microShaderLoadFromSource(baseVertexShaderSrc, baseFragmentShaderSrc);
+  int programId = microShaderGetProgramID(defaultShaderId);
+  assert(defaultShaderId != -1);
+  microShaderApply(defaultShaderId);
+  const int positionLoc = glGetAttribLocation(programId, "position");
+  const int texCoordLoc = glGetAttribLocation(programId, "texcoord");
+  const int colorLoc = glGetAttribLocation(programId, "color");
 
   //Clear
   glClear(GL_COLOR_BUFFER_BIT);
@@ -553,12 +718,16 @@ void microGraphicsInit(SDL_Window *win)
   //Setup renderer
   countverts = 0;
   wireframe = 0;
+
+  printf("microGraphics allocated %d kb\n", (int)((sizeof(microTextures) + sizeof(microCanvases) + sizeof(microShaders)) / (double)(1024)));
 }
 
 void microGraphicsQuit()
 {
   //Delete context 
   SDL_GL_DeleteContext( context );
+  SDL_DestroyWindow( window );
+  SDL_Quit();
 }
 
 void microGraphicsClear()
@@ -810,65 +979,85 @@ void microGraphicsDrawRect(int textureId, float tx, float ty, float tw, float th
 }
 
 //VIEW
-void microViewSet(float viewportX, float viewportY, float viewportWidth, float viewportHeight,
-    float centerX, float centerY, float width, float height, float rotation, int flipY)
+void microViewSet(MicroView view)
 {
-  viewViewportX = viewportX;
-  viewViewportY = viewportY;
-  viewViewportW = viewportWidth;
-  viewViewportH = viewportHeight;
-  viewCenterX = centerX;
-  viewCenterY = centerY;
-  viewWidth = width;
-  viewHeight = height;
-  viewRotation = rotation;
-  viewFlipY = (flipY > 0);
+  viewViewportX = view.viewportX;
+  viewViewportY = view.viewportY;
+  viewViewportW = view.viewportWidth;
+  viewViewportH = view.viewportHeight;
+  viewCenterX = view.centerX;
+  viewCenterY = view.centerY;
+  viewWidth = view.width;
+  viewHeight = view.height;
+  viewRotation = view.rotation;
+  viewFlipY = (view.flipY > 0);
+  viewUpdated = 0;
 }
 
-void microViewUpdate()
+MicroView microViewGet()
 {
-  float NCenterX, NCenterY;
-  NCenterX = floor(viewCenterX);
-  NCenterY = floor(viewCenterY);
+  MicroView view;
+  view.viewportX = viewViewportX;
+  view.viewportY = viewViewportY;
+  view.viewportWidth = viewViewportW;
+  view.viewportHeight = viewViewportH;
+  view.centerX = viewCenterX;
+  view.centerY = viewCenterY;
+  view.width = viewWidth;
+  view.height = viewHeight;
+  view.rotation = viewRotation;
+  view.flipY = viewFlipY;
+  return view;
+}
 
-  // Rotation components
-  float angle = viewRotation * M_PI / 180.f;
-  float cosine = cosf(angle);
-  float sine = sinf(angle);
-  float tx = -NCenterX * cosine - NCenterY * sine + NCenterX;
-  float ty = NCenterX * sine - NCenterY * cosine + NCenterY;
+void microViewApply()
+{
+  if (!viewUpdated) {
+    float NCenterX, NCenterY;
+    NCenterX = floor(viewCenterX);
+    NCenterY = floor(viewCenterY);
 
-  // Projection components
-  float a = 2.f / viewWidth;
-  float b = viewFlipY ? 2.f / viewHeight : -2.f / viewHeight; // Change the sign of b based on flipY
-  float c = -a * NCenterX;
-  float d = -b * NCenterY;
+    // Rotation components
+    float angle = viewRotation * M_PI / 180.f;
+    float cosine = cosf(angle);
+    float sine = sinf(angle);
+    float tx = -NCenterX * cosine - NCenterY * sine + NCenterX;
+    float ty = NCenterX * sine - NCenterY * cosine + NCenterY;
 
-  const float zNear = 0;
-  const float zFar = 10;
-  const float e = 2.f / (zFar - zNear);
-  const float f = -(zFar + zNear) / (zFar - zNear);
+    // Projection components
+    float a = 2.f / viewWidth;
+    float b = viewFlipY ? 2.f / viewHeight : -2.f / viewHeight; // Change the sign of b based on flipY
+    float c = -a * NCenterX;
+    float d = -b * NCenterY;
 
-  //Update matrix
-  viewMatrix[0] = a * cosine;
-  viewMatrix[1] = -b * sine;
-  viewMatrix[2] = 0.f;
-  viewMatrix[3] = 0.f;
-  viewMatrix[4] = a * sine;
-  viewMatrix[5] = b * cosine;
-  viewMatrix[6] = 0.f;
-  viewMatrix[7] = 0.f;
-  viewMatrix[8] = 0.f;
-  viewMatrix[9] = 0.f;
-  viewMatrix[10] = e;
-  viewMatrix[11] = 0.f;
-  viewMatrix[12] = a * tx + c;
-  viewMatrix[13] = b * ty + d;
-  viewMatrix[14] = f;
-  viewMatrix[15] = 1.f;
+    const float zNear = 0;
+    const float zFar = 10;
+    const float e = 2.f / (zFar - zNear);
+    const float f = -(zFar + zNear) / (zFar - zNear);
 
-  //Set viewport
-  glViewport(viewViewportX, viewViewportY, viewViewportW, viewViewportH);
+    //Update matrix
+    viewMatrix[0] = a * cosine;
+    viewMatrix[1] = -b * sine;
+    viewMatrix[2] = 0.f;
+    viewMatrix[3] = 0.f;
+    viewMatrix[4] = a * sine;
+    viewMatrix[5] = b * cosine;
+    viewMatrix[6] = 0.f;
+    viewMatrix[7] = 0.f;
+    viewMatrix[8] = 0.f;
+    viewMatrix[9] = 0.f;
+    viewMatrix[10] = e;
+    viewMatrix[11] = 0.f;
+    viewMatrix[12] = a * tx + c;
+    viewMatrix[13] = b * ty + d;
+    viewMatrix[14] = f;
+    viewMatrix[15] = 1.f;
+
+    //Set viewport
+    glViewport(viewViewportX, viewViewportY, viewViewportW, viewViewportH);
+
+    viewUpdated = 1;
+  }
 
   //Apply view
   if (currentShader != -1)
@@ -878,6 +1067,7 @@ void microViewUpdate()
 void microViewFlipY(int flipY)
 {
   viewFlipY = (flipY > 0);
+  viewUpdated = 0;
 }
 
 void microViewSetViewport(float x, float y, float width, float height)
@@ -886,23 +1076,27 @@ void microViewSetViewport(float x, float y, float width, float height)
   viewViewportY = y;
   viewViewportW = width;
   viewViewportH = height;
+  viewUpdated = 0;
 }
 
 void microViewSetCenter(float x, float y)
 {
   viewCenterX = x;
   viewCenterY = y;
+  viewUpdated = 0;
 }
 
 void microViewSetSize(float width, float height)
 {
   viewWidth = width;
   viewHeight = height;
+  viewUpdated = 0;
 }
 
 void microViewSetRotation(float rotation)
 {
   viewRotation = rotation;
+  viewUpdated = 0;
 }
 
 void microViewGetCenter(float* centerX, float* centerY)
@@ -920,4 +1114,15 @@ void microViewGetSize(float* width, float* height)
 float microViewGetRotation()
 {
   return viewRotation;
+}
+
+void microWindowGetSize(int *width, int *height)
+{
+  SDL_GetWindowSize(window, width, height);
+}
+
+void microSwapBuffers()
+{
+  SDL_GL_SwapWindow(window);
+  //SDL_Delay(16);
 }

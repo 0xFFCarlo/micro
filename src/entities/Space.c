@@ -1,0 +1,134 @@
+#include "../components/CPosition.h"
+#include "../components/CSprite.h"
+#include "../components/CShadedCanvas.h"
+#include "../components/CUpdate.h"
+#include "../Resources.h"
+#include "../Graphics.h"
+#include "../ECS.h"
+#include "Planet.h"
+#include <stdio.h>
+#include <assert.h>
+
+int spaceId = -1;
+int space_shader_id = -1;
+int space_canvas_id = -1;
+
+
+// Updates shader parameters to show the planet atmosphere
+// in the right place
+void spaceUpdate(int spaceId, float dt)
+{
+  float planetX, planetY;
+  PlanetGetPos(&planetX, &planetY);
+
+  float viewX, viewY;
+  float viewWidth, viewHeight;
+  float viewAngle;
+  microViewGetCenter(&viewX, &viewY);
+  microViewGetSize(&viewWidth, &viewHeight);
+  viewAngle = microViewGetRotation() * 3.14159265358979323846 / 180.0;
+
+  float windowWidth, windowHeight;
+  microViewGetSize(&windowWidth, &windowHeight);
+  
+  float normPlanetX = ((planetX - viewX) * 2.0) / windowHeight;
+  float normPlanetY = ((planetY - viewY) * 2.0) / windowHeight;
+
+  float normViewX = viewX / windowHeight;
+  float normViewY = -viewY / windowHeight;
+  
+  microShaderApply(space_shader_id);
+  microShaderSetUniform("planet_center", normPlanetX, normPlanetY);
+  microShaderSetUniform("view_center", normViewX, normViewY);
+  microShaderSetUniform("view_angle", viewAngle);
+  microShaderApply(0);
+}
+
+void SpaceEntityAdd()
+{
+  float viewWidth, viewHeight;
+  microViewGetSize(&viewWidth, &viewHeight);
+
+  // Create planet
+  spaceId = microECSEntityNew(NULL, NULL, NULL);
+  float canvas_space_height = 512;
+  float canvas_space_width = viewWidth * (canvas_space_height / viewHeight);
+  float scale = viewWidth / canvas_space_width;
+  float time = 0.0;
+  float planet_radius = PlanetGetRadius();
+  float view_angle = 0.0;
+  float nebulaColor[3] = {0.57, 0.27, 0.41};
+  float atmosphereMaxIntensity = 0.5;
+  float atmosphereDecay = 0.9;
+  float atmosphereColor[4] = {0.6, 0.6, 1.0, 1.0};
+  float starfieldThreshold1 = 40.0;
+  float starfieldThreshold2 = 40.0;
+
+  // Load shader and apply parameters
+  space_shader_id = microShaderLoadFromFile("./res/shaders/base_vert.glsl", "./res/shaders/space.glsl");
+  assert(space_shader_id != -1);
+  int current_shader = microShaderGetCurrent();
+  microShaderApply(space_shader_id);
+  microViewApply(); // send view matrix to shader
+  microShaderSetUniform("resolution", canvas_space_width, canvas_space_height);
+  microShaderSetUniform("time", time);
+  microShaderSetUniform("view_center", 0.0, 0.0);
+  microShaderSetUniform("view_angle", view_angle);
+  microShaderSetUniform("planet_radius", planet_radius);
+  microShaderSetUniform("planet_center", 0.0, 0.2 + 1.0);
+  microShaderSetUniform("nebulaColor", nebulaColor[0], nebulaColor[1], nebulaColor[2]);
+  microShaderSetUniform("starfieldThreshold1", starfieldThreshold1);
+  microShaderSetUniform("starfieldThreshold2", starfieldThreshold2);
+  microShaderSetUniform("atmosphereMaxIntensity", atmosphereMaxIntensity);
+  microShaderSetUniform("atmosphereDecay", atmosphereDecay);
+  microShaderSetUniform("atmosphereColor", atmosphereColor[0], atmosphereColor[1], atmosphereColor[2], atmosphereColor[3]);
+
+  microShaderApply(current_shader);
+  
+  // Position component
+  CPosition position = {
+    .x = 0,
+    .y = 0,
+  };
+  microECSEntityAddComponent(spaceId, cid_position, &position);
+
+  // Shaded canvas component
+  CShadedCanvas scanvas = {
+    .canvasId = microCanvasCreate(canvas_space_width, canvas_space_height),
+    .shaderId = space_shader_id,
+    .width = canvas_space_width,
+    .height = canvas_space_height,
+  };
+  microECSEntityAddComponent(spaceId, cid_shadedCanvas, &scanvas);
+
+  // Sprite component
+  int textureId = microCanvasGetTextureId(scanvas.canvasId);
+  microTexttureSetFilter(textureId, MICRO_FILTER_NEAREST);
+  int texWidth, texHeight;
+  microTextureGetSize(textureId, &texWidth, &texHeight);
+  CSprite sprite = {
+    .textureId = textureId,
+    .tx = 0,
+    .ty = 0,
+    .tw = texWidth,
+    .th = texHeight,
+    .width = canvas_space_width * scale,
+    .height = canvas_space_height * scale,
+    .originX = 0,
+    .originY = 0,
+    .rotation = 0,
+    .r = 1.0,
+    .g = 1.0,
+    .b = 1.0,
+    .a = 1.0,
+    .layerId = 0,
+    .hud = 1,
+  };
+  microECSEntityAddComponent(spaceId, cid_sprite, &sprite);
+
+  // Update component
+  CUpdate update = {
+    .update = spaceUpdate,
+  };
+  microECSEntityAddComponent(spaceId, cid_update, &update);
+}

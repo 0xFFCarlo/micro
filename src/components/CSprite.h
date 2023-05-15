@@ -10,6 +10,7 @@ typedef struct
   float rotation;
   float r, g, b, a;
   int layerId;
+  unsigned char hud;
 } CSprite;
 
 extern int cid_sprite;

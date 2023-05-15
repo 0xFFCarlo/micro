@@ -6,6 +6,9 @@
 
 #define MICRO_RESOURCES_MAX 512
 #define MICRO_RESOURCES_NAME_MAX_LEN 32
+#define MICRO_TYPE_TEXTURE 0
+#define MICRO_TYPE_SOUND 1
+#define MICRO_TYPE_MUSIC 2
 
 
 typedef struct Resource {
@@ -59,17 +62,17 @@ int microResourceLoad(const char* name, const char* filepath, const char* type)
   if (strcompare(type, "texture") == CMP_EQUAL)
   {
     resourceId = microTextureLoadFromFile(filepath);
-    resourceType = 0;
+    resourceType = MICRO_TYPE_TEXTURE;
   }
   else if (strcompare(type, "sound") == CMP_EQUAL)
   {
     resourceId = microSoundLoadFromFile(filepath, MICRO_SOUNDTYPE_SOUNDEFFECT);	
-    resourceType = 1;
+    resourceType = MICRO_TYPE_SOUND;
   }
   else if (strcompare(type, "music") == CMP_EQUAL)
   {
     resourceId = microSoundLoadFromFile(filepath, MICRO_SOUNDTYPE_MUSIC);	
-    resourceType = 2;
+    resourceType = MICRO_TYPE_MUSIC;
   }
 
   //store resource sorted by name in resources array

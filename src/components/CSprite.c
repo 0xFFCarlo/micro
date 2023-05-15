@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include "CSprite.h"
 #include "../ECS.h"
 
@@ -5,5 +6,5 @@ int cid_sprite;
 
 void RegisterCSprite()
 {
-  cid_sprite = microECSComponentRegister(sizeof(CSprite));
+  cid_sprite = microECSComponentRegister(sizeof(CSprite), NULL);
 }
