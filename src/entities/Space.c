@@ -8,10 +8,12 @@
 #include "Planet.h"
 #include <stdio.h>
 #include <assert.h>
+#include <math.h>
 
 int spaceId = -1;
 int space_shader_id = -1;
 int space_canvas_id = -1;
+double time = 0.0;
 
 
 // Updates shader parameters to show the planet atmosphere
@@ -33,14 +35,18 @@ void spaceUpdate(int spaceId, float dt)
   
   float normPlanetX = ((planetX - viewX) * 2.0) / windowHeight;
   float normPlanetY = ((planetY - viewY) * 2.0) / windowHeight;
+  float dist = sqrt(normPlanetX * normPlanetX + normPlanetY * normPlanetY);
 
-  float normViewX = viewX / windowHeight;
-  float normViewY = -viewY / windowHeight;
+  float normViewX = viewX / windowHeight - (viewWidth * 0.5) / windowHeight;
+  float normViewY = viewY / windowHeight - (viewHeight * 0.5) / windowHeight;
+
+  time += dt * 0.03;
   
   microShaderApply(space_shader_id);
   microShaderSetUniform("planet_center", normPlanetX, normPlanetY);
-  microShaderSetUniform("view_center", normViewX, normViewY);
+  microShaderSetUniform("view_center", 0, dist);
   microShaderSetUniform("view_angle", viewAngle);
+  microShaderSetUniform("time", time);
   microShaderApply(0);
 }
 
@@ -103,7 +109,7 @@ void SpaceEntityAdd()
 
   // Sprite component
   int textureId = microCanvasGetTextureId(scanvas.canvasId);
-  microTexttureSetFilter(textureId, MICRO_FILTER_NEAREST);
+  microTextureSetFilter(textureId, MICRO_FILTER_NEAREST);
   int texWidth, texHeight;
   microTextureGetSize(textureId, &texWidth, &texHeight);
   CSprite sprite = {

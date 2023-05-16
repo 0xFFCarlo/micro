@@ -57,8 +57,7 @@ int main(int argc, char const *argv[])
   // Register entities
   SpaceEntityAdd();
   PlanetEntityAdd();
-
-
+  
   while (1)
   {
     // Get the next event
@@ -76,37 +75,58 @@ int main(int argc, char const *argv[])
       }
     }
     
-    float cx, cy;
+    // float cx, cy;
+    // float r;
+    // microViewGetCenter(&cx, &cy);
+    // r = microViewGetRotation();
+    // float dirX = -sin(-r * 3.14159 / 180.0);
+    // float dirY = -cos(-r * 3.14159 / 180.0);
+    //
+    // if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_W]) {
+    //   cx += dirX;
+    //   cy += dirY;
+    // }
+    // if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_S]) {
+    //   cx -= dirX;
+    //   cy -= dirY;
+    // }
+    // if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_A]) {
+    //   cx += dirY;
+    //   cy -= dirX;
+    // }
+    // if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_D]) {
+    //   cx -= dirY;
+    //   cy += dirX;
+    // }
+    //
+    // if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_E])
+    //   r += 3.14159 / 10.0;
+    // if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_R])
+    //   r -= 3.14159 / 10.0;
+    //
+    // microViewSetCenter(cx, cy);
+    // microViewSetRotation(r);
+    
     float r;
-    microViewGetCenter(&cx, &cy);
     r = microViewGetRotation();
-    float dirX = sin(r * 3.14159 / 180.0);
-    float dirY = cos(r * 3.14159 / 180.0);
+    if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_D])
+      r += 3.14159 / 20.0;
+    if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_A])
+      r -= 3.14159 / 20.0;
+    float dirX = -sin(-r * 3.14159 / 180.0);
+    float dirY = -cos(-r * 3.14159 / 180.0);
 
-    if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_W]) {
-      cx += dirX;
-      cy += dirY;
-    }
-    if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_S]) {
-      cx -= dirX;
-      cy -= dirY;
-    }
-    if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_A]) {
-      cx += dirY;
-      cy -= dirX;
-    }
-    if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_D]) {
-      cx -= dirY;
-      cy += dirX;
-    }
-    if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_E])
-      r += 3.14159 / 40.0;
-    if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_R])
-      r -= 3.14159 / 40.0;
-
-    microViewSetCenter(cx, cy);
+    float viewWidth, viewHeight;
+    microViewGetSize(&viewWidth, &viewHeight);
+    float planetX, planetY;
+    float planetNormRadius;
+    PlanetGetPos(&planetX, &planetY);
+    planetNormRadius = PlanetGetRadius();
+    float viewX = planetX + dirX * (planetNormRadius * viewHeight/2.0 + viewHeight * 0.1);
+    float viewY = planetY + dirY * (planetNormRadius * viewHeight/2.0 + viewHeight * 0.1);
+    microViewSetCenter(viewX, viewY);
     microViewSetRotation(r);
-    //microViewSetRotation(microViewGetRotation() + 0.1);
+    
 
     microGraphicsClear();
     float deltaTime = 0.016;

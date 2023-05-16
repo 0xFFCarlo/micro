@@ -21,6 +21,18 @@ int shadow_canvas_id = -1;
 float planetX = 0.0;
 float planetY = 0.0;
 float planetRadius = PLANET_RADIUS;
+float planetScaleFactor = 2.0;
+
+float PlanetGetRadius()
+{
+  return planetRadius * planetScaleFactor / 2.0;
+}
+
+void PlanetGetPos(float* x, float* y)
+{
+  *x = planetX;
+  *y = planetY;
+}
 
 
 // Updates shader parameters to show the shadows at the planet position
@@ -46,7 +58,7 @@ void planetUpdate(int planetId, float dt)
   
   microShaderApply(shadow_shader_id);
   microShaderSetUniform("planet_center", normPlanetX, normPlanetY);
-  microShaderSetUniform("view_center", normViewX, normViewY);
+  //microShaderSetUniform("view_center", normViewX, normViewY);
   microShaderSetUniform("view_angle", viewAngle);
   microShaderApply(0);
 }
@@ -57,10 +69,10 @@ void setupPlanetEntity(int planetId)
   microViewGetSize(&viewWidth, &viewHeight);
 
   int shader_id;
-  float ratio = 0.5859; //viewHeight / viewWidth;
-  float canvas_planet_height = (512.0 * ratio) * PLANET_RADIUS;
-  float canvas_planet_width = (512.0 * ratio) * PLANET_RADIUS;
-  float planet_scale = 2.0;
+  printf("viewWidth: %f viewHeight: %f\n", viewWidth, viewHeight);
+  float canvas_planet_height = (viewHeight * PLANET_RADIUS) / 2.0;
+  float canvas_planet_width = (viewHeight * PLANET_RADIUS) / 2.0;
+  float planet_scale = planetScaleFactor;
 
   // Load shader and apply parameters
   shader_id = microShaderLoadFromFile("./res/shaders/base_vert.glsl", "./res/shaders/planet.glsl");
@@ -94,7 +106,7 @@ void setupPlanetEntity(int planetId)
 
   // Sprite component
   int textureId = microCanvasGetTextureId(scanvas.canvasId);
-  microTexttureSetFilter(textureId, MICRO_FILTER_NEAREST);
+  microTextureSetFilter(textureId, MICRO_FILTER_NEAREST);
   int texWidth, texHeight;
   microTextureGetSize(textureId, &texWidth, &texHeight);
   CSprite sprite = {
@@ -105,8 +117,8 @@ void setupPlanetEntity(int planetId)
     .th = texHeight,
     .width = canvas_planet_width * planet_scale,
     .height = canvas_planet_height * planet_scale,
-    .originX = canvas_planet_width,
-    .originY = canvas_planet_height,
+    .originX = canvas_planet_width * planet_scale / 2.0,
+    .originY = canvas_planet_height * planet_scale / 2.0,
     .rotation = 0,
     .r = 1.0,
     .g = 1.0,
@@ -140,10 +152,10 @@ void setupShadow(int shadowId)
   microShaderApply(shadow_shader_id);
   microViewApply(); // send view matrix to shader
   microShaderSetUniform("resolution", canvas_posteffect_width, canvas_posteffect_height);
-  microShaderSetUniform("radius", PLANET_RADIUS);
+  microShaderSetUniform("radius", PlanetGetRadius());
   microShaderSetUniform("lightDepth", LIGHT_DEPTH);
   microShaderSetUniform("planet_center", 0.0, 0.2 + PLANET_RADIUS);
-  microShaderSetUniform("view_center", 0.0, 0.2 + PLANET_RADIUS);
+  //microShaderSetUniform("view_center", 0.0, 0.2 + PLANET_RADIUS);
   microShaderSetUniform("view_angle", 0.0);
   microShaderApply(current_shader);
 
@@ -166,7 +178,7 @@ void setupShadow(int shadowId)
 
   // Sprite component
   int textureId = microCanvasGetTextureId(scanvas.canvasId);
-  microTexttureSetFilter(textureId, MICRO_FILTER_NEAREST);
+  microTextureSetFilter(textureId, MICRO_FILTER_NEAREST);
   int texWidth, texHeight;
   microTextureGetSize(textureId, &texWidth, &texHeight);
   CSprite sprite = {
@@ -200,15 +212,4 @@ void PlanetEntityAdd()
   // Create atmosphere and shadow
   shadow_id = microECSEntityNew(NULL, NULL, NULL);
   setupShadow(shadow_id);
-}
-
-int PlanetGetRadius()
-{
-  return planetRadius;
-}
-
-void PlanetGetPos(float* x, float* y)
-{
-  *x = planetX;
-  *y = planetY;
 }

@@ -1,5 +1,6 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_video.h>
+#include <SDL2_ttf/SDL_ttf.h>
 #if defined(__linux__)
 //#include <GLES3/gl3.h>
 //#include <GL/glu.h>
@@ -18,6 +19,7 @@
 #define MICRO_MAX_TEXTURES 64
 #define MICRO_MAX_CANVASES 64
 #define MICRO_MAX_SHADERS 64
+#define MICRO_MAC_FONTS 64
 #define MICRO_MAX_ATTRIBUTES 16
 #define MICRO_MAX_UNIFORMS 16
 #define MICRO_MAX_NAME_LEN 32
@@ -55,6 +57,9 @@ typedef struct microCanvas
   int width, height;
 } microCanvas;
 static microCanvas microCanvases[MICRO_MAX_CANVASES];
+
+static void* microFonts[MICRO_MAC_FONTS];
+static int microFontsCount = 0;
 
 //shader stuff
 static const char baseVertexShaderSrc[] = "#version 330 core\n"
@@ -236,7 +241,7 @@ int microTextureLoadFromMemory(const unsigned char *data, const unsigned int wid
   return spot;    
 }
 
-void microTexttureSetFilter(int textureId, int filter)
+void microTextureSetFilter(int textureId, int filter)
 {
   microGLStateBindTexture(microTextures[textureId].id);
   if (filter == MICRO_FILTER_LINEAR) {
@@ -619,6 +624,9 @@ void microGraphicsInit()
     printf("Failed to initialize th SDL2 library\n");
     return;
   }
+  
+  TTF_Init();
+
   //create window and opengl context
   window = SDL_CreateWindow("micro",
       SDL_WINDOWPOS_CENTERED,
@@ -727,6 +735,7 @@ void microGraphicsQuit()
   //Delete context 
   SDL_GL_DeleteContext( context );
   SDL_DestroyWindow( window );
+  TTF_Quit();
   SDL_Quit();
 }
 

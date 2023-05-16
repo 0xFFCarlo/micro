@@ -12,7 +12,7 @@ extern int microTextureLoadFromMemory(const unsigned char *data,
     const unsigned int width, const unsigned int height,
     const unsigned int channels, const unsigned int filter);
 extern void microTextureGetSize(int textureId, int *width, int *height);
-extern void microTexttureSetFilter(int textureId, int filter);
+extern void microTextureSetFilter(int textureId, int filter);
 extern void microTextureFree(int textureId);
 
 
