@@ -17,6 +17,21 @@ extern void microTextureFree(int textureId);
 
 
 /////////////////////////////
+/// Animation
+/////////////////////////////
+extern void microAnimationLoadFromFile(const char *csv_filepath);
+extern int microAnimationCreate(char* name, int startX, int startY, int frameWidth, int frameHeight, int framesCount, float animationSpeed, int flipX, int flipY);
+extern const char* microAnimationGetName(int animationId);
+extern void microAnimationGetStart(int animationId, int *startX, int *startY);
+extern void microAnimationGetFrameSize(int animationId, int *frameWidth, int *frameHeight);
+extern int microAnimationGetFramesCount(int animationId);
+extern float microAnimationGetSpeed(int animationId);
+extern int microAnimationGetFlipX(int animationId);
+extern int microAnimationGetFlipY(int animationId);
+extern void microAnimationFree(int animationId);
+
+
+/////////////////////////////
 // View
 /////////////////////////////
 typedef struct {

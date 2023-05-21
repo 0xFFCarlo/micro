@@ -19,7 +19,9 @@
 #define MICRO_MAX_TEXTURES 64
 #define MICRO_MAX_CANVASES 64
 #define MICRO_MAX_SHADERS 64
-#define MICRO_MAC_FONTS 64
+#define MICRO_MAX_FONTS 64
+#define MICRO_MAX_ANIMATIONS 64
+
 #define MICRO_MAX_ATTRIBUTES 16
 #define MICRO_MAX_UNIFORMS 16
 #define MICRO_MAX_NAME_LEN 32
@@ -58,7 +60,17 @@ typedef struct microCanvas
 } microCanvas;
 static microCanvas microCanvases[MICRO_MAX_CANVASES];
 
-static void* microFonts[MICRO_MAC_FONTS];
+typedef struct microAnimation {
+  char name[MICRO_MAX_NAME_LEN];
+  int startX, startY;
+  int frameWidth, frameHeight;
+  int framesCount;
+  float animationSpeed;
+  int flipX, flipY;
+} microAnimation;
+static microAnimation microAnimations[MICRO_MAX_ANIMATIONS];
+
+static void* microFonts[MICRO_MAX_FONTS];
 static int microFontsCount = 0;
 
 //shader stuff
@@ -238,12 +250,14 @@ int microTextureLoadFromMemory(const unsigned char *data, const unsigned int wid
   }
   assert(spot != -1);
 
+  currentTexture = id;
   return spot;    
 }
 
 void microTextureSetFilter(int textureId, int filter)
 {
   microGLStateBindTexture(microTextures[textureId].id);
+  currentTexture = microTextures[textureId].id;
   if (filter == MICRO_FILTER_LINEAR) {
     filter = GL_LINEAR;
   } else if (filter == MICRO_FILTER_NEAREST) {
@@ -269,6 +283,85 @@ void microTextureFree(int textureId)
     glDeleteTextures(1, &microTextures[textureId].id);
     microTextures[textureId].id = -1;
   }
+}
+
+
+
+////////////////////////////
+//ANIMATION
+////////////////////////////
+void microAnimationLoadFromFile(const char *csv_filepath)
+{
+  //TODO: implement 
+}
+
+int microAnimationCreate(char* name, int startX, int startY, int frameWidth, int frameHeight, int framesCount, float animationSpeed, int flipX, int flipY)
+{
+  // find spot in the resources buffer
+  int id = -1;
+  for (int i = 0; i < MICRO_MAX_ANIMATIONS; i++) {
+    if (microAnimations[i].framesCount == 0) {
+      id = i;
+      break;
+    }
+  }
+  assert(id != -1); 
+
+  // create animation
+  assert(strlen(name) < MICRO_MAX_NAME_LEN);
+  strcpy(microAnimations[id].name, name);
+  microAnimations[id].startX = startX;
+  microAnimations[id].startY = startY;
+  microAnimations[id].frameWidth = frameWidth;
+  microAnimations[id].frameHeight = frameHeight;
+  microAnimations[id].framesCount = framesCount;
+  microAnimations[id].animationSpeed = animationSpeed;
+  microAnimations[id].flipX = flipX;
+  microAnimations[id].flipY = flipY;
+
+  return id;
+}
+
+const char* microAnimationGetName(int animationId)
+{
+  return microAnimations[animationId].name;
+}
+
+void microAnimationGetStart(int animationId, int *startX, int *startY)
+{
+  *startX = microAnimations[animationId].startX;
+  *startY = microAnimations[animationId].startY;
+}
+
+void microAnimationGetFrameSize(int animationId, int *frameWidth, int *frameHeight)
+{
+  *frameWidth = microAnimations[animationId].frameWidth;
+  *frameHeight = microAnimations[animationId].frameHeight;
+}
+
+int microAnimationGetFramesCount(int animationId)
+{
+  return microAnimations[animationId].framesCount;
+}
+
+float microAnimationGetSpeed(int animationId)
+{
+  return microAnimations[animationId].animationSpeed;
+}
+
+void microAnimationFree(int animationId)
+{
+  microAnimations[animationId].framesCount = 0;
+}
+
+int microAnimationGetFlipX(int animationId)
+{
+  return microAnimations[animationId].flipX;
+}
+
+int microAnimationGetFlipY(int animationId)
+{
+  return microAnimations[animationId].flipY;
 }
 
 
@@ -647,6 +740,8 @@ void microGraphicsInit()
     microCanvases[i].framebufferId = -1;
   for (int i = 0; i < MICRO_MAX_CANVASES; i++)
     microShaders[i].programId = -1;
+  for (int i = 0; i < MICRO_MAX_ANIMATIONS; i++)
+    microAnimations[i].framesCount = 0;
 
 	//Set OpenGL version
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
@@ -786,7 +881,7 @@ void microGraphicsDraw(int textureId, float x, float y, float x2, float y2,
     float x3, float y3, float x4, float y4, float tx_x, float tx_y,
     float tx_w, float tx_h, float r, float g, float b, float a)
 {
-  if (textureId == 0)
+  if (textureId == -1)
   {
     if (currentTexture != 0) {
       microGraphicsDisplay();
@@ -911,22 +1006,22 @@ void microGraphicsDrawRectRot(int textureId, float tx, float ty, float tw, float
     const float cx = x + originX;
     const float cy = y + originY;
 
-    const float ox = x - cx;
-    const float oy = y - cy;
-    const float ow = x + w - cx;
-    const float oh = y + h - cy;
+    const float dx1 = x - cx;
+    const float dy1 = y - cy;
+    const float dx2 = (x + w) - cx;
+    const float dy2 = (y + h) - cy;
 
-    v1X = ox*ca - oy*sa + cx;
-    v1Y = ox*sa + oy*ca + cy;
+    v1X = ca * dx1 - sa * dy1 + cx - originX;
+    v1Y = sa * dx1 + ca * dy1 + cy - originY;
 
-    v2X = ow*ca - oy*sa + cx;
-    v2Y = ow*sa + oy*ca + cy;
+    v2X = ca * dx2 - sa * dy1 + cx - originX;
+    v2Y = sa * dx2 + ca * dy1 + cy - originY;
 
-    v3X = ow*ca - oh*sa + cx;
-    v3Y = ow*sa + oh*ca + cy;
+    v3X = ca * dx2 - sa * dy2 + cx - originX;
+    v3Y = sa * dx2 + ca * dy2 + cy - originY;
 
-    v4X = ox*ca - oh*sa + cx;
-    v4Y = ox*sa + oh*ca + cy;
+    v4X = ca * dx1 - sa * dy2 + cx - originX;
+    v4Y = sa * dx1 + ca * dy2 + cy - originY;
   }
   else
   {
@@ -961,7 +1056,7 @@ void microGraphicsDrawRectRot(int textureId, float tx, float ty, float tw, float
   }
   else
   {
-    microGraphicsDraw(0,
+    microGraphicsDraw(-1,
         v1X, v1Y, v2X, v2Y, v3X, v3Y, v4X, v4Y,
         0, 0, 0, 0, r, g, b, a);
   }
@@ -972,7 +1067,7 @@ void microGraphicsDrawRect(int textureId, float tx, float ty, float tw, float th
 {
   if (textureId == -1) 
   {
-    microGraphicsDraw(0, x, y, x + w, y, x + w, y + h, x, y + h, 0, 0, 0, 0, r, g, b, a);
+    microGraphicsDraw(-1, x, y, x + w, y, x + w, y + h, x, y + h, 0, 0, 0, 0, r, g, b, a);
   }
   else
   {

@@ -77,7 +77,9 @@ vec2 rotateUV(vec2 uv, float rotation, vec2 mid)
 void main() {
   vec2 uv = 2. * gl_FragCoord.xy / resolution.xy - 1.;
   vec2 uvs = uv * resolution.xy / resolution.y;
-  uvs = rotateUV(uvs, view_angle, view_center);
+  vec2 uvs_atm = rotateUV(uvs, -view_angle, vec2(0.0, 0.0));
+  uvs = rotateUV(uvs, -view_angle, view_center);
+  //uvs += view_center;
   vec3 p = vec3(uvs / 6., 0) + vec3(1., -1.3, 0.);
   p += .2 * vec3(sin(time / 16.), sin(time / 12.),  sin(time / 128.));
   //p.z += 0.2;
@@ -113,8 +115,8 @@ void main() {
   fragColor = mix(freqs[3]-.3, 1., v) * vec4(1.5*freqs[2] * t * t* t , 1.2*freqs[1] * t * t, freqs[3]*t, 1.0)+c2+starcolor;
   
   //Atmosphere
-  float dist = distance(uvs, planet_center);
-  float radius_n = planet_radius - 3.0 / resolution.y;
+  float dist = distance(uvs_atm, planet_center);
+  float radius_n = planet_radius - 4.0 / resolution.y;
   float areaType = dist > radius_n ? 1.0 : 0.0;
   float atmosphereIntensity = min(1.0, max(0.0, sqrt(dist - radius_n) * atmosphereDecay + (1.0 - atmosphereMaxIntensity)));
   fragColor = mix(atmosphereColor, fragColor, atmosphereIntensity);

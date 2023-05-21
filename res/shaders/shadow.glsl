@@ -45,7 +45,7 @@ void main() {
   vec2 uvs = uv * resolution.xy / resolution.y;
   //float radius_n = radius / max(resolution.x, resolution.y);
   float radius_n = radius;
-  uvs = rotateUV(uvs, view_angle, view_center);
+  uvs = rotateUV(uvs, -view_angle, vec2(0.0, 0.0));
 
   //vec2 lightDir = vec2(1.0, 0.0); //normalize(vec2(sin(time * 1.0), cos(time * 1.0)));
   vec4 ambient = vec4(0.0, 0.0, 0.0, 1.0);
@@ -61,7 +61,7 @@ void main() {
   //vec3 r = nrand3(uv * 0.1);
   //vec4 planetColor = vec4(0.25 + r.x * 0.25, 0.25 + r.x * 0.25, 0.25 + r.x * 0.25, 1.0);
   //shadowColor = mix(ambient, planetColor, shadowIntensity);
-  shadowIntensity = floor(shadowIntensity * 8.0) / 8.0;
+  shadowIntensity = floor(shadowIntensity * 10.0) / 10.0;
   shadowColor = mix(ambient, vec4(0.0, 0.0, 0.0, 0.0), shadowIntensity);
     
   //Atmosphere

@@ -37,8 +37,8 @@ void spaceUpdate(int spaceId, float dt)
   float normPlanetY = ((planetY - viewY) * 2.0) / windowHeight;
   float dist = sqrt(normPlanetX * normPlanetX + normPlanetY * normPlanetY);
 
-  float normViewX = viewX / windowHeight - (viewWidth * 0.5) / windowHeight;
-  float normViewY = viewY / windowHeight - (viewHeight * 0.5) / windowHeight;
+  // float normViewX = viewX / windowHeight - (viewWidth * 0.5) / windowHeight;
+  // float normViewY = viewY / windowHeight - (viewHeight * 0.5) / windowHeight;
 
   time += dt * 0.03;
   

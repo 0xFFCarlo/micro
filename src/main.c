@@ -12,11 +12,18 @@
 #include "components/CSprite.h"
 #include "components/CShadedCanvas.h"
 #include "components/CUpdate.h"
+#include "components/CAnimation.h"
+#include "components/CVelocity.h"
+#include "components/CLockOnView.h"
 #include "systems/SpriteSystem.h"
 #include "systems/ShadedCanvasSystem.h"
 #include "systems/UpdateSystem.h"
+#include "systems/AnimationSystem.h"
+#include "systems/VelocitySystem.h"
+#include "systems/LockOnViewSystem.h"
 #include "entities/Space.h"
 #include "entities/Planet.h"
+#include "entities/Player.h"
 
 
 int main(int argc, char const *argv[])
@@ -47,17 +54,26 @@ int main(int argc, char const *argv[])
   RegisterCSprite();
   RegisterCShadedCanvas();
   RegisterCUpdate();
+  RegisterCAnimation();
+  RegisterCVelocity();
+  RegisterCLockOnView();
   microECSAllocateComponents();
 
   // Register systems
   microECSSystemAdd(updateSystem);
+  microECSSystemAdd(lockOnViewSystem);
+  microECSSystemAdd(velocitySystem);
   microECSSystemAdd(shadedCanvasSystem);
   microECSSystemAdd(spriteSystem);
+  microECSSystemAdd(animationSystem);
 
   // Register entities
+  PlayerEntityAdd();
   SpaceEntityAdd();
   PlanetEntityAdd();
   
+  float deltaTime = 0.016;
+  float lastTime = 0.0;
   while (1)
   {
     // Get the next event
@@ -75,64 +91,29 @@ int main(int argc, char const *argv[])
       }
     }
     
-    // float cx, cy;
-    // float r;
-    // microViewGetCenter(&cx, &cy);
-    // r = microViewGetRotation();
-    // float dirX = -sin(-r * 3.14159 / 180.0);
-    // float dirY = -cos(-r * 3.14159 / 180.0);
-    //
-    // if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_W]) {
-    //   cx += dirX;
-    //   cy += dirY;
-    // }
-    // if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_S]) {
-    //   cx -= dirX;
-    //   cy -= dirY;
-    // }
-    // if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_A]) {
-    //   cx += dirY;
-    //   cy -= dirX;
-    // }
-    // if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_D]) {
-    //   cx -= dirY;
-    //   cy += dirX;
-    // }
-    //
-    // if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_E])
-    //   r += 3.14159 / 10.0;
-    // if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_R])
-    //   r -= 3.14159 / 10.0;
-    //
-    // microViewSetCenter(cx, cy);
-    // microViewSetRotation(r);
-    
-    float r;
-    r = microViewGetRotation();
-    if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_D])
-      r += 3.14159 / 20.0;
-    if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_A])
-      r -= 3.14159 / 20.0;
-    float dirX = -sin(-r * 3.14159 / 180.0);
-    float dirY = -cos(-r * 3.14159 / 180.0);
-
-    float viewWidth, viewHeight;
-    microViewGetSize(&viewWidth, &viewHeight);
-    float planetX, planetY;
-    float planetNormRadius;
-    PlanetGetPos(&planetX, &planetY);
-    planetNormRadius = PlanetGetRadius();
-    float viewX = planetX + dirX * (planetNormRadius * viewHeight/2.0 + viewHeight * 0.1);
-    float viewY = planetY + dirY * (planetNormRadius * viewHeight/2.0 + viewHeight * 0.1);
-    microViewSetCenter(viewX, viewY);
-    microViewSetRotation(r);
-    
-
     microGraphicsClear();
-    float deltaTime = 0.016;
+    
+    if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_D])
+      PlayerMove(0);
+    else if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_A])
+      PlayerMove(1);
+    else if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_W])
+      PlayerJump();
+
+    
     microECSRun(deltaTime);
     microGraphicsDisplay();
     microSwapBuffers();
+
+    //print view position and angle
+    // float viewX, viewY, viewAngle;
+    // microViewGetCenter(&viewX, &viewY);
+    // viewAngle = microViewGetRotation();
+    // printf("View: (%f, %f) %f\n", viewX, viewY, viewAngle);
+
+
+    deltaTime = (SDL_GetTicks() - lastTime) / 1000.0;
+    lastTime = SDL_GetTicks();
   }
   
   microECSFree();

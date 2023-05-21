@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-#define PLANET_RADIUS 1.0
+#define PLANET_RADIUS 1.5
 #define LIGHT_DEPTH 0.2
 
 int planet_id = -1;
@@ -53,8 +53,8 @@ void planetUpdate(int planetId, float dt)
   float normPlanetX = ((position->x - viewX) * 2.0) / windowHeight;
   float normPlanetY = ((position->y - viewY) * 2.0) / windowHeight;
   
-  float normViewX = viewX / windowHeight;
-  float normViewY = -viewY / windowHeight;
+  // float normViewX = viewX / windowHeight;
+  // float normViewY = -viewY / windowHeight;
   
   microShaderApply(shadow_shader_id);
   microShaderSetUniform("planet_center", normPlanetX, normPlanetY);
@@ -69,7 +69,6 @@ void setupPlanetEntity(int planetId)
   microViewGetSize(&viewWidth, &viewHeight);
 
   int shader_id;
-  printf("viewWidth: %f viewHeight: %f\n", viewWidth, viewHeight);
   float canvas_planet_height = (viewHeight * PLANET_RADIUS) / 2.0;
   float canvas_planet_width = (viewHeight * PLANET_RADIUS) / 2.0;
   float planet_scale = planetScaleFactor;

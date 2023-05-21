@@ -12,7 +12,7 @@ int sort_sprites(int a, int b) {
   return spriteA->layerId - spriteB->layerId;
 }
 
-void spriteSystem(float a) {
+void spriteSystem(float dt) {
 
   if (sprite_system_query == -1) {
     int components[2] = {cid_position, cid_sprite};
