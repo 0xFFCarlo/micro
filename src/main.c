@@ -73,7 +73,6 @@ int main(int argc, char const *argv[])
   PlanetEntityAdd();
 
   int font = microFontLoadFromFile("./res/FiraCode-Medium.ttf", 20, MICRO_FILTER_NEAREST);
-  // int font = microFontLoadFromFile("./res/calibri.ttf", 32);
   
   float deltaTime = 0.016;
   float lastTime = 0.0;

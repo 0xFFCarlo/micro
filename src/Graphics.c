@@ -429,10 +429,6 @@ int microFontLoadFromFile(const char *filepath, unsigned int fontSize, int filte
     int glyphOffset[128-32];
     unsigned char buffer[MICRO_FONT_TEXTURE_SIZE * MICRO_FONT_TEXTURE_SIZE * 4];
     memset(buffer, 0, sizeof(buffer));
-    printf("[fontInfos] ascent: %d\n", ascent);
-    printf("[fontInfos] scale: %f\n", scale);
-    printf("[fontInfos] padding: %d\n", padding);
-    printf("[fontInfos] MICRO_FONT_TEXTURE_SIZE: %d\n", MICRO_FONT_TEXTURE_SIZE);
     
     for (int codepoint = 32; codepoint < 128; codepoint++) {
         int advance, lsb, x0, y0, x1, y1;
