@@ -1,6 +1,5 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_video.h>
-#include <SDL2_ttf/SDL_ttf.h>
 #if defined(__linux__)
 //#include <GLES3/gl3.h>
 //#include <GL/glu.h>
@@ -16,6 +15,9 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+#define STB_TRUETYPE_IMPLEMENTATION
+#include "stb_truetype.h"
+
 #define MICRO_MAX_TEXTURES 64
 #define MICRO_MAX_CANVASES 64
 #define MICRO_MAX_SHADERS 64
@@ -27,6 +29,7 @@
 #define MICRO_MAX_NAME_LEN 32
 #define MICRO_VERTEX_BUFFER_SIZE (6 * 256)
 #define MICRO_MAX_SHADER_LEN 8000
+#define MICRO_FONT_TEXTURE_SIZE 512
 
 //GL states
 static int currentTexture = -1;
@@ -70,7 +73,14 @@ typedef struct microAnimation {
 } microAnimation;
 static microAnimation microAnimations[MICRO_MAX_ANIMATIONS];
 
-static void* microFonts[MICRO_MAX_FONTS];
+typedef struct microFont {
+  int textureId;
+  int fontSize;
+  stbtt_fontinfo fontInfo;
+  unsigned char* ttf_buffer;
+  int glyphsOffset[128-32];
+} microFont;
+static microFont microFonts[MICRO_MAX_FONTS];
 static int microFontsCount = 0;
 
 //shader stuff
@@ -219,17 +229,26 @@ int microTextureLoadFromMemory(const unsigned char *data, const unsigned int wid
   //Create texture
   GLuint id;
   glGenTextures(1, &id);
+  assert(id != 0);
 
   microGLStateBindTexture(id);
   
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
+  int gl_filter = GL_LINEAR;
+  if (filter == MICRO_FILTER_NEAREST) gl_filter = GL_NEAREST;
+  else if (filter == MICRO_FILTER_LINEAR) gl_filter = GL_LINEAR;
+  
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filter);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter);
 
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   
+  microGLCheckErrors();
+  
   glTexImage2D(GL_TEXTURE_2D, 0, fmt, width, height, 0, fmt,
       GL_UNSIGNED_BYTE, data);
+
+  glFlush();
 
   //Check for opengl errors
   microGLCheckErrors();
@@ -293,6 +312,7 @@ void microTextureFree(int textureId)
 void microAnimationLoadFromFile(const char *csv_filepath)
 {
   //TODO: implement 
+  assert(0);
 }
 
 int microAnimationCreate(char* name, int startX, int startY, int frameWidth, int frameHeight, int framesCount, float animationSpeed, int flipX, int flipY)
@@ -362,6 +382,145 @@ int microAnimationGetFlipX(int animationId)
 int microAnimationGetFlipY(int animationId)
 {
   return microAnimations[animationId].flipY;
+}
+
+
+int microFontLoadFromFile(const char *filepath, unsigned int fontSize, int filter)
+{
+    assert(filter == MICRO_FILTER_NEAREST || filter == MICRO_FILTER_LINEAR);
+
+    FILE* fp = fopen(filepath, "rb");
+    if (fp == NULL) {
+        printf("Failed to open font file\n");
+        return -1;
+    }
+
+    fseek(fp, 0, SEEK_END);
+    int size = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    unsigned char* ttf_buffer = malloc(size);
+    if (ttf_buffer == NULL) {
+        printf("Failed to allocate memory for ttf_buffer\n");
+        fclose(fp);
+        return -1;
+    }
+
+    fread(ttf_buffer, 1, size, fp);
+    fclose(fp);
+
+    stbtt_fontinfo font;
+    if (!stbtt_InitFont(&font, ttf_buffer, 0)) {
+        printf("Failed to initialize font\n");
+        free(ttf_buffer);
+        return -1;
+    }
+
+    float scale = stbtt_ScaleForPixelHeight(&font, fontSize);
+    assert(isinf(scale) == 0);
+    assert(isnan(scale) == 0);
+
+    int x = 0;
+    int y = 0;
+    int ascent;
+    const unsigned int padding = 1;
+    stbtt_GetFontVMetrics(&font, &ascent, 0, 0);
+    ascent *= scale;
+    int glyphOffset[128-32];
+    unsigned char buffer[MICRO_FONT_TEXTURE_SIZE * MICRO_FONT_TEXTURE_SIZE * 4];
+    memset(buffer, 0, sizeof(buffer));
+    printf("[fontInfos] ascent: %d\n", ascent);
+    printf("[fontInfos] scale: %f\n", scale);
+    printf("[fontInfos] padding: %d\n", padding);
+    printf("[fontInfos] MICRO_FONT_TEXTURE_SIZE: %d\n", MICRO_FONT_TEXTURE_SIZE);
+    
+    for (int codepoint = 32; codepoint < 128; codepoint++) {
+        int advance, lsb, x0, y0, x1, y1;
+        stbtt_GetCodepointHMetrics(&font, codepoint, &advance, &lsb);
+        stbtt_GetCodepointBitmapBox(&font, codepoint, scale, scale, &x0, &y0, &x1, &y1);
+        
+        // render character to buffer
+        int width = x1 - x0;
+        int height = y1 - y0;
+        unsigned char* bitmap = malloc(width * height);
+        stbtt_MakeCodepointBitmap(&font, bitmap, width, height, width, scale, scale, codepoint);
+        
+        // move to next line if there's no room for the character
+        if (x + width >= MICRO_FONT_TEXTURE_SIZE) {
+            x = 0;
+            y += ascent + padding;
+        }
+        
+        // copy bitmap to buffer
+        assert(x + width < MICRO_FONT_TEXTURE_SIZE);
+        assert(y + height < MICRO_FONT_TEXTURE_SIZE);
+        glyphOffset[codepoint-32] = x + y * MICRO_FONT_TEXTURE_SIZE;
+        for (int i = 0; i < height; i++) {
+            for (int j = 0; j < width; j++) {
+                int px = x + j;
+                int py = y + i;
+                if (px >= 0 && px < MICRO_FONT_TEXTURE_SIZE && py >= 0 && py < MICRO_FONT_TEXTURE_SIZE) {
+                    buffer[(py * MICRO_FONT_TEXTURE_SIZE + px) * 4 + 0] = bitmap[i * width + j];
+                    buffer[(py * MICRO_FONT_TEXTURE_SIZE + px) * 4 + 1] = bitmap[i * width + j];
+                    buffer[(py * MICRO_FONT_TEXTURE_SIZE + px) * 4 + 2] = bitmap[i * width + j];
+                    buffer[(py * MICRO_FONT_TEXTURE_SIZE + px) * 4 + 3] = bitmap[i * width + j];
+                }
+            }
+        }
+
+        free(bitmap);
+        
+        // move to next character
+        x += advance * scale + padding;
+    }
+
+    // find spot
+    int id = -1;
+    for (int i = 0; i < MICRO_MAX_FONTS; i++) {
+        if (microFonts[i].textureId == -1) {
+            id = i;
+            break;
+        }
+    }
+    assert(id != -1);
+    microFontsCount++;
+   
+    // create texture and store data
+    microFonts[id].textureId = microTextureLoadFromMemory(buffer, MICRO_FONT_TEXTURE_SIZE, MICRO_FONT_TEXTURE_SIZE, 4, filter);
+    microFonts[id].fontSize = fontSize;
+    microFonts[id].fontInfo = font;
+    microFonts[id].ttf_buffer = ttf_buffer;
+    memcpy(microFonts[id].glyphsOffset, glyphOffset, sizeof(glyphOffset));
+
+    return id;
+}
+
+int microFontGetSize(int fontId)
+{
+  return microFonts[fontId].fontSize;
+}
+
+int microFontGetTextureId(int fontId)
+{
+  return microFonts[fontId].textureId;
+}
+
+void microFontFree(int fontId)
+{
+  if (fontId < 0 || fontId >= MICRO_MAX_FONTS) {
+    printf("Error: invalid font id %d\n", fontId);
+    return;
+  }
+  
+  if (microFonts[fontId].textureId == 0) {
+    printf("Error: font %d is not loaded\n", fontId);
+    return;
+  }
+
+  microTextureFree(microFonts[fontId].textureId);
+  free(microFonts[fontId].ttf_buffer);
+  microFonts[fontId].textureId = 0;
+  microFontsCount--;
 }
 
 
@@ -657,7 +816,7 @@ int microCanvasCreate(int width, int height)
 
   
   //create black texture
-  const int textureId = microTextureLoadFromMemory(0, width, height, 4, GL_NEAREST);
+  const int textureId = microTextureLoadFromMemory(0, width, height, 4, MICRO_FILTER_NEAREST);
   assert(textureId != -1);
   assert(microTextures[textureId].id != -1);
   microGLCheckErrors();
@@ -717,9 +876,9 @@ void microGraphicsInit()
     printf("Failed to initialize th SDL2 library\n");
     return;
   }
-  
-  TTF_Init();
 
+  printf("%lu\n", sizeof(stbtt_fontinfo));
+  
   //create window and opengl context
   window = SDL_CreateWindow("micro",
       SDL_WINDOWPOS_CENTERED,
@@ -733,7 +892,7 @@ void microGraphicsInit()
     return;
   }
 
-  //clean textures and canvases
+  //clear memory allocations
   for (int i = 0; i < MICRO_MAX_TEXTURES; i++)
     microTextures[i].id = -1;
   for (int i = 0; i < MICRO_MAX_CANVASES; i++)
@@ -742,6 +901,8 @@ void microGraphicsInit()
     microShaders[i].programId = -1;
   for (int i = 0; i < MICRO_MAX_ANIMATIONS; i++)
     microAnimations[i].framesCount = 0;
+  for (int i = 0; i < MICRO_MAX_FONTS; i++)
+    microFonts[i].textureId = -1;
 
 	//Set OpenGL version
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
@@ -822,7 +983,13 @@ void microGraphicsInit()
   countverts = 0;
   wireframe = 0;
 
-  printf("microGraphics allocated %d kb\n", (int)((sizeof(microTextures) + sizeof(microCanvases) + sizeof(microShaders)) / (double)(1024)));
+  printf("microGraphics allocated %d kb\n",
+      (int)((sizeof(microTextures) +
+          sizeof(microCanvases) +
+          sizeof(microShaders) +
+          sizeof(microAnimations) +
+          sizeof(microFonts)
+          ) / (double)(1024)));
 }
 
 void microGraphicsQuit()
@@ -830,7 +997,6 @@ void microGraphicsQuit()
   //Delete context 
   SDL_GL_DeleteContext( context );
   SDL_DestroyWindow( window );
-  TTF_Quit();
   SDL_Quit();
 }
 
@@ -1079,6 +1245,64 @@ void microGraphicsDrawRect(int textureId, float tx, float ty, float tw, float th
     microGraphicsDraw(glTextureId, x, y, x + w, y, x + w, y + h, x, y + h,
         tx / (float)tex_w, ty / (float)tex_h, tw / (float)tex_w,
         th / (float)tex_h, r, g, b, a);
+  }
+}
+
+void microGraphicsDrawText(int fontId, const char *text,
+    float x, float y, float r, float g, float b, float a)
+{
+  const unsigned int textLen = strlen(text);
+  const stbtt_fontinfo* fontInfo = &microFonts[fontId].fontInfo;
+  
+  const float startX = x;
+  const float scale = stbtt_ScaleForPixelHeight(fontInfo, microFonts[fontId].fontSize);
+  assert(isnan(scale) == 0);
+  assert(isinf(scale) == 0);
+  int ascent;
+  int descent;
+  stbtt_GetFontVMetrics(fontInfo, &ascent, &descent, 0);
+  ascent *= scale;
+  assert(isnan(ascent) == 0);
+  
+  char prevChar = 32;
+  for (unsigned int i = 0; i < textLen; i++)
+  {
+    const char c = text[i];
+    if (c == '\n') {
+      y += ascent;
+      x = startX;
+      continue;
+    }
+    assert((int)c >= 32 && (int)c <= 126);
+    
+    // Get glyph metrics and position in texture atlas
+    const int glyphIndex = microFonts[fontId].glyphsOffset[(int)c - 32];
+    int advance, lsb, x0, y0, x1, y1;
+    stbtt_GetCodepointHMetrics(fontInfo, c, &advance, &lsb);
+    stbtt_GetCodepointBitmapBox(fontInfo, c, scale, scale, &x0, &y0, &x1, &y1);
+    
+    // Compute glyph texture coordinates
+    const float tx = glyphIndex % MICRO_FONT_TEXTURE_SIZE;
+    const float ty = (int)(glyphIndex / MICRO_FONT_TEXTURE_SIZE);
+    const float tw = x1 - x0;
+    const float th = y1 - y0;
+
+    // Added kerning adjustment
+    if (prevChar > 0) {
+      float kerning = stbtt_GetCodepointKernAdvance(fontInfo, prevChar, c) * scale;
+      assert(isnan(kerning) == 0);
+      x += kerning;
+    }
+
+    // Apply the left side bearing and the bitmap box offsets
+    x += lsb * scale;
+    
+    // Draw glyph
+    microGraphicsDrawRect(microFontGetTextureId(fontId), tx, ty, tw, th,
+        x, y + y0, tw, th, r, g, b, a);
+    
+    x += (advance - lsb) * scale;
+    prevChar = c;
   }
 }
 

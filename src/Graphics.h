@@ -30,6 +30,14 @@ extern int microAnimationGetFlipX(int animationId);
 extern int microAnimationGetFlipY(int animationId);
 extern void microAnimationFree(int animationId);
 
+////////////////////////////
+/// Font
+////////////////////////////
+extern int microFontLoadFromFile(const char *filepath, unsigned int fontSize, int filter);
+extern int microFontGetTextureId(int fontId);
+extern int microFontGetSize(int fontId);
+extern void microFontFree(int fontId);
+
 
 /////////////////////////////
 // View
@@ -99,6 +107,9 @@ extern void microGraphicsDrawRectRot(
     float x, float y, float w, float h,
     float originX, float originY,
     float rotation, float r, float g, float b, float a);
+extern void microGraphicsDrawText(
+    int fontId, const char *text,
+    float x, float y, float r, float g, float b, float a);
 
 extern void microWindowGetSize(int *width, int *height);
 extern void microSwapBuffers();

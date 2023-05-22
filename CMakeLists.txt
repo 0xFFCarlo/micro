@@ -34,7 +34,6 @@ if(APPLE)
     # macOS specific configuration
     target_link_libraries(main
         "-framework SDL2"
-        "-framework SDL2_ttf"
         "-framework SDL2_mixer"
     )
     # Add the frameworks search path
@@ -43,7 +42,6 @@ elseif(UNIX)
     # Linux specific configuration
     target_link_libraries(main
         SDL2
-        SDL2_ttf
         SDL2_mixer
     )
 endif()

@@ -71,6 +71,9 @@ int main(int argc, char const *argv[])
   PlayerEntityAdd();
   SpaceEntityAdd();
   PlanetEntityAdd();
+
+  int font = microFontLoadFromFile("./res/FiraCode-Medium.ttf", 20, MICRO_FILTER_NEAREST);
+  // int font = microFontLoadFromFile("./res/calibri.ttf", 32);
   
   float deltaTime = 0.016;
   float lastTime = 0.0;
@@ -102,6 +105,12 @@ int main(int argc, char const *argv[])
 
     
     microECSRun(deltaTime);
+    
+    // microGraphicsDrawRect(
+    //     microFontGetTextureId(font), 0, 0, 512, 512, 100, 100, 512, 512, 1.0, 1.0, 1.0, 1.0);
+    
+    microGraphicsDrawText(font, "Hello World!\nI am Carlo! <3", 100, 100, 1.0, 1.0, 1.0, 1.0);
+
     microGraphicsDisplay();
     microSwapBuffers();
 
