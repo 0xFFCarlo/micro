@@ -43,16 +43,13 @@ To build the project, follow these steps:
 1. Open a terminal and navigate to the root directory of the project.
 
 2. Run CMake to generate the build files:
-
 ```bash
 cmake .
 ```
-
 3. Build the project:
 ```bash
 make 
 ```
-
 4. Run the game:
 ```bash
 ./bin/main
