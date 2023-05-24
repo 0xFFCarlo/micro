@@ -1,6 +1,5 @@
 #include "VelocitySystem.h"
-#include "../components/CPosition.h"
-#include "../components/CVelocity.h"
+#include "../components/MotionComponents.h"
 #include "../ECS.h"
 #include <stdlib.h>
 

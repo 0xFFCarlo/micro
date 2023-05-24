@@ -8,14 +8,10 @@
 #include "Graphics.h"
 #include "ECS.h"
 
-#include "components/CPosition.h"
-#include "components/CSprite.h"
-#include "components/CShadedCanvas.h"
-#include "components/CUpdate.h"
-#include "components/CAnimation.h"
-#include "components/CVelocity.h"
-#include "components/CLockOnView.h"
-#include "systems/SpriteSystem.h"
+#include "components/MotionComponents.h"
+#include "components/RenderingComponents.h"
+#include "components/LogicComponents.h"
+#include "systems/RenderingSystem.h"
 #include "systems/ShadedCanvasSystem.h"
 #include "systems/UpdateSystem.h"
 #include "systems/AnimationSystem.h"
@@ -51,7 +47,11 @@ int main(int argc, char const *argv[])
 
   // Register components
   RegisterCPosition();
+  RegisterCTransform();
   RegisterCSprite();
+  RegisterCColor();
+  RegisterCLayer();
+  RegisterCHud();
   RegisterCShadedCanvas();
   RegisterCUpdate();
   RegisterCAnimation();
@@ -64,7 +64,7 @@ int main(int argc, char const *argv[])
   microECSSystemAdd(lockOnViewSystem);
   microECSSystemAdd(velocitySystem);
   microECSSystemAdd(shadedCanvasSystem);
-  microECSSystemAdd(spriteSystem);
+  microECSSystemAdd(renderingSystem);
   microECSSystemAdd(animationSystem);
 
   // Register entities
@@ -73,6 +73,12 @@ int main(int argc, char const *argv[])
   PlanetEntityAdd();
 
   int font = microFontLoadFromFile("./res/FiraCode-Medium.ttf", 20, MICRO_FILTER_NEAREST);
+  int entityText = microECSEntityCreate();
+  CPosition position = {
+    .x = 100,
+    .y = 100
+  };
+  microECSEntityAddComponent(entityText, cid_position, &position);
   
   float deltaTime = 0.016;
   float lastTime = 0.0;

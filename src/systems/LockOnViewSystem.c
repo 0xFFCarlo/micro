@@ -1,9 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "LockOnViewSystem.h"
-#include "../components/CLockOnView.h"
-#include "../components/CPosition.h"
-#include "../components/CSprite.h"
+#include "../components/MotionComponents.h"
+#include "../components/RenderingComponents.h"
 #include "../ECS.h"
 #include "../Graphics.h"
 
@@ -30,8 +29,8 @@ void lockOnViewSystem(float dt)
     microViewSetCenter(position->x, position->y);
 
     if (lockOnView->followRotation > 0) {
-      CSprite* sprite = (CSprite*)microECSEntityGetComponent(entityId, cid_sprite);
-      microViewSetRotation(sprite->rotation);
+      CTransform* t = (CTransform*)microECSEntityGetComponent(entityId, cid_transform);
+      microViewSetRotation(t->rotation);
     }
   }
 }

@@ -311,8 +311,76 @@ void microTextureFree(int textureId)
 ////////////////////////////
 void microAnimationLoadFromFile(const char *csv_filepath)
 {
-  //TODO: implement 
-  assert(0);
+  //TODO: test if the code works
+  
+  FILE* file = fopen(csv_filepath, "r");
+  if (!file) {
+    printf("Error: can't open the file %s\n", csv_filepath);
+    fclose(file);
+    return;
+  }
+
+  // Get file size
+  fseek(file, 0L, SEEK_END);
+  int fsize = (int)ftell(file);
+
+  // Seek to the beginning
+  fseek(file, 0L, SEEK_SET);
+
+  //Read all the file into filedata
+  char* fileData = (char*)malloc(sizeof(char) * fsize);
+  fread(fileData, sizeof(char) * fsize, 1, file);
+  fclose(file);
+
+  // Parse the file
+  char* line = strtok(fileData, "\n");
+
+  //Get the number of animations
+  int animationsCount = atoi(line);
+  assert(animationsCount < MICRO_MAX_ANIMATIONS);
+
+  // Skip the first line
+  line = strtok(NULL, "\n");
+  assert(line != NULL);
+
+  // Parse each animation
+  for (int i = 0; i < animationsCount; i++) {
+    line = strtok(NULL, "\n");
+    assert(line != NULL);
+    char* name = strtok(line, ",");
+    int startX = atoi(strtok(NULL, ","));
+    int startY = atoi(strtok(NULL, ","));
+    int frameWidth = atoi(strtok(NULL, ","));
+    int frameHeight = atoi(strtok(NULL, ","));
+    int framesCount = atoi(strtok(NULL, ","));
+    float animationSpeed = atof(strtok(NULL, ","));
+    int flipX = atoi(strtok(NULL, ","));
+    int flipY = atoi(strtok(NULL, ","));
+
+    // Find spot in the resources buffer
+    int id = -1;
+    for (int i = 0; i < MICRO_MAX_ANIMATIONS; i++) {
+      if (microAnimations[i].framesCount == 0) {
+        id = i;
+        break;
+      }
+    }
+    assert(id != -1); 
+
+    // Create animation
+    assert(strlen(name) < MICRO_MAX_NAME_LEN);
+    strcpy(microAnimations[id].name, name);
+    microAnimations[id].startX = startX;
+    microAnimations[id].startY = startY;
+    microAnimations[id].frameWidth = frameWidth;
+    microAnimations[id].frameHeight = frameHeight;
+    microAnimations[id].framesCount = framesCount;
+    microAnimations[id].animationSpeed = animationSpeed;
+    microAnimations[id].flipX = flipX;
+    microAnimations[id].flipY = flipY;
+  }
+  
+  free(fileData);
 }
 
 int microAnimationCreate(char* name, int startX, int startY, int frameWidth, int frameHeight, int framesCount, float animationSpeed, int flipX, int flipY)

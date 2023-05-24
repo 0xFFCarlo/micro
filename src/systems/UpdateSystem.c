@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include "UpdateSystem.h"
-#include "../components/CUpdate.h"
+#include "../components/LogicComponents.h"
 #include "../ECS.h"
 
 int update_system_query = -1;

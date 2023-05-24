@@ -1,11 +1,8 @@
 #include "Player.h"
 #include "Planet.h"
-#include "../components/CAnimation.h"
-#include "../components/CSprite.h"
-#include "../components/CUpdate.h"
-#include "../components/CPosition.h"
-#include "../components/CVelocity.h"
-#include "../components/CLockOnView.h"
+#include "../components/RenderingComponents.h"
+#include "../components/LogicComponents.h"
+#include "../components/MotionComponents.h"
 #include "../Resources.h"
 #include "../Graphics.h"
 #include "../ECS.h"
@@ -157,14 +154,14 @@ void playerUpdate(int entityId, float dt)
   player_state = PLAYER_STATE_IDLE;
 
   // Adjust sprite rotation
-  CSprite* sprite = (CSprite*)microECSEntityGetComponent(player_entity_id, cid_sprite);
+  CTransform* t = (CTransform*)microECSEntityGetComponent(player_entity_id, cid_transform);
   float outVecX = position->x - planetX;
   float outVecY = position->y - planetY;
   float outVecLen = sqrt(outVecX * outVecX + outVecY * outVecY);
   outVecX /= outVecLen;
   outVecY /= outVecLen;
   playerRotation = atan2(outVecY, outVecX) * 180.0 / M_PI + 90.0;
-  sprite->rotation = playerRotation;
+  t->rotation = playerRotation;
 }
 
 void PlayerGetPos(float *x, float *y)
@@ -215,19 +212,33 @@ void PlayerEntityAdd()
     .ty = 0,
     .tw = 16,
     .th = 16,
+  };
+  microECSEntityAddComponent(player_entity_id, cid_sprite, &sprite);
+
+  // Transform component
+  CTransform transform = {
     .width = PLAYER_WIDTH,
     .height = PLAYER_HEIGHT,
     .originX = PLAYER_WIDTH/2.0,
     .originY = PLAYER_HEIGHT/2.0,
     .rotation = 0.0,
+  };
+  microECSEntityAddComponent(player_entity_id, cid_transform, &transform);
+
+  // Color component
+  CColor color = {
     .r = 1.0,
     .g = 1.0,
     .b = 1.0,
     .a = 1.0,
-    .layerId = 3,
-    .hud = 0,
   };
-  microECSEntityAddComponent(player_entity_id, cid_sprite, &sprite);
+  microECSEntityAddComponent(player_entity_id, cid_color, &color);
+
+  // Layer component
+  CLayer layer = {
+    .layerId = 3,
+  };
+  microECSEntityAddComponent(player_entity_id, cid_layer, &layer);
 
   // Animation component
   CAnimation animation = {

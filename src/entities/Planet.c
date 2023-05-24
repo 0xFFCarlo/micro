@@ -1,7 +1,6 @@
-#include "../components/CPosition.h"
-#include "../components/CSprite.h"
-#include "../components/CShadedCanvas.h"
-#include "../components/CUpdate.h"
+#include "../components/MotionComponents.h"
+#include "../components/RenderingComponents.h"
+#include "../components/LogicComponents.h"
 #include "../Resources.h"
 #include "../Graphics.h"
 #include "../ECS.h"
@@ -114,19 +113,33 @@ void setupPlanetEntity(int planetId)
     .ty = 0,
     .tw = texWidth,
     .th = texHeight,
+  };
+  microECSEntityAddComponent(planetId, cid_sprite, &sprite);
+
+  // Transform component
+  CTransform transform = {
     .width = canvas_planet_width * planet_scale,
     .height = canvas_planet_height * planet_scale,
     .originX = canvas_planet_width * planet_scale / 2.0,
     .originY = canvas_planet_height * planet_scale / 2.0,
     .rotation = 0,
+  };
+  microECSEntityAddComponent(planetId, cid_transform, &transform);
+
+  // Color component
+  CColor color = {
     .r = 1.0,
     .g = 1.0,
     .b = 1.0,
     .a = 1.0,
-    .layerId = 1,
-    .hud = 0,
   };
-  microECSEntityAddComponent(planetId, cid_sprite, &sprite);
+  microECSEntityAddComponent(planetId, cid_color, &color);
+
+  // Layer component
+  CLayer layer = {
+    .layerId = 1,
+  };
+  microECSEntityAddComponent(planetId, cid_layer, &layer);
 
   // Update component
   CUpdate update = {
@@ -186,19 +199,37 @@ void setupShadow(int shadowId)
     .ty = 0,
     .tw = texWidth,
     .th = texHeight,
+  };
+  microECSEntityAddComponent(shadowId, cid_sprite, &sprite);
+
+  // Transform component
+  CTransform transform = {
     .width = canvas_posteffect_width * posteffect_scale,
     .height = canvas_posteffect_height * posteffect_scale,
     .originX = 0,
     .originY = 0,
     .rotation = 0,
+  };
+  microECSEntityAddComponent(shadowId, cid_transform, &transform);
+
+  // Color component
+  CColor color = {
     .r = 1.0,
     .g = 1.0,
     .b = 1.0,
     .a = 1.0,
-    .layerId = 2,
-    .hud = 1,
   };
-  microECSEntityAddComponent(shadowId, cid_sprite, &sprite);
+  microECSEntityAddComponent(shadowId, cid_color, &color);
+
+  // Layer component
+  CLayer layer = {
+    .layerId = 2,
+  };
+  microECSEntityAddComponent(shadowId, cid_layer, &layer);
+
+  // HUD component
+  CHud hud = {};
+  microECSEntityAddComponent(shadowId, cid_hud, &hud);
 }
 
 void PlanetEntityAdd()

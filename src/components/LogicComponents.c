@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include "CUpdate.h"
+#include "LogicComponents.h"
 #include "../ECS.h"
 
 int cid_update = -1;

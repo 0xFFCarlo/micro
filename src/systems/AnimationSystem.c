@@ -1,6 +1,5 @@
 #include "AnimationSystem.h"
-#include "../components/CAnimation.h"
-#include "../components/CSprite.h"
+#include "../components/RenderingComponents.h"
 #include "../ECS.h"
 #include "../Graphics.h"
 #include <stdlib.h>

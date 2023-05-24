@@ -2,7 +2,7 @@
 
 #include "ShadedCanvasSystem.h"
 #include "../Graphics.h"
-#include "../components/CShadedCanvas.h"
+#include "../components/RenderingComponents.h"
 #include "../ECS.h"
 #include <stdlib.h>
 

@@ -1,7 +1,6 @@
-#include "../components/CPosition.h"
-#include "../components/CSprite.h"
-#include "../components/CShadedCanvas.h"
-#include "../components/CUpdate.h"
+#include "../components/MotionComponents.h"
+#include "../components/RenderingComponents.h"
+#include "../components/LogicComponents.h"
 #include "../Resources.h"
 #include "../Graphics.h"
 #include "../ECS.h"
@@ -118,19 +117,38 @@ void SpaceEntityAdd()
     .ty = 0,
     .tw = texWidth,
     .th = texHeight,
+  };
+  microECSEntityAddComponent(spaceId, cid_sprite, &sprite);
+  
+
+  // Transform component
+  CTransform transform = {
     .width = canvas_space_width * scale,
     .height = canvas_space_height * scale,
     .originX = 0,
     .originY = 0,
     .rotation = 0,
+  };
+  microECSEntityAddComponent(spaceId, cid_transform, &transform);
+
+  // Color component
+  CColor color = {
     .r = 1.0,
     .g = 1.0,
     .b = 1.0,
     .a = 1.0,
-    .layerId = 0,
-    .hud = 1,
   };
-  microECSEntityAddComponent(spaceId, cid_sprite, &sprite);
+  microECSEntityAddComponent(spaceId, cid_color, &color);
+
+  // Layer component
+  CLayer layer = {
+    .layerId = 0,
+  };
+  microECSEntityAddComponent(spaceId, cid_layer, &layer);
+
+  // HUD component
+  CHud hud = {};
+  microECSEntityAddComponent(spaceId, cid_hud, &hud);
 
   // Update component
   CUpdate update = {
