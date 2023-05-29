@@ -33,10 +33,10 @@ extern void RegisterCColor();
 // Layer
 typedef struct {
     int layerId;
-} CLayer;
+} CDrawable;
 
-extern int cid_layer;
-extern void RegisterCLayer();
+extern int cid_drawable;
+extern void RegisterCDrawable();
 
 
 // Hud
@@ -75,5 +75,7 @@ typedef struct {
 
 extern int cid_lock_on_view;
 extern void RegisterCLockOnView();
+
+extern void RegisterRenderingComponents();
 
 #endif /* end of include guard: RENDERING_COMPONENTS_H */

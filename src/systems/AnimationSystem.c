@@ -4,23 +4,14 @@
 #include "../Graphics.h"
 #include <stdlib.h>
 
-int animation_system_query = -1;
+void animationSystem(float dt) {
 
-void animationSystem(float dt)
-{
-  if (animation_system_query == -1)
-  {
-    int components[2] = {cid_animation, cid_sprite};
-    animation_system_query = microECSQueryCreate(components, 2, NULL);
-  }
+  CAnimation* components_animation = (CAnimation*)microECSComponentsGet(cid_animation);
+  const unsigned int components_count = microECSComponentsCount(cid_animation);
 
-  ecs_entity_list entities = microECSQueryRun(animation_system_query);
-  if (entities.size == 0)
-    return;
-
-  for (int i = 0; i < entities.size; i++) {
-    const int entityId = entities.entityIds[i];
-    CAnimation* animation = (CAnimation*)microECSEntityGetComponent(entityId, cid_animation);
+  for (int i = 0; i < components_count; i++) {
+    const int entityId = microECSComponentGetEntityId(cid_animation, i);
+    CAnimation* animation = &components_animation[i];
     CSprite* sprite = (CSprite*)microECSEntityGetComponent(entityId, cid_sprite);
     int framesCount = microAnimationGetFramesCount(animation->animationId);
     float frameDuration = microAnimationGetSpeed(animation->animationId) / (float)framesCount;

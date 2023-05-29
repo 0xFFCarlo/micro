@@ -3,7 +3,6 @@
 #include <SDL2/SDL_opengl.h>
 #include <stdio.h>
 
-
 #include "Audio.h"
 #include "Graphics.h"
 #include "ECS.h"
@@ -15,17 +14,30 @@
 #include "systems/ShadedCanvasSystem.h"
 #include "systems/UpdateSystem.h"
 #include "systems/AnimationSystem.h"
-#include "systems/VelocitySystem.h"
 #include "systems/LockOnViewSystem.h"
+#include "systems/EventsSystem.h"
+#include "systems/PhysicsSystem.h"
 #include "entities/Space.h"
 #include "entities/Planet.h"
 #include "entities/Player.h"
 
+void handle_event(int entity, SDL_Event event)
+{
+    if (event.type == SDL_QUIT) {
+      exit(0);
+    }
+
+    if (event.type == SDL_KEYDOWN)
+    {
+      if (event.key.keysym.scancode == SDL_SCANCODE_Q)
+        exit(0);
+    }
+}
 
 int main(int argc, char const *argv[])
 {
   microGraphicsInit();
-  
+
   int windowWidth, windowHeight;
   microWindowGetSize(&windowWidth, &windowHeight);
 
@@ -46,26 +58,19 @@ int main(int argc, char const *argv[])
   microECSInit();
 
   // Register components
-  RegisterCPosition();
-  RegisterCTransform();
-  RegisterCSprite();
-  RegisterCColor();
-  RegisterCLayer();
-  RegisterCHud();
-  RegisterCShadedCanvas();
-  RegisterCUpdate();
-  RegisterCAnimation();
-  RegisterCVelocity();
-  RegisterCLockOnView();
+  RegisterLogicComponents();
+  RegisterMotionComponents();
+  RegisterRenderingComponents();
   microECSAllocateComponents();
 
   // Register systems
+  microECSSystemAdd(eventsSystem);
   microECSSystemAdd(updateSystem);
   microECSSystemAdd(lockOnViewSystem);
-  microECSSystemAdd(velocitySystem);
+  microECSSystemAdd(physicsSystem);
   microECSSystemAdd(shadedCanvasSystem);
-  microECSSystemAdd(renderingSystem);
   microECSSystemAdd(animationSystem);
+  microECSSystemAdd(renderingSystem);
 
   // Register entities
   PlayerEntityAdd();
@@ -73,61 +78,47 @@ int main(int argc, char const *argv[])
   PlanetEntityAdd();
 
   int font = microFontLoadFromFile("./res/FiraCode-Medium.ttf", 20, MICRO_FILTER_NEAREST);
-  int entityText = microECSEntityCreate();
-  CPosition position = {
-    .x = 100,
-    .y = 100
-  };
-  microECSEntityAddComponent(entityText, cid_position, &position);
-  
+
+  int entityText = microECSEntityNew(NULL, NULL);
+  microECSEntityAddComponent(entityText, cid_position, &(CPosition){
+    .x = 16,
+    .y = 16
+  });
+  microECSEntityAddComponent(entityText, cid_text, &(CText){
+    .text = "FPS: 0",
+    .fontId = font,
+  });
+  microECSEntityAddComponent(entityText, cid_drawable, &(CDrawable){
+    .layerId = 5
+  });
+  microECSEntityAddComponent(entityText, cid_hud, NULL);
+  microECSEntityAddComponent(entityText, cid_event_listener, &(CEventListener){
+    .on_event = handle_event
+  });
+
   float deltaTime = 0.016;
-  float lastTime = 0.0;
+  Uint32 lastTime = SDL_GetTicks();
   while (1)
   {
-    // Get the next event
-    SDL_Event event;
-    if (SDL_PollEvent(&event))
-    {
-      if (event.type == SDL_QUIT) {
-        return 0;
-      }
-
-      if (event.type == SDL_KEYDOWN)
-      {
-        if (event.key.keysym.scancode == SDL_SCANCODE_Q)
-          return 0;
-      }
-    }
+    lastTime = SDL_GetTicks();
     
     microGraphicsClear();
     
-    if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_D])
-      PlayerMove(0);
-    else if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_A])
-      PlayerMove(1);
-    else if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_W])
-      PlayerJump();
-
-    
     microECSRun(deltaTime);
     
-    // microGraphicsDrawRect(
-    //     microFontGetTextureId(font), 0, 0, 512, 512, 100, 100, 512, 512, 1.0, 1.0, 1.0, 1.0);
-    
-    microGraphicsDrawText(font, "Hello World!\nI am Carlo! <3", 100, 100, 1.0, 1.0, 1.0, 1.0);
-
     microGraphicsDisplay();
     microSwapBuffers();
 
-    //print view position and angle
-    // float viewX, viewY, viewAngle;
-    // microViewGetCenter(&viewX, &viewY);
-    // viewAngle = microViewGetRotation();
-    // printf("View: (%f, %f) %f\n", viewX, viewY, viewAngle);
+    //If frame finished early
+    int frame_time = SDL_GetTicks() - lastTime;
+    if (1000 / 70 > frame_time) {
+      //Wait the remaining time
+      SDL_Delay(1000 / 70 - frame_time);
+    }
 
-
-    deltaTime = (SDL_GetTicks() - lastTime) / 1000.0;
-    lastTime = SDL_GetTicks();
+    // Calculate delta time
+    frame_time = SDL_GetTicks() - lastTime;
+    deltaTime = (float)frame_time / 1000.0;
   }
   
   microECSFree();

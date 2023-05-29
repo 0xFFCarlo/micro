@@ -980,8 +980,9 @@ void microGraphicsInit()
 	}
 
   // Set VSYNC, try adaptive first and if not supported, use normal vsync
-	if (SDL_GL_SetSwapInterval(-1) == -1)
-    SDL_GL_SetSwapInterval(1);
+  if (SDL_GL_SetSwapInterval(-1) == -1)
+     SDL_GL_SetSwapInterval(1);
+  // SDL_GL_SetSwapInterval(0);
 
 	char *glVersion = (char*)glGetString(GL_VERSION);
 	if (glVersion) {

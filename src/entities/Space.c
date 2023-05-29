@@ -12,7 +12,7 @@
 int spaceId = -1;
 int space_shader_id = -1;
 int space_canvas_id = -1;
-double time = 0.0;
+double curr_time = 0.0;
 
 
 // Updates shader parameters to show the planet atmosphere
@@ -39,13 +39,13 @@ void spaceUpdate(int spaceId, float dt)
   // float normViewX = viewX / windowHeight - (viewWidth * 0.5) / windowHeight;
   // float normViewY = viewY / windowHeight - (viewHeight * 0.5) / windowHeight;
 
-  time += dt * 0.03;
+  curr_time += dt * 0.03;
   
   microShaderApply(space_shader_id);
   microShaderSetUniform("planet_center", normPlanetX, normPlanetY);
   microShaderSetUniform("view_center", 0, dist);
   microShaderSetUniform("view_angle", viewAngle);
-  microShaderSetUniform("time", time);
+  microShaderSetUniform("time", curr_time);
   microShaderApply(0);
 }
 
@@ -55,7 +55,7 @@ void SpaceEntityAdd()
   microViewGetSize(&viewWidth, &viewHeight);
 
   // Create planet
-  spaceId = microECSEntityNew(NULL, NULL, NULL);
+  spaceId = microECSEntityNew(NULL, NULL);
   float canvas_space_height = 512;
   float canvas_space_width = viewWidth * (canvas_space_height / viewHeight);
   float scale = viewWidth / canvas_space_width;
@@ -76,7 +76,7 @@ void SpaceEntityAdd()
   microShaderApply(space_shader_id);
   microViewApply(); // send view matrix to shader
   microShaderSetUniform("resolution", canvas_space_width, canvas_space_height);
-  microShaderSetUniform("time", time);
+  microShaderSetUniform("time", curr_time);
   microShaderSetUniform("view_center", 0.0, 0.0);
   microShaderSetUniform("view_angle", view_angle);
   microShaderSetUniform("planet_radius", planet_radius);
@@ -140,11 +140,11 @@ void SpaceEntityAdd()
   };
   microECSEntityAddComponent(spaceId, cid_color, &color);
 
-  // Layer component
-  CLayer layer = {
+  // Drawable component
+  CDrawable drawable = {
     .layerId = 0,
   };
-  microECSEntityAddComponent(spaceId, cid_layer, &layer);
+  microECSEntityAddComponent(spaceId, cid_drawable, &drawable);
 
   // HUD component
   CHud hud = {};

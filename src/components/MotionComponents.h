@@ -22,13 +22,19 @@ extern int cid_transform;
 extern void RegisterCTransform();
 
 
-// Velocity
+// Body
 typedef struct {
-    float x;
-    float y;
-} CVelocity;
+    float mass;
+    float radius;
+    float velX, velY;
+    float forceX, forceY;
+    unsigned char isStatic;
+    float restitution;
+} CBody;
 
-extern int cid_velocity;
-extern void RegisterCVelocity();
+extern int cid_body;
+extern void RegisterCBody();
+
+extern void RegisterMotionComponents();
 
 #endif /* end of include guard: MOTION_COMPONENTS_H */

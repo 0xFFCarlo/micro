@@ -7,19 +7,19 @@
 int sprite_system_query = -1;
 
 int sort_drawables(int a, int b) {
-  CLayer* spriteA = (CLayer*)microECSEntityGetComponent(a, cid_layer);
-  CLayer* spriteB = (CLayer*)microECSEntityGetComponent(b, cid_layer);
+  CDrawable* spriteA = (CDrawable*)microECSEntityGetComponent(a, cid_drawable);
+  CDrawable* spriteB = (CDrawable*)microECSEntityGetComponent(b, cid_drawable);
   return spriteA->layerId - spriteB->layerId;
 }
 
 void renderingSystem(float dt) {
 
   if (sprite_system_query == -1) {
-    int components[2] = {cid_position, cid_layer};
-    sprite_system_query = microECSQueryCreate(components, 2, sort_drawables);
+    int components[2] = {cid_position, cid_drawable};
+    sprite_system_query = microECSCachedQueryCreate(components, 2, sort_drawables);
   }
   
-  ecs_entity_list entities = microECSQueryRun(sprite_system_query);
+  ecs_entity_list entities = microECSCachedQueryRun(sprite_system_query);
   if (entities.size == 0) return;
   
   int winWidth, winHeight;
@@ -67,7 +67,13 @@ void renderingSystem(float dt) {
     if (microECSEntityHasComponent(entityId, cid_sprite)) {
       CSprite* sprite = (CSprite*)microECSEntityGetComponent(entityId, cid_sprite);
       CTransform* t  = (CTransform*)microECSEntityGetComponent(entityId, cid_transform);
-      CColor* color  = (CColor*)microECSEntityGetComponent(entityId, cid_color);
+
+      // Get color
+      CColor* color;
+      if (microECSEntityHasComponent(entityId, cid_color))
+        color  = (CColor*)microECSEntityGetComponent(entityId, cid_color);
+      else
+        color = &(CColor){.r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0};
 
       microGraphicsDrawRectRot(sprite->textureId,
           sprite->tx, sprite->ty, sprite->tw, sprite->th,
@@ -79,7 +85,13 @@ void renderingSystem(float dt) {
     // Draw text
     if (microECSEntityHasComponent(entityId, cid_text)) {
       CText* text = (CText*)microECSEntityGetComponent(entityId, cid_text);
-      CColor* color  = (CColor*)microECSEntityGetComponent(entityId, cid_color);
+      
+      // Get color
+      CColor* color;
+      if (microECSEntityHasComponent(entityId, cid_color))
+        color  = (CColor*)microECSEntityGetComponent(entityId, cid_color);
+      else
+        color = &(CColor){.r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0};
 
       microGraphicsDrawText(text->fontId, text->text,
           p->x, p->y, color->r, color->g, color->b, color->a);

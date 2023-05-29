@@ -126,6 +126,18 @@ void setupPlanetEntity(int planetId)
   };
   microECSEntityAddComponent(planetId, cid_transform, &transform);
 
+  CBody body = {
+    .radius = PLANET_RADIUS * viewHeight / 2.0,
+    .mass = 1000.0,
+    .velX = 0.0,
+    .velY = 0.0,
+    .forceX = 0.0,
+    .forceY = 0.0,
+    .isStatic = 1,
+    .restitution = 0.0,
+  };
+  microECSEntityAddComponent(planetId, cid_body, &body);
+
   // Color component
   CColor color = {
     .r = 1.0,
@@ -136,10 +148,10 @@ void setupPlanetEntity(int planetId)
   microECSEntityAddComponent(planetId, cid_color, &color);
 
   // Layer component
-  CLayer layer = {
+  CDrawable drawable = {
     .layerId = 1,
   };
-  microECSEntityAddComponent(planetId, cid_layer, &layer);
+  microECSEntityAddComponent(planetId, cid_drawable, &drawable);
 
   // Update component
   CUpdate update = {
@@ -222,10 +234,10 @@ void setupShadow(int shadowId)
   microECSEntityAddComponent(shadowId, cid_color, &color);
 
   // Layer component
-  CLayer layer = {
+  CDrawable drawable = {
     .layerId = 2,
   };
-  microECSEntityAddComponent(shadowId, cid_layer, &layer);
+  microECSEntityAddComponent(shadowId, cid_drawable, &drawable);
 
   // HUD component
   CHud hud = {};
@@ -236,10 +248,10 @@ void PlanetEntityAdd()
 {
 
   // Create planet
-  planet_id = microECSEntityNew(NULL, NULL, NULL);
+  planet_id = microECSEntityNew(NULL, NULL);
   setupPlanetEntity(planet_id);
 
   // Create atmosphere and shadow
-  shadow_id = microECSEntityNew(NULL, NULL, NULL);
+  shadow_id = microECSEntityNew(NULL, NULL);
   setupShadow(shadow_id);
 }

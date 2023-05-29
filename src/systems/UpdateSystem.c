@@ -3,20 +3,13 @@
 #include "../components/LogicComponents.h"
 #include "../ECS.h"
 
-int update_system_query = -1;
-
 void updateSystem(float dt) {
+  
+  CUpdate* components_update = (CUpdate*)microECSComponentsGet(cid_update);
+  const unsigned int components_count = microECSComponentsCount(cid_update);
 
-  if (update_system_query == -1) {
-    int components[1] = {cid_update};
-    update_system_query = microECSQueryCreate(components, 1, NULL);
-  }
-  
-  ecs_entity_list entities = microECSQueryRun(update_system_query);
-  if (entities.size == 0) return;
-  
-  for (int i = 0; i < entities.size; i++) {
-    const int entityId = entities.entityIds[i];
+  for (int i = 0; i < components_count; i++) {
+    const int entityId = microECSComponentGetEntityId(cid_update, i);
     CUpdate* update = (CUpdate*)microECSEntityGetComponent(entityId, cid_update);
     update->update(entityId, dt);
   }

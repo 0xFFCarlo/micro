@@ -5,7 +5,7 @@
 int cid_sprite = -1;
 int cid_text = -1;
 int cid_color = -1;
-int cid_layer = -1;
+int cid_drawable = -1;
 int cid_hud = -1;
 int cid_animation = -1;
 int cid_shadedCanvas = -1;
@@ -14,39 +14,51 @@ int cid_lock_on_view = -1;
 
 void RegisterCSprite()
 {
-  cid_sprite = microECSComponentRegister(sizeof(CSprite), NULL);
+  cid_sprite = microECSComponentRegister(sizeof(CSprite));
 }
 
 void RegisterCText()
 {
-  cid_text = microECSComponentRegister(sizeof(CText), NULL);
+  cid_text = microECSComponentRegister(sizeof(CText));
 }
 
 void RegisterCColor()
 {
-  cid_color = microECSComponentRegister(sizeof(CColor), NULL);
+  cid_color = microECSComponentRegister(sizeof(CColor));
 }
 
-void RegisterCLayer()
+void RegisterCDrawable()
 {
-  cid_layer = microECSComponentRegister(sizeof(CLayer), NULL);
+  cid_drawable = microECSComponentRegister(sizeof(CDrawable));
 }
 
 void RegisterCHud()
 {
-  cid_hud = microECSComponentRegister(sizeof(CHud), NULL);
+  cid_hud = microECSComponentRegister(sizeof(CHud));
 }
 
 void RegisterCAnimation() {
-  cid_animation = microECSComponentRegister(sizeof(CAnimation), NULL);
+  cid_animation = microECSComponentRegister(sizeof(CAnimation));
 }
 
 void RegisterCShadedCanvas()
 {
-  cid_shadedCanvas = microECSComponentRegister(sizeof(CShadedCanvas), NULL);
+  cid_shadedCanvas = microECSComponentRegister(sizeof(CShadedCanvas));
 }
 
 void RegisterCLockOnView()
 {
-  cid_lock_on_view = microECSComponentRegister(sizeof(CLockOnView), NULL);
+  cid_lock_on_view = microECSComponentRegister(sizeof(CLockOnView));
+}
+
+void RegisterRenderingComponents()
+{
+  RegisterCSprite();
+  RegisterCText();
+  RegisterCColor();
+  RegisterCDrawable();
+  RegisterCHud();
+  RegisterCAnimation();
+  RegisterCShadedCanvas();
+  RegisterCLockOnView();
 }

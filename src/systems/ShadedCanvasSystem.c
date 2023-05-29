@@ -6,26 +6,19 @@
 #include "../ECS.h"
 #include <stdlib.h>
 
-int shaded_canvas_system_query = -1;
-
 void shadedCanvasSystem(float dt) {
+  
+  CShadedCanvas* components_shaded_canvas = (CShadedCanvas*)microECSComponentsGet(cid_shadedCanvas);
+  const unsigned int components_count = microECSComponentsCount(cid_shadedCanvas);
 
-  if (shaded_canvas_system_query == -1) {
-    int components[1] = {cid_shadedCanvas};
-    shaded_canvas_system_query = microECSQueryCreate(components, 1, NULL);
-  }
-  
-  ecs_entity_list entities = microECSQueryRun(shaded_canvas_system_query);
-  if (entities.size == 0) return;
-  
   //Store old view and set canvas view full window
   int old_shader = microShaderGetCurrent();
   MicroView old_view = microViewGet();
   
   //Update all shaded canvases
-  for (int i = 0; i < entities.size; i++) {
-    const int entityId = entities.entityIds[i];
-    CShadedCanvas* scanvas = (CShadedCanvas*)microECSEntityGetComponent(entityId, cid_shadedCanvas);
+  for (int i = 0; i < components_count; i++) {
+    const int entityId = microECSComponentGetEntityId(cid_shadedCanvas, i);
+    CShadedCanvas* scanvas = &components_shaded_canvas[i];
     microGraphicsRenderToCanvas(scanvas->canvasId);
     microGraphicsClear(0, 0, 0, 0);
     microShaderApply(scanvas->shaderId);

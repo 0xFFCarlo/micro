@@ -55,6 +55,14 @@ void PlayerJump()
 
 void playerUpdate(int entityId, float dt)
 {
+  // Controls
+  if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_D])
+    PlayerMove(0);
+  else if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_A])
+    PlayerMove(1);
+  else if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_W])
+    PlayerJump();
+
   float viewX, viewY;
   float viewWidth, viewHeight;
   float viewAngle;
@@ -63,7 +71,7 @@ void playerUpdate(int entityId, float dt)
   viewAngle = microViewGetRotation();
 
   CPosition* position = (CPosition*)microECSEntityGetComponent(player_entity_id, cid_position);
-  CVelocity* velocity = (CVelocity*)microECSEntityGetComponent(player_entity_id, cid_velocity);
+  CBody* body = (CBody*)microECSEntityGetComponent(player_entity_id, cid_body);
 
   float planetX, planetY;
   PlanetGetPos(&planetX, &planetY);
@@ -75,44 +83,43 @@ void playerUpdate(int entityId, float dt)
   float playerHeight = PlanetGetRadius() * viewHeight / 2.0 + PLAYER_HEIGHT/2.0 - GROUND_HEIGHT;
 
   // Motion
-  velocity->x = 0.0;
-  velocity->y = 0.0;
-  if (player_state == PLAYER_STATE_WALK) {
-    if (player_direction == PLAYER_DIRECTION_RIGHT) {
-      velocity->x = toPlanetNormY * 100.0;
-      velocity->y = -toPlanetNormX * 100.0;
-    } else {
-      velocity->x = -toPlanetNormY * 100.0;
-      velocity->y = toPlanetNormX * 100.0;
-    }
-  }
-
-  if (playerJump) {
-    velocity->x += toPlanetNormX * 1000.0;
-    velocity->y += toPlanetNormY * 1000.0;
-    playerJump = 0;
-  }
-  playerJump = 0;
+  // body->velX = 0.0;
+  // body->velY = 0.0;
+  // if (player_state == PLAYER_STATE_WALK) {
+  //   if (player_direction == PLAYER_DIRECTION_RIGHT) {
+  //     body->velX = toPlanetNormY * 100.0;
+  //     body->velY = -toPlanetNormX * 100.0;
+  //   } else {
+  //     body->velX = -toPlanetNormY * 100.0;
+  //     body->velY = toPlanetNormX * 100.0;
+  //   }
+  // }
+  //
+  // if (playerJump) {
+  //   body->velX += toPlanetNormX * 1000.0;
+  //   body->velY += toPlanetNormY * 1000.0;
+  //   playerJump = 0;
+  // }
+  // playerJump = 0;
     
   // Gravity
-  if (toPlanetDist > PlanetGetRadius() * viewHeight / 2.0 + PLAYER_HEIGHT/2.0 - GROUND_HEIGHT) {
-    velocity->x += toPlanetNormX * 100.0;
-    velocity->y += toPlanetNormY * 100.0;
-  }
+  body->forceX = fmin((300.0 * toPlanetX) / (toPlanetDist * toPlanetDist + 1), 2.0);
+  body->forceY = fmin((300.0 * toPlanetY) / (toPlanetDist * toPlanetDist + 1), 2.0);
+  // printf("velX: %f, velY: %f\n", body->velX, body->velY);
 
   // Force out of planet
-  toPlanetX = planetX - position->x;
-  toPlanetY = planetY - position->y;
-  toPlanetDist = sqrt(toPlanetX * toPlanetX + toPlanetY * toPlanetY);
-  toPlanetNormX = toPlanetX / toPlanetDist;
-  toPlanetNormY = toPlanetY / toPlanetDist;
-  float planetRadius = PlanetGetRadius() * viewHeight / 2.0;
-  float playerRadius = PLAYER_HEIGHT/2.0 - GROUND_HEIGHT;
-  float dist = sqrt(toPlanetX * toPlanetX + toPlanetY * toPlanetY);
-  if (dist < planetRadius + playerRadius) {
-    position->x = planetX - toPlanetNormX * (planetRadius + playerRadius);
-    position->y = planetY - toPlanetNormY * (planetRadius + playerRadius);
-  }
+  // toPlanetX = planetX - position->x;
+  // toPlanetY = planetY - position->y;
+  // toPlanetDist = sqrt(toPlanetX * toPlanetX + toPlanetY * toPlanetY);
+  // toPlanetNormX = toPlanetX / toPlanetDist;
+  // toPlanetNormY = toPlanetY / toPlanetDist;
+  // float planetRadius = PlanetGetRadius() * viewHeight / 2.0;
+  // float playerRadius = PLAYER_HEIGHT/2.0 - GROUND_HEIGHT;
+  // float dist = sqrt(toPlanetX * toPlanetX + toPlanetY * toPlanetY);
+  // if (dist < planetRadius + playerRadius) {
+  //   position->x = planetX - toPlanetNormX * (planetRadius + playerRadius);
+  //   position->y = planetY - toPlanetNormY * (planetRadius + playerRadius);
+  // }
   
   // if (player_state == PLAYER_STATE_WALK) {
   //   if (player_direction == PLAYER_DIRECTION_RIGHT) {
@@ -183,7 +190,7 @@ void PlayerEntityAdd()
   player_walk_r = microAnimationCreate("player_walk_r", 0, 16, 16, 16, 4, 0.3, 0, 0);
   player_walk_l = microAnimationCreate("player_walk_l", 0, 16, 16, 16, 4, 0.3, 1, 0);
 
-  player_entity_id = microECSEntityNew(NULL, NULL, NULL);
+  player_entity_id = microECSEntityNew(NULL, NULL); 
   assert(player_entity_id != -1);
 
   // Position component
@@ -195,12 +202,18 @@ void PlayerEntityAdd()
   };
   microECSEntityAddComponent(player_entity_id, cid_position, &position);
   
-  // Velocity component
-  CVelocity velocity = {
-    .x = 0.0,
-    .y = 0.0,
+  // Body component
+  CBody body = {
+    .velX = 0.0,
+    .velY = 0.0,
+    .mass = 1.0,
+    .isStatic = 0,
+    .restitution = 0.0,
+    .forceX = 0.0,
+    .forceY = 0.0,
+    .radius = PLAYER_WIDTH/2.0,
   };
-  microECSEntityAddComponent(player_entity_id, cid_velocity, &velocity);
+  microECSEntityAddComponent(player_entity_id, cid_body, &body);
   
   // Sprite component
   //int textureId = microResourceLoad("player", "./res/robot.png", "texture");
@@ -235,10 +248,10 @@ void PlayerEntityAdd()
   microECSEntityAddComponent(player_entity_id, cid_color, &color);
 
   // Layer component
-  CLayer layer = {
-    .layerId = 3,
+  CDrawable drawable = {
+    .layerId = 4,
   };
-  microECSEntityAddComponent(player_entity_id, cid_layer, &layer);
+  microECSEntityAddComponent(player_entity_id, cid_drawable, &drawable);
 
   // Animation component
   CAnimation animation = {

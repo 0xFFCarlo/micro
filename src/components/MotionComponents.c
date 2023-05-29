@@ -4,19 +4,26 @@
 
 int cid_position = -1;
 int cid_transform = -1;
-int cid_velocity = -1;
+int cid_body = -1;
 
 void RegisterCPosition()
 {
-  cid_position = microECSComponentRegister(sizeof(CPosition), NULL);
+  cid_position = microECSComponentRegister(sizeof(CPosition));
 }
 
 void RegisterCTransform()
 {
-  cid_transform = microECSComponentRegister(sizeof(CTransform), NULL);
+  cid_transform = microECSComponentRegister(sizeof(CTransform));
 }
 
-void RegisterCVelocity()
+void RegisterCBody()
 {
-  cid_velocity = microECSComponentRegister(sizeof(CVelocity), NULL);
+  cid_body = microECSComponentRegister(sizeof(CBody));
+}
+
+void RegisterMotionComponents()
+{
+  RegisterCPosition();
+  RegisterCTransform();
+  RegisterCBody();
 }
