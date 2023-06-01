@@ -109,7 +109,8 @@ extern void microGraphicsDrawRectRot(
     float rotation, float r, float g, float b, float a);
 extern void microGraphicsDrawText(
     int fontId, const char *text,
-    float x, float y, float r, float g, float b, float a);
+    float x, float y, float lineSpacing, 
+    float r, float g, float b, float a);
 
 extern void microWindowGetSize(int *width, int *height);
 extern void microSwapBuffers();

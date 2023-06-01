@@ -3,6 +3,7 @@
 #include "../components/MotionComponents.h"
 #include "../components/RenderingComponents.h"
 #include "../ECS.h"
+#include <stdio.h>
 
 int sprite_system_query = -1;
 
@@ -13,7 +14,7 @@ int sort_drawables(int a, int b) {
 }
 
 void renderingSystem(float dt) {
-
+  
   if (sprite_system_query == -1) {
     int components[2] = {cid_position, cid_drawable};
     sprite_system_query = microECSCachedQueryCreate(components, 2, sort_drawables);
@@ -74,7 +75,7 @@ void renderingSystem(float dt) {
         color  = (CColor*)microECSEntityGetComponent(entityId, cid_color);
       else
         color = &(CColor){.r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0};
-
+      
       microGraphicsDrawRectRot(sprite->textureId,
           sprite->tx, sprite->ty, sprite->tw, sprite->th,
           p->x, p->y, t->width, t->height, t->originX,
@@ -94,7 +95,7 @@ void renderingSystem(float dt) {
         color = &(CColor){.r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0};
 
       microGraphicsDrawText(text->fontId, text->text,
-          p->x, p->y, color->r, color->g, color->b, color->a);
+          p->x, p->y, text->lineSpacing, color->r, color->g, color->b, color->a);
     }
   } 
 

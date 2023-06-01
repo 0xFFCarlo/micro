@@ -68,12 +68,12 @@ int main(int argc, char const *argv[])
 
   // Physics world
   int world_id = microPhysicsWorldNew();
-  printf("world_id: %d\n", world_id);
+  printf("Physics world_id: %d\n", world_id);
 
   // Register entities
-  PlayerEntityAdd();
   SpaceEntityAdd();
   PlanetEntityAdd();
+  PlayerEntityAdd();
   LogGUIAdd();
 
   float deltaTime = 0.016;

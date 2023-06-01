@@ -184,7 +184,6 @@ void PlayerEntityAdd()
   });
   
   // Body component
-  printf("viewportWidth: %d, viewportHeight: %d\n", viewportWidth, viewportHeight);
   player_body_id = microPhysicsBodyNewCircle(0, viewportWidth/2.0, viewportHeight/2.0 - 100.0, PLAYER_WIDTH/2.0, 1.0, 0, 1.0, 0.0, 1.0);
   microECSEntityAddComponent(player_entity_id, cid_body, &(CBody) {
       .body_id = player_body_id,

@@ -32,7 +32,7 @@
 #define MICRO_FONT_TEXTURE_SIZE 512
 
 //GL states
-static int currentTexture = -1;
+static int currentTexture = 0;
 static int currentShader = -1;
 
 //texture buffers
@@ -42,7 +42,6 @@ typedef struct microTexture
   int width, height, channels;
 } microTexture;
 static microTexture microTextures[MICRO_MAX_TEXTURES];
-static unsigned char cleanedBuffer = GL_FALSE;
 
 typedef struct microShader
 {
@@ -161,12 +160,6 @@ void microGLCheckErrors()
 ////////////////////////////
 int microTextureLoadFromFile(const char* filepath)
 {
-  //clean resources uffer the first time
-  if (cleanedBuffer == GL_FALSE) {
-    memset(microTextures, 0, sizeof(microTexture*));
-    cleanedBuffer = GL_TRUE;
-  }
-
   //Variables
   int stbi_fmt = STBI_rgb_alpha;
   int fsize = 0;
@@ -269,7 +262,6 @@ int microTextureLoadFromMemory(const unsigned char *data, const unsigned int wid
   }
   assert(spot != -1);
 
-  currentTexture = id;
   return spot;    
 }
 
@@ -882,7 +874,7 @@ int microCanvasCreate(int width, int height)
   //create black texture
   const int textureId = microTextureLoadFromMemory(0, width, height, 4, MICRO_FILTER_NEAREST);
   assert(textureId != -1);
-  assert(microTextures[textureId].id != -1);
+  assert(microTextures[textureId].id != 0);
   microGLCheckErrors();
 
   //find spot in the resources buffer
@@ -903,11 +895,6 @@ int microCanvasCreate(int width, int height)
   
   // Set "renderedTexture" as our colour attachement #0
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, microTextures[textureId].id, 0);
-  microGLCheckErrors();
-
-  // Set the list of draw buffers.
-  //GLenum DrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
-  //glDrawBuffers(1, DrawBuffers); // "1" is the size of DrawBuffers
   microGLCheckErrors();
   
   if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
@@ -1312,7 +1299,7 @@ void microGraphicsDrawRect(int textureId, float tx, float ty, float tw, float th
 }
 
 void microGraphicsDrawText(int fontId, const char *text,
-    float x, float y, float r, float g, float b, float a)
+    float x, float y, float lineSpacing, float r, float g, float b, float a)
 {
   const unsigned int textLen = strlen(text);
   const stbtt_fontinfo* fontInfo = &microFonts[fontId].fontInfo;
@@ -1332,7 +1319,7 @@ void microGraphicsDrawText(int fontId, const char *text,
   {
     const char c = text[i];
     if (c == '\n') {
-      y += ascent;
+      y += ascent + lineSpacing;
       x = startX;
       continue;
     }

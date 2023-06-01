@@ -14,6 +14,7 @@ extern void RegisterCSprite();
 // Text 
 typedef struct {
   int fontId;
+  float lineSpacing;
   char* text;
 } CText;
 

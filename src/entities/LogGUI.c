@@ -15,6 +15,10 @@ int log_gui_entity_id = -1;
 int font_id = -1;
 char logText[512] = "FPS: 0";
 
+float fps = 0.0;
+int frames_count = 0;
+float frames_time = 0.0;
+
 void handle_event(int entity, SDL_Event event)
 {
     if (event.type == SDL_QUIT) {
@@ -30,11 +34,18 @@ void handle_event(int entity, SDL_Event event)
 
 void updateLogGUI(int entityId, float dt)
 {
+  frames_count++;
+  frames_time += dt;
+  if (frames_time >= 1.0) {
+    fps = frames_count / frames_time;
+    frames_count = 0;
+    frames_time = 0.0;
+  }
   logText[0] = '\0';
   int entities_count = microECSEntitiesCount();
   int worlds = microPhysicsWorldsCount();
   int bodies = microPhysicsBodiesCount();
-  sprintf(logText, "FPS: %d\nEntities: %d\nWorlds: %d\nBodies: %d", (int)(1.0/dt), entities_count, worlds, bodies);
+  sprintf(logText, "FPS: %d\nEntities: %d\nBodies: %d", (int)fps, entities_count, worlds);
 }
 
 
@@ -49,6 +60,7 @@ void LogGUIAdd()
   });
   microECSEntityAddComponent(entityText, cid_text, &(CText){
     .text = logText,
+    .lineSpacing = 3,
     .fontId = font_id,
   });
   microECSEntityAddComponent(entityText, cid_drawable, &(CDrawable){
