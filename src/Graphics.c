@@ -941,8 +941,6 @@ void microGraphicsInit()
     return;
   }
 
-  printf("%lu\n", sizeof(stbtt_fontinfo));
-  
   //create window and opengl context
   window = SDL_CreateWindow("micro",
       SDL_WINDOWPOS_CENTERED,

@@ -6,10 +6,12 @@
 #include "Audio.h"
 #include "Graphics.h"
 #include "ECS.h"
+#include "Physics.h"
 
 #include "components/MotionComponents.h"
 #include "components/RenderingComponents.h"
 #include "components/LogicComponents.h"
+#include "components/CustomComponents.h"
 #include "systems/RenderingSystem.h"
 #include "systems/ShadedCanvasSystem.h"
 #include "systems/UpdateSystem.h"
@@ -17,22 +19,11 @@
 #include "systems/LockOnViewSystem.h"
 #include "systems/EventsSystem.h"
 #include "systems/PhysicsSystem.h"
+#include "systems/PlanetaryAlignmentSystem.h"
 #include "entities/Space.h"
 #include "entities/Planet.h"
 #include "entities/Player.h"
-
-void handle_event(int entity, SDL_Event event)
-{
-    if (event.type == SDL_QUIT) {
-      exit(0);
-    }
-
-    if (event.type == SDL_KEYDOWN)
-    {
-      if (event.key.keysym.scancode == SDL_SCANCODE_Q)
-        exit(0);
-    }
-}
+#include "entities/LogGUI.h"
 
 int main(int argc, char const *argv[])
 {
@@ -54,47 +45,36 @@ int main(int argc, char const *argv[])
       .flipY = 0
       });
   microViewApply();
-
+  
   microECSInit();
 
   // Register components
   RegisterLogicComponents();
   RegisterMotionComponents();
   RegisterRenderingComponents();
+  RegisterCustomComponents();
   microECSAllocateComponents();
 
   // Register systems
   microECSSystemAdd(eventsSystem);
   microECSSystemAdd(updateSystem);
-  microECSSystemAdd(lockOnViewSystem);
   microECSSystemAdd(physicsSystem);
+  microECSSystemAdd(lockOnViewSystem);
+  microECSSystemAdd(planetaryAligntmentSystem);
   microECSSystemAdd(shadedCanvasSystem);
   microECSSystemAdd(animationSystem);
   microECSSystemAdd(renderingSystem);
+
+
+  // Physics world
+  int world_id = microPhysicsWorldNew();
+  printf("world_id: %d\n", world_id);
 
   // Register entities
   PlayerEntityAdd();
   SpaceEntityAdd();
   PlanetEntityAdd();
-
-  int font = microFontLoadFromFile("./res/FiraCode-Medium.ttf", 20, MICRO_FILTER_NEAREST);
-
-  int entityText = microECSEntityNew(NULL, NULL);
-  microECSEntityAddComponent(entityText, cid_position, &(CPosition){
-    .x = 16,
-    .y = 16
-  });
-  microECSEntityAddComponent(entityText, cid_text, &(CText){
-    .text = "FPS: 0",
-    .fontId = font,
-  });
-  microECSEntityAddComponent(entityText, cid_drawable, &(CDrawable){
-    .layerId = 5
-  });
-  microECSEntityAddComponent(entityText, cid_hud, NULL);
-  microECSEntityAddComponent(entityText, cid_event_listener, &(CEventListener){
-    .on_event = handle_event
-  });
+  LogGUIAdd();
 
   float deltaTime = 0.016;
   Uint32 lastTime = SDL_GetTicks();

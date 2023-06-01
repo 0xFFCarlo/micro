@@ -9,14 +9,7 @@ extern void microECSEntityAddComponent(int entityId, const int componentTypeId, 
 extern void microECSEntityRemoveComponent(int entityId, const int componentTypeId);
 extern void* microECSEntityGetComponent(int entityId, const int componentTypeId);
 extern int microECSEntityHasComponent(int entityId, const int componentTypeId);
-
-typedef struct {
-  int* entityIds;
-  int size;
-} ecs_entity_list;
-// extern ecs_entity_list microECSEntityByComponent(int componentTypeId);
-// extern ecs_entity_list microECSEntityByComponents(int* componentTypeIds, int size);
-
+extern int microECSEntitiesCount();
 
 // Component
 extern int microECSComponentRegister(int size);
@@ -38,6 +31,11 @@ extern void microECSRun(float dt);
 
 
 // Query
+typedef struct {
+  int* entityIds;
+  int size;
+} ecs_entity_list;
+
 extern int microECSCachedQueryCreate(int* componentTypeIds, int size, int(*sort_compare)(int, int));
 extern void microECSCachedQueryFree(int queryId);
 extern ecs_entity_list microECSCachedQueryRun(int queryId);

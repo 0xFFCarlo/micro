@@ -9,12 +9,21 @@ set(CMAKE_BUILD_TYPE Debug)
 # Set output directories
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+if(APPLE)
+  include_directories(/opt/homebrew/include)
+  link_directories(/opt/homebrew/lib)
+elseif(UNIX)
+  include_directories(/usr/local/include)
+  link_directories(/usr/local/lib)
+endif()
+
 # Add include directories
-include_directories(/usr/local/include)
 include_directories(${CMAKE_SOURCE_DIR}/src/ext) # external libraries
 include_directories(${CMAKE_SOURCE_DIR}/src/systems)
 include_directories(${CMAKE_SOURCE_DIR}/src/components)
 include_directories(${CMAKE_SOURCE_DIR}/src/entities)
+
+# Add libraries directories
 
 # Source files
 file(GLOB_RECURSE SOURCES "./src/*.c")
@@ -26,25 +35,15 @@ add_executable(main ${SOURCES})
 find_package(OpenGL REQUIRED)
 
 target_link_libraries(main
-    ${OPENGL_LIBRARIES}
-    m # math library
-)
+  ${OPENGL_LIBRARIES}
+  m # math library
+  )
 
-if(APPLE)
-    # macOS specific configuration
-    target_link_libraries(main
-        "-framework SDL2"
-        "-framework SDL2_mixer"
-    )
-    # Add the frameworks search path
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -F/Library/Frameworks")
-elseif(UNIX)
-    # Linux specific configuration
-    target_link_libraries(main
-        SDL2
-        SDL2_mixer
-    )
-endif()
+target_link_libraries(main
+  SDL2
+  SDL2_mixer
+  chipmunk
+  )
 
 # Compiler flags
 target_compile_options(main PRIVATE -Wall -O3)

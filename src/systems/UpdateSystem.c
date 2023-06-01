@@ -10,7 +10,6 @@ void updateSystem(float dt) {
 
   for (int i = 0; i < components_count; i++) {
     const int entityId = microECSComponentGetEntityId(cid_update, i);
-    CUpdate* update = (CUpdate*)microECSEntityGetComponent(entityId, cid_update);
-    update->update(entityId, dt);
+    components_update[i].update(entityId, dt);
   }
 }

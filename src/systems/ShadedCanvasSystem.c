@@ -17,7 +17,6 @@ void shadedCanvasSystem(float dt) {
   
   //Update all shaded canvases
   for (int i = 0; i < components_count; i++) {
-    const int entityId = microECSComponentGetEntityId(cid_shadedCanvas, i);
     CShadedCanvas* scanvas = &components_shaded_canvas[i];
     microGraphicsRenderToCanvas(scanvas->canvasId);
     microGraphicsClear(0, 0, 0, 0);

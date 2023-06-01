@@ -4,6 +4,7 @@
 #include "../Resources.h"
 #include "../Graphics.h"
 #include "../ECS.h"
+#include "../Physics.h"
 #include <stdio.h>
 #include <assert.h>
 
@@ -22,6 +23,8 @@ float planetY = 0.0;
 float planetRadius = PLANET_RADIUS;
 float planetScaleFactor = 2.0;
 
+int planet_body_id = -1;
+
 float PlanetGetRadius()
 {
   return planetRadius * planetScaleFactor / 2.0;
@@ -38,23 +41,23 @@ void PlanetGetPos(float* x, float* y)
 void planetUpdate(int planetId, float dt)
 {
   CPosition* position = (CPosition*)microECSEntityGetComponent(planetId, cid_position);  
-  
+
   float viewX, viewY;
   float viewWidth, viewHeight;
   float viewAngle;
   microViewGetCenter(&viewX, &viewY);
   microViewGetSize(&viewWidth, &viewHeight);
   viewAngle = microViewGetRotation() * 3.14159265358979323846 / 180.0;
-  
+
   float windowWidth, windowHeight;
   microViewGetSize(&windowWidth, &windowHeight);
 
   float normPlanetX = ((position->x - viewX) * 2.0) / windowHeight;
   float normPlanetY = ((position->y - viewY) * 2.0) / windowHeight;
-  
+
   // float normViewX = viewX / windowHeight;
   // float normViewY = -viewY / windowHeight;
-  
+
   microShaderApply(shadow_shader_id);
   microShaderSetUniform("planet_center", normPlanetX, normPlanetY);
   //microShaderSetUniform("view_center", normViewX, normViewY);
@@ -80,84 +83,61 @@ void setupPlanetEntity(int planetId)
   microViewApply(); // send view matrix to shader
   microShaderSetUniform("resolution", canvas_planet_width, canvas_planet_height);
   microShaderApply(current_shader);
-  
+
   // Position component
   planetX = viewWidth / 2.f;
   planetY = viewHeight / 2.f + (float)canvas_planet_height + (float)viewHeight * 0.2 / 2.0;
-  CPosition position = {
-    .x = planetX,
-    .y = planetY,
-  };
-  microECSEntityAddComponent(planetId, cid_position, &position);
-  
+  microECSEntityAddComponent(planetId, cid_position, &(CPosition) {
+      .x = planetX,
+      .y = planetY,
+      });
 
   // Shaded canvas component
   planet_canvas_id = microCanvasCreate(canvas_planet_width, canvas_planet_height);
-  CShadedCanvas scanvas = {
-    .canvasId = planet_canvas_id,
-    .shaderId = shader_id,
-    .width = canvas_planet_width,
-    .height = canvas_planet_height,
-  };
-  microECSEntityAddComponent(planetId, cid_shadedCanvas, &scanvas);
- 
+  microECSEntityAddComponent(planetId, cid_shadedCanvas, &(CShadedCanvas) {
+      .canvasId = planet_canvas_id,
+      .shaderId = shader_id,
+      .width = canvas_planet_width,
+      .height = canvas_planet_height,
+      });
 
   // Sprite component
-  int textureId = microCanvasGetTextureId(scanvas.canvasId);
+  int textureId = microCanvasGetTextureId(planet_canvas_id);
   microTextureSetFilter(textureId, MICRO_FILTER_NEAREST);
   int texWidth, texHeight;
   microTextureGetSize(textureId, &texWidth, &texHeight);
-  CSprite sprite = {
-    .textureId = textureId,
-    .tx = 0,
-    .ty = 0,
-    .tw = texWidth,
-    .th = texHeight,
-  };
-  microECSEntityAddComponent(planetId, cid_sprite, &sprite);
+  microECSEntityAddComponent(planetId, cid_sprite, &(CSprite) {
+      .textureId = textureId,
+      .tx = 0,
+      .ty = 0,
+      .tw = texWidth,
+      .th = texHeight,
+      });
 
   // Transform component
-  CTransform transform = {
-    .width = canvas_planet_width * planet_scale,
-    .height = canvas_planet_height * planet_scale,
-    .originX = canvas_planet_width * planet_scale / 2.0,
-    .originY = canvas_planet_height * planet_scale / 2.0,
-    .rotation = 0,
-  };
-  microECSEntityAddComponent(planetId, cid_transform, &transform);
-
-  CBody body = {
-    .radius = PLANET_RADIUS * viewHeight / 2.0,
-    .mass = 1000.0,
-    .velX = 0.0,
-    .velY = 0.0,
-    .forceX = 0.0,
-    .forceY = 0.0,
-    .isStatic = 1,
-    .restitution = 0.0,
-  };
-  microECSEntityAddComponent(planetId, cid_body, &body);
+  microECSEntityAddComponent(planetId, cid_transform, &(CTransform) {
+      .width = canvas_planet_width * planet_scale,
+      .height = canvas_planet_height * planet_scale,
+      .originX = canvas_planet_width * planet_scale / 2.0,
+      .originY = canvas_planet_height * planet_scale / 2.0,
+      .rotation = 0,
+      });
+  
+  // Body component
+  planet_body_id = microPhysicsBodyNewCircle(0, planetX, planetY, PlanetGetRadius() * viewHeight / 2.0 - 10, 1.0, 1, 1.0, 0.0, 1.0);
+  microECSEntityAddComponent(planetId, cid_body, &(CBody) {
+      .body_id = planet_body_id,
+      });
 
   // Color component
-  CColor color = {
-    .r = 1.0,
-    .g = 1.0,
-    .b = 1.0,
-    .a = 1.0,
-  };
-  microECSEntityAddComponent(planetId, cid_color, &color);
-
-  // Layer component
-  CDrawable drawable = {
-    .layerId = 1,
-  };
-  microECSEntityAddComponent(planetId, cid_drawable, &drawable);
-
-  // Update component
-  CUpdate update = {
-    .update = planetUpdate,
-  };
-  microECSEntityAddComponent(planetId, cid_update, &update);
+  microECSEntityAddComponent(planetId, cid_color, &(CColor){
+      .r = 1.0,
+      .g = 1.0,
+      .b = 1.0,
+      .a = 1.0 
+      });
+  microECSEntityAddComponent(planetId, cid_drawable, &(CDrawable){ .layerId = 1 });
+  microECSEntityAddComponent(planetId, cid_update, &(CUpdate){ .update = planetUpdate });
 }
 
 void setupShadow(int shadowId)
@@ -168,7 +148,7 @@ void setupShadow(int shadowId)
   float canvas_posteffect_height = 512.0;
   float canvas_posteffect_width = viewWidth * (canvas_posteffect_height / viewHeight);
   float posteffect_scale = viewWidth / canvas_posteffect_width;
-  
+
   // Load shader and apply parameters
   shadow_shader_id = microShaderLoadFromFile("./res/shaders/base_vert.glsl", "./res/shaders/shadow.glsl");
   assert(shadow_shader_id != -1);
@@ -179,69 +159,51 @@ void setupShadow(int shadowId)
   microShaderSetUniform("radius", PlanetGetRadius());
   microShaderSetUniform("lightDepth", LIGHT_DEPTH);
   microShaderSetUniform("planet_center", 0.0, 0.2 + PLANET_RADIUS);
-  //microShaderSetUniform("view_center", 0.0, 0.2 + PLANET_RADIUS);
   microShaderSetUniform("view_angle", 0.0);
   microShaderApply(current_shader);
 
   // Position component
-  CPosition position = {
-    .x = 0,
-    .y = 0,
-  };
-  microECSEntityAddComponent(shadowId, cid_position, &position);
+  microECSEntityAddComponent(shadowId, cid_position, &(CPosition) {
+      .x = 0,
+      .y = 0,
+      });
 
   // Shaded canvas component
   shadow_canvas_id = microCanvasCreate(canvas_posteffect_width, canvas_posteffect_height);
-  CShadedCanvas scanvas = {
-    .canvasId = shadow_canvas_id,
-    .shaderId = shadow_shader_id,
-    .width = canvas_posteffect_width,
-    .height = canvas_posteffect_height,
-  };
-  microECSEntityAddComponent(shadowId, cid_shadedCanvas, &scanvas);
+  microECSEntityAddComponent(shadowId, cid_shadedCanvas, &(CShadedCanvas) {
+      .canvasId = shadow_canvas_id,
+      .shaderId = shadow_shader_id,
+      .width = canvas_posteffect_width,
+      .height = canvas_posteffect_height,
+      });
 
   // Sprite component
-  int textureId = microCanvasGetTextureId(scanvas.canvasId);
+  int textureId = microCanvasGetTextureId(shadow_canvas_id);
   microTextureSetFilter(textureId, MICRO_FILTER_NEAREST);
   int texWidth, texHeight;
   microTextureGetSize(textureId, &texWidth, &texHeight);
-  CSprite sprite = {
-    .textureId = textureId,
-    .tx = 0,
-    .ty = 0,
-    .tw = texWidth,
-    .th = texHeight,
-  };
-  microECSEntityAddComponent(shadowId, cid_sprite, &sprite);
-
-  // Transform component
-  CTransform transform = {
-    .width = canvas_posteffect_width * posteffect_scale,
-    .height = canvas_posteffect_height * posteffect_scale,
-    .originX = 0,
-    .originY = 0,
-    .rotation = 0,
-  };
-  microECSEntityAddComponent(shadowId, cid_transform, &transform);
-
-  // Color component
-  CColor color = {
-    .r = 1.0,
-    .g = 1.0,
-    .b = 1.0,
-    .a = 1.0,
-  };
-  microECSEntityAddComponent(shadowId, cid_color, &color);
-
-  // Layer component
-  CDrawable drawable = {
-    .layerId = 2,
-  };
-  microECSEntityAddComponent(shadowId, cid_drawable, &drawable);
-
-  // HUD component
-  CHud hud = {};
-  microECSEntityAddComponent(shadowId, cid_hud, &hud);
+  microECSEntityAddComponent(shadowId, cid_sprite, &(CSprite) {
+      .textureId = textureId,
+      .tx = 0,
+      .ty = 0,
+      .tw = texWidth,
+      .th = texHeight,
+      });
+  microECSEntityAddComponent(shadowId, cid_transform, &(CTransform) {
+      .width = canvas_posteffect_width * posteffect_scale,
+      .height = canvas_posteffect_height * posteffect_scale,
+      .originX = 0,
+      .originY = 0,
+      .rotation = 0,
+      });
+  microECSEntityAddComponent(shadowId, cid_color, &(CColor) {
+      .r = 1.0,
+      .g = 1.0,
+      .b = 1.0,
+      .a = 1.0
+      });
+  microECSEntityAddComponent(shadowId, cid_drawable, &(CDrawable){.layerId = 2});
+  microECSEntityAddComponent(shadowId, cid_hud, &(CHud){});
 }
 
 void PlanetEntityAdd()

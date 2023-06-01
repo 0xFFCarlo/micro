@@ -116,7 +116,7 @@ void main() {
   
   //Atmosphere
   float dist = distance(uvs_atm, planet_center);
-  float radius_n = planet_radius - 4.0 / resolution.y;
+  float radius_n = planet_radius - 8.0 / resolution.y;
   float areaType = dist > radius_n ? 1.0 : 0.0;
   float atmosphereIntensity = min(1.0, max(0.0, sqrt(dist - radius_n) * atmosphereDecay + (1.0 - atmosphereMaxIntensity)));
   fragColor = mix(atmosphereColor, fragColor, atmosphereIntensity);

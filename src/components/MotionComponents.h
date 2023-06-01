@@ -24,12 +24,7 @@ extern void RegisterCTransform();
 
 // Body
 typedef struct {
-    float mass;
-    float radius;
-    float velX, velY;
-    float forceX, forceY;
-    unsigned char isStatic;
-    float restitution;
+  int body_id;
 } CBody;
 
 extern int cid_body;

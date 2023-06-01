@@ -3,9 +3,11 @@
 #include "../components/RenderingComponents.h"
 #include "../components/LogicComponents.h"
 #include "../components/MotionComponents.h"
+#include "../components/CustomComponents.h"
 #include "../Resources.h"
 #include "../Graphics.h"
 #include "../ECS.h"
+#include "../Physics.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
@@ -37,6 +39,8 @@ float toPlanetNormY = 0.0;
 float playerRotation = 0.0;
 int playerJump = 0;
 
+int player_body_id = -1;
+
 void PlayerMove(int direction)
 {
   if (direction == PLAYER_DIRECTION_RIGHT) {
@@ -60,18 +64,15 @@ void playerUpdate(int entityId, float dt)
     PlayerMove(0);
   else if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_A])
     PlayerMove(1);
-  else if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_W])
+  if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_W])
     PlayerJump();
 
   float viewX, viewY;
   float viewWidth, viewHeight;
-  float viewAngle;
   microViewGetCenter(&viewX, &viewY);
   microViewGetSize(&viewWidth, &viewHeight);
-  viewAngle = microViewGetRotation();
 
   CPosition* position = (CPosition*)microECSEntityGetComponent(player_entity_id, cid_position);
-  CBody* body = (CBody*)microECSEntityGetComponent(player_entity_id, cid_body);
 
   float planetX, planetY;
   PlanetGetPos(&planetX, &planetY);
@@ -81,57 +82,44 @@ void playerUpdate(int entityId, float dt)
   toPlanetNormX = toPlanetX / toPlanetDist;
   toPlanetNormY = toPlanetY / toPlanetDist;
   float playerHeight = PlanetGetRadius() * viewHeight / 2.0 + PLAYER_HEIGHT/2.0 - GROUND_HEIGHT;
-
-  // Motion
-  // body->velX = 0.0;
-  // body->velY = 0.0;
-  // if (player_state == PLAYER_STATE_WALK) {
-  //   if (player_direction == PLAYER_DIRECTION_RIGHT) {
-  //     body->velX = toPlanetNormY * 100.0;
-  //     body->velY = -toPlanetNormX * 100.0;
-  //   } else {
-  //     body->velX = -toPlanetNormY * 100.0;
-  //     body->velY = toPlanetNormX * 100.0;
-  //   }
-  // }
-  //
-  // if (playerJump) {
-  //   body->velX += toPlanetNormX * 1000.0;
-  //   body->velY += toPlanetNormY * 1000.0;
-  //   playerJump = 0;
-  // }
-  // playerJump = 0;
-    
-  // Gravity
-  body->forceX = fmin((300.0 * toPlanetX) / (toPlanetDist * toPlanetDist + 1), 2.0);
-  body->forceY = fmin((300.0 * toPlanetY) / (toPlanetDist * toPlanetDist + 1), 2.0);
-  // printf("velX: %f, velY: %f\n", body->velX, body->velY);
-
-  // Force out of planet
-  // toPlanetX = planetX - position->x;
-  // toPlanetY = planetY - position->y;
-  // toPlanetDist = sqrt(toPlanetX * toPlanetX + toPlanetY * toPlanetY);
-  // toPlanetNormX = toPlanetX / toPlanetDist;
-  // toPlanetNormY = toPlanetY / toPlanetDist;
-  // float planetRadius = PlanetGetRadius() * viewHeight / 2.0;
-  // float playerRadius = PLAYER_HEIGHT/2.0 - GROUND_HEIGHT;
-  // float dist = sqrt(toPlanetX * toPlanetX + toPlanetY * toPlanetY);
-  // if (dist < planetRadius + playerRadius) {
-  //   position->x = planetX - toPlanetNormX * (planetRadius + playerRadius);
-  //   position->y = planetY - toPlanetNormY * (planetRadius + playerRadius);
-  // }
   
-  // if (player_state == PLAYER_STATE_WALK) {
-  //   if (player_direction == PLAYER_DIRECTION_RIGHT) {
-  //     a += dt * 0.3;
-  //   }
-  //   else
-  //   {
-  //     a -= dt * 0.3;
-  //   }
-  // }
-  // position->x = planetX + cos(a) * playerHeight;
-  // position->y = planetY + sin(a) * playerHeight;
+  // Gravity
+  float forceX = (100000.0 * toPlanetX) / (toPlanetDist * toPlanetDist);
+  float forceY = (100000.0 * toPlanetY) / (toPlanetDist * toPlanetDist);
+
+  // Motion on planet 
+  if (toPlanetDist <= playerHeight + 1.0) {
+
+    // float px, py;
+    // microPhysicsBodyGetPosition(player_body_id, &px, &py);
+    float vx, vy;
+    microPhysicsBodyGetVelocity(player_body_id, &vx, &vy);
+    
+    // Motion
+    if (player_state == PLAYER_STATE_WALK) {
+      if (player_direction == PLAYER_DIRECTION_RIGHT) {
+        forceX += toPlanetNormY * 150000.0 * dt;
+        forceY += -toPlanetNormX * 150000.0 * dt;
+      } else {
+        forceX += -toPlanetNormY * 150000.0 * dt;
+        forceY += toPlanetNormX * 150000.0 * dt;
+      }
+    }
+
+    if (playerJump) {
+      forceX += -toPlanetNormX * 4000.0;
+      forceY += -toPlanetNormY * 4000.0;
+      playerJump = 0;
+    }
+
+    vx *= 0.70;
+    vy *= 0.70;
+    microPhysicsBodySetVelocity(player_body_id, vx, vy);
+    
+    // microPhysicsBodySetPosition(player_body_id, px, py);
+  }
+  
+  microPhysicsBodySetForce(player_body_id, forceX, forceY);
 
   // Update animation
   CAnimation* animation = (CAnimation*)microECSEntityGetComponent(player_entity_id, cid_animation);
@@ -159,16 +147,10 @@ void playerUpdate(int entityId, float dt)
     }
   }
   player_state = PLAYER_STATE_IDLE;
-
-  // Adjust sprite rotation
-  CTransform* t = (CTransform*)microECSEntityGetComponent(player_entity_id, cid_transform);
-  float outVecX = position->x - planetX;
-  float outVecY = position->y - planetY;
-  float outVecLen = sqrt(outVecX * outVecX + outVecY * outVecY);
-  outVecX /= outVecLen;
-  outVecY /= outVecLen;
-  playerRotation = atan2(outVecY, outVecX) * 180.0 / M_PI + 90.0;
-  t->rotation = playerRotation;
+  
+  CPlanetaryAlignment* pa = (CPlanetaryAlignment*)microECSEntityGetComponent(player_entity_id, cid_planetary_alignment);
+  pa->planet_x = planetX;
+  pa->planet_y = planetY;
 }
 
 void PlayerGetPos(float *x, float *y)
@@ -196,80 +178,75 @@ void PlayerEntityAdd()
   // Position component
   int viewportWidth, viewportHeight;
   microWindowGetSize(&viewportWidth, &viewportHeight);
-  CPosition position = {
+  microECSEntityAddComponent(player_entity_id, cid_position, &(CPosition){
     .x = viewportWidth/2.0,
-    .y = viewportHeight/2.0,
-  };
-  microECSEntityAddComponent(player_entity_id, cid_position, &position);
+    .y = viewportHeight/2.0 - 100.0,
+  });
   
   // Body component
-  CBody body = {
-    .velX = 0.0,
-    .velY = 0.0,
-    .mass = 1.0,
-    .isStatic = 0,
-    .restitution = 0.0,
-    .forceX = 0.0,
-    .forceY = 0.0,
-    .radius = PLAYER_WIDTH/2.0,
-  };
-  microECSEntityAddComponent(player_entity_id, cid_body, &body);
+  printf("viewportWidth: %d, viewportHeight: %d\n", viewportWidth, viewportHeight);
+  player_body_id = microPhysicsBodyNewCircle(0, viewportWidth/2.0, viewportHeight/2.0 - 100.0, PLAYER_WIDTH/2.0, 1.0, 0, 1.0, 0.0, 1.0);
+  microECSEntityAddComponent(player_entity_id, cid_body, &(CBody) {
+      .body_id = player_body_id,
+  });
   
   // Sprite component
   //int textureId = microResourceLoad("player", "./res/robot.png", "texture");
   int textureId = microTextureLoadFromFile("./res/robot.png");
   microTextureSetFilter(textureId, MICRO_FILTER_NEAREST);
-  CSprite sprite = {
+
+  microECSEntityAddComponent(player_entity_id, cid_sprite, &(CSprite){
     .textureId = textureId,
     .tx = 0,
     .ty = 0,
     .tw = 16,
     .th = 16,
-  };
-  microECSEntityAddComponent(player_entity_id, cid_sprite, &sprite);
+  });
 
   // Transform component
-  CTransform transform = {
+  microECSEntityAddComponent(player_entity_id, cid_transform, &(CTransform){
     .width = PLAYER_WIDTH,
     .height = PLAYER_HEIGHT,
     .originX = PLAYER_WIDTH/2.0,
     .originY = PLAYER_HEIGHT/2.0,
     .rotation = 0.0,
-  };
-  microECSEntityAddComponent(player_entity_id, cid_transform, &transform);
+  });
 
   // Color component
-  CColor color = {
+  microECSEntityAddComponent(player_entity_id, cid_color, &(CColor){
     .r = 1.0,
     .g = 1.0,
     .b = 1.0,
     .a = 1.0,
-  };
-  microECSEntityAddComponent(player_entity_id, cid_color, &color);
+  });
 
   // Layer component
-  CDrawable drawable = {
+  microECSEntityAddComponent(player_entity_id, cid_drawable, &(CDrawable){
     .layerId = 4,
-  };
-  microECSEntityAddComponent(player_entity_id, cid_drawable, &drawable);
+  });
 
   // Animation component
-  CAnimation animation = {
-    .animationId = player_walk_l,
+  microECSEntityAddComponent(player_entity_id, cid_animation, &(CAnimation){
+    .animationId = player_idle_l,
     .frameId = 0,
     .timeSinceLastFrame = 0,
-  };
-  microECSEntityAddComponent(player_entity_id, cid_animation, &animation);
+  });
 
   // Update component
-  CUpdate update = {
+  microECSEntityAddComponent(player_entity_id, cid_update, &(CUpdate){
     .update = playerUpdate,
-  };
-  microECSEntityAddComponent(player_entity_id, cid_update, &update);
+  });
 
   // Lock on view component
-  CLockOnView lockOnView = {
+  microECSEntityAddComponent(player_entity_id, cid_lock_on_view, &(CLockOnView){
     .followRotation = 1,
-  };
-  microECSEntityAddComponent(player_entity_id, cid_lock_on_view, &lockOnView);
+  });
+  
+  // Planetary alignment component
+  float planetX, planetY;
+  PlanetGetPos(&planetX, &planetY);
+  microECSEntityAddComponent(player_entity_id, cid_planetary_alignment, &(CPlanetaryAlignment) {
+    .planet_x = planetX,
+    .planet_y = planetY,
+  });
 }

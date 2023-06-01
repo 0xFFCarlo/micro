@@ -1,0 +1,13 @@
+#ifndef CUSTOM_COMPONENTS_H
+#define CUSTOM_COMPONENTS_H
+
+typedef struct {
+  float planet_x, planet_y; 
+} CPlanetaryAlignment;
+
+extern int cid_planetary_alignment;
+extern void RegisterCPlanetaryAlignment();
+
+extern void RegisterCustomComponents();
+
+#endif /* end of include guard: CUSTOM_COMPONENTS_H */
