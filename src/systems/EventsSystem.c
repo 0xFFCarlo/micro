@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include "EventsSystem.h"
 #include "../components/LogicComponents.h"
-#include "../ECS.h"
+#include "../micro/ECS.h"
 
 void eventsSystem(float dt) {
   

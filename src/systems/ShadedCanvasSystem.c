@@ -1,9 +1,9 @@
 
 
 #include "ShadedCanvasSystem.h"
-#include "../Graphics.h"
+#include "../micro/Graphics.h"
 #include "../components/RenderingComponents.h"
-#include "../ECS.h"
+#include "../micro/ECS.h"
 #include <stdlib.h>
 
 void shadedCanvasSystem(float dt) {

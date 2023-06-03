@@ -1,8 +1,8 @@
 #include "RenderingSystem.h"
-#include "../Graphics.h"
+#include "../micro/Graphics.h"
 #include "../components/MotionComponents.h"
 #include "../components/RenderingComponents.h"
-#include "../ECS.h"
+#include "../micro/ECS.h"
 #include <stdio.h>
 
 int sprite_system_query = -1;

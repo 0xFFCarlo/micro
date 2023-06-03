@@ -1,9 +1,9 @@
 #include <stdlib.h>
 #include "PhysicsSystem.h"
 #include "../components/MotionComponents.h"
-#include "../ECS.h"
+#include "../micro/ECS.h"
 #include <math.h>
-#include "../Physics.h"
+#include "../micro/Physics.h"
 
 int world_id = 0;
 

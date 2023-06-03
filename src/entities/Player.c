@@ -4,10 +4,10 @@
 #include "../components/LogicComponents.h"
 #include "../components/MotionComponents.h"
 #include "../components/CustomComponents.h"
-#include "../Resources.h"
-#include "../Graphics.h"
-#include "../ECS.h"
-#include "../Physics.h"
+#include "../micro/Resources.h"
+#include "../micro/Graphics.h"
+#include "../micro/ECS.h"
+#include "../micro/Physics.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
@@ -81,11 +81,12 @@ void playerUpdate(int entityId, float dt)
   float toPlanetDist = sqrt(toPlanetX * toPlanetX + toPlanetY * toPlanetY);
   toPlanetNormX = toPlanetX / toPlanetDist;
   toPlanetNormY = toPlanetY / toPlanetDist;
-  float playerHeight = PlanetGetRadius() * viewHeight / 2.0 + PLAYER_HEIGHT/2.0 - GROUND_HEIGHT;
+  float playerHeight = PlanetGetRadius() / 2.0 + PLAYER_HEIGHT/2.0 - GROUND_HEIGHT;
   
-  // Gravity
-  float forceX = (100000.0 * toPlanetX) / (toPlanetDist * toPlanetDist);
-  float forceY = (100000.0 * toPlanetY) / (toPlanetDist * toPlanetDist);
+  float forceX = toPlanetNormX * 200.0;
+  float forceY = toPlanetNormY * 200.0;
+  // float forceX, forceY;
+  // microPhysicsBodyGetForce(player_body_id, &forceX, &forceY);
 
   // Motion on planet 
   if (toPlanetDist <= playerHeight + 1.0) {
@@ -248,4 +249,10 @@ void PlayerEntityAdd()
     .planet_x = planetX,
     .planet_y = planetY,
   });
+
+  // Gravity component
+  // microECSEntityAddComponent(player_entity_id, cid_gravity, &(CGravity) {
+  //   .x = planetX,
+  //   .y = planetY,
+  // });
 }

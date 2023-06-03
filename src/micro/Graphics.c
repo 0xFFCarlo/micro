@@ -123,6 +123,7 @@ static unsigned int vao;
 static unsigned int vbo, cbo, tbo;
 static int countverts;
 static int wireframe;
+static RenderingDebugInfo debugInfo;
 
 //view infos
 float viewViewportX, viewViewportY, viewViewportW, viewViewportH;
@@ -483,7 +484,7 @@ int microFontLoadFromFile(const char *filepath, unsigned int fontSize, int filte
     int x = 0;
     int y = 0;
     int ascent;
-    const unsigned int padding = 1;
+    const unsigned int padding = 3;
     stbtt_GetFontVMetrics(&font, &ascent, 0, 0);
     ascent *= scale;
     int glyphOffset[128-32];
@@ -516,9 +517,9 @@ int microFontLoadFromFile(const char *filepath, unsigned int fontSize, int filte
                 int px = x + j;
                 int py = y + i;
                 if (px >= 0 && px < MICRO_FONT_TEXTURE_SIZE && py >= 0 && py < MICRO_FONT_TEXTURE_SIZE) {
-                    buffer[(py * MICRO_FONT_TEXTURE_SIZE + px) * 4 + 0] = bitmap[i * width + j];
-                    buffer[(py * MICRO_FONT_TEXTURE_SIZE + px) * 4 + 1] = bitmap[i * width + j];
-                    buffer[(py * MICRO_FONT_TEXTURE_SIZE + px) * 4 + 2] = bitmap[i * width + j];
+                    buffer[(py * MICRO_FONT_TEXTURE_SIZE + px) * 4 + 0] = 255;
+                    buffer[(py * MICRO_FONT_TEXTURE_SIZE + px) * 4 + 1] = 255;
+                    buffer[(py * MICRO_FONT_TEXTURE_SIZE + px) * 4 + 2] = 255;
                     buffer[(py * MICRO_FONT_TEXTURE_SIZE + px) * 4 + 3] = bitmap[i * width + j];
                 }
             }
@@ -727,6 +728,7 @@ void microShaderApply(int shaderId)
   if (currentShader == shaderId) return;
   glUseProgram(microShaders[shaderId].programId);
   currentShader = shaderId;
+  debugInfo.shaderSwitches++;
 }
 
 void microShaderSetUniform(const char *name, ...)
@@ -1040,6 +1042,12 @@ void microGraphicsInit()
           sizeof(microAnimations) +
           sizeof(microFonts)
           ) / (double)(1024)));
+  
+  //Clear debug info
+  debugInfo.drawCalls = 0;
+  debugInfo.triangles = 0;
+  debugInfo.textureSwitches = 0;
+  debugInfo.shaderSwitches = 0;
 }
 
 void microGraphicsQuit()
@@ -1075,6 +1083,9 @@ void microGraphicsRenderToCanvas(int canvasId)
 void microGraphicsDisplay()
 {
   if (!countverts) return;
+
+  debugInfo.drawCalls++;
+  debugInfo.triangles += countverts / 3;
 	
   //Create vertex buffer
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -1109,6 +1120,7 @@ void microGraphicsDraw(int textureId, float x, float y, float x2, float y2,
     if (currentTexture != textureId) {
       microGraphicsDisplay();
       microGLStateBindTexture(textureId);
+      debugInfo.textureSwitches++;
     }
   }
 
@@ -1314,13 +1326,14 @@ void microGraphicsDrawText(int fontId, const char *text,
   ascent *= scale;
   assert(isnan(ascent) == 0);
   
-  char prevChar = 32;
+  char prevChar = '\n';
   for (unsigned int i = 0; i < textLen; i++)
   {
     const char c = text[i];
     if (c == '\n') {
       y += ascent + lineSpacing;
       x = startX;
+      prevChar = c;
       continue;
     }
     assert((int)c >= 32 && (int)c <= 126);
@@ -1338,19 +1351,20 @@ void microGraphicsDrawText(int fontId, const char *text,
     const float th = y1 - y0;
 
     // Added kerning adjustment
-    if (prevChar > 0) {
+    if (prevChar != '\n') {
       float kerning = stbtt_GetCodepointKernAdvance(fontInfo, prevChar, c) * scale;
       assert(isnan(kerning) == 0);
       x += kerning;
     }
-
-    // Apply the left side bearing and the bitmap box offsets
-    x += lsb * scale;
+    
+    // Apply the left side bearing to the next character
+    if (prevChar != '\n')
+      x += lsb * scale;
     
     // Draw glyph
     microGraphicsDrawRect(microFontGetTextureId(fontId), tx, ty, tw, th,
         x, y + y0, tw, th, r, g, b, a);
-    
+
     x += (advance - lsb) * scale;
     prevChar = c;
   }
@@ -1494,6 +1508,20 @@ float microViewGetRotation()
   return viewRotation;
 }
 
+RenderingDebugInfo microGetRenderingDebugInfo()
+{
+  return debugInfo;
+}
+
+void microRenderingDebugInfoClear()
+{
+  //Clear debug info
+  debugInfo.drawCalls = 0;
+  debugInfo.triangles = 0;
+  debugInfo.textureSwitches = 0;
+  debugInfo.shaderSwitches = 0;
+}
+
 void microWindowGetSize(int *width, int *height)
 {
   SDL_GetWindowSize(window, width, height);
@@ -1502,5 +1530,22 @@ void microWindowGetSize(int *width, int *height)
 void microSwapBuffers()
 {
   SDL_GL_SwapWindow(window);
-  //SDL_Delay(16);
+}
+
+Uint32 lastTime = 0;
+float microGraphicsDelayToNextFrame(float target_fps)
+{
+    //If frame finished early
+    int frame_time = SDL_GetTicks() - lastTime;
+    if (1000 / 70 > frame_time) {
+      //Wait the remaining time
+      SDL_Delay(1000 / 70 - frame_time);
+    }
+
+    // Calculate delta time
+    frame_time = SDL_GetTicks() - lastTime;
+    float deltaTime = (float)frame_time / 1000.0;
+    lastTime = SDL_GetTicks();
+
+    return deltaTime;
 }

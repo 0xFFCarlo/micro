@@ -75,6 +75,7 @@ int microPhysicsBodyNewCircle(int worldId, float cx, float cy, float radius, flo
   cpShapeSetCollisionType(shape, 0);
   cpShapeSetSensor(shape, 0);
   cpShapeSetUserData(shape, NULL);
+  cpShapeSetMass(shape, mass);
   vector_push_back(&world->shapes, &shape);
   return world->shapes.size - 1;
 }
@@ -125,6 +126,24 @@ int microPhysicsBodiesCount()
     count += world->shapes.size;
   }
   return count;
+}
+
+void microPhysicsBodySetMass(int bodyId, float mass)
+{
+  const int worldId = bodyId >> 16;
+  const int shapeId = bodyId & 0xFFFF;
+  World* world = &((World*)worlds.data)[worldId];
+  cpShape* shape = world->shapes.data[shapeId];
+  cpShapeSetMass(shape, mass);
+}
+
+float microPhysicsBodyGetMass(int bodyId)
+{
+  const int worldId = bodyId >> 16;
+  const int shapeId = bodyId & 0xFFFF;
+  World* world = &((World*)worlds.data)[worldId];
+  cpShape* shape = world->shapes.data[shapeId];
+  return cpShapeGetMass(shape);
 }
 
 void microPhysicsBodySetPosition(int bodyId, float x, float y)

@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include "LogicComponents.h"
-#include "../ECS.h"
+#include "../micro/ECS.h"
 
 int cid_update = -1;
 int cid_event_listener = -1;

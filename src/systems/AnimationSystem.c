@@ -1,7 +1,7 @@
 #include "AnimationSystem.h"
 #include "../components/RenderingComponents.h"
-#include "../ECS.h"
-#include "../Graphics.h"
+#include "../micro/ECS.h"
+#include "../micro/Graphics.h"
 #include <stdlib.h>
 
 void animationSystem(float dt) {

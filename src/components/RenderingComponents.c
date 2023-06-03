@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include "RenderingComponents.h"
-#include "../ECS.h"
+#include "../micro/ECS.h"
 
 int cid_sprite = -1;
 int cid_text = -1;

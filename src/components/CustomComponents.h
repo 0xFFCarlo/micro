@@ -8,6 +8,14 @@ typedef struct {
 extern int cid_planetary_alignment;
 extern void RegisterCPlanetaryAlignment();
 
+
+typedef struct {
+  float x, y;
+} CGravity;
+
+extern int cid_gravity;
+extern void RegisterCGravity();
+
 extern void RegisterCustomComponents();
 
 #endif /* end of include guard: CUSTOM_COMPONENTS_H */

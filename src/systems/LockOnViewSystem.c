@@ -3,8 +3,8 @@
 #include "LockOnViewSystem.h"
 #include "../components/MotionComponents.h"
 #include "../components/RenderingComponents.h"
-#include "../ECS.h"
-#include "../Graphics.h"
+#include "../micro/ECS.h"
+#include "../micro/Graphics.h"
 
 void lockOnViewSystem(float dt)
 {

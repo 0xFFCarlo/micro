@@ -2,10 +2,10 @@
 #include "../components/LogicComponents.h"
 #include "../components/MotionComponents.h"
 #include "../components/RenderingComponents.h"
-#include "../Resources.h"
-#include "../Graphics.h"
-#include "../ECS.h"
-#include "../Physics.h"
+#include "../micro/Resources.h"
+#include "../micro/Graphics.h"
+#include "../micro/ECS.h"
+#include "../micro/Physics.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
@@ -43,15 +43,17 @@ void updateLogGUI(int entityId, float dt)
   }
   logText[0] = '\0';
   int entities_count = microECSEntitiesCount();
-  int worlds = microPhysicsWorldsCount();
   int bodies = microPhysicsBodiesCount();
-  sprintf(logText, "FPS: %d\nEntities: %d\nBodies: %d", (int)fps, entities_count, worlds);
+  RenderingDebugInfo debugInfo = microGetRenderingDebugInfo();
+  sprintf(logText, "FPS: %d\nEntities: %d\nBodies: %d\nDrawcalls: %d\nTriangles: %d\nTexture switch: %d\nShader switch: %d",
+      (int)fps, entities_count, bodies, debugInfo.drawCalls, debugInfo.triangles, debugInfo.textureSwitches, debugInfo.shaderSwitches);
+  microRenderingDebugInfoClear();
 }
 
 
 void LogGUIAdd()
 {
-  font_id = microFontLoadFromFile("./res/FiraCode-Medium.ttf", 16, MICRO_FILTER_NEAREST);
+  font_id = microFontLoadFromFile("./res/firacode.ttf", 14, MICRO_FILTER_NEAREST);
 
   int entityText = microECSEntityNew(NULL, NULL);
   microECSEntityAddComponent(entityText, cid_position, &(CPosition){

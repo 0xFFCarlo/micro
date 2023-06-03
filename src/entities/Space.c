@@ -1,9 +1,9 @@
 #include "../components/MotionComponents.h"
 #include "../components/RenderingComponents.h"
 #include "../components/LogicComponents.h"
-#include "../Resources.h"
-#include "../Graphics.h"
-#include "../ECS.h"
+#include "../micro/Resources.h"
+#include "../micro/Graphics.h"
+#include "../micro/ECS.h"
 #include "Planet.h"
 #include <stdio.h>
 #include <assert.h>
@@ -56,7 +56,7 @@ void SpaceEntityAdd()
   float canvas_space_height = 512;
   float canvas_space_width = viewWidth * (canvas_space_height / viewHeight);
   float scale = viewWidth / canvas_space_width;
-  float planet_radius = PlanetGetRadius();
+  float planet_radius = PlanetGetRadius() / viewHeight;
   float view_angle = 0.0;
   float nebulaColor[3] = {0.57, 0.27, 0.41};
   float atmosphereMaxIntensity = 0.5;

@@ -91,6 +91,12 @@ extern void microCanvasFree(int canvasId);
 /////////////////////////////
 // Graphics
 /////////////////////////////
+typedef struct RenderingDebugInfo {
+  int drawCalls;
+  int triangles;
+  int textureSwitches;
+  int shaderSwitches;
+} RenderingDebugInfo;
 extern void microGraphicsInit();
 extern void microGraphicsQuit();
 extern void microGraphicsClear();
@@ -112,8 +118,12 @@ extern void microGraphicsDrawText(
     float x, float y, float lineSpacing, 
     float r, float g, float b, float a);
 
+extern RenderingDebugInfo microGetRenderingDebugInfo();
+extern void microRenderingDebugInfoClear();
 extern void microWindowGetSize(int *width, int *height);
 extern void microSwapBuffers();
 
+//CAP framerate and returns delta time in seconds
+extern float microGraphicsDelayToNextFrame(float target_fps);
 
 #endif

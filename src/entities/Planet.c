@@ -1,14 +1,13 @@
 #include "../components/MotionComponents.h"
 #include "../components/RenderingComponents.h"
 #include "../components/LogicComponents.h"
-#include "../Resources.h"
-#include "../Graphics.h"
-#include "../ECS.h"
-#include "../Physics.h"
+#include "../micro/Resources.h"
+#include "../micro/Graphics.h"
+#include "../micro/ECS.h"
+#include "../micro/Physics.h"
 #include <stdio.h>
 #include <assert.h>
 
-#define PLANET_RADIUS 1.5
 #define LIGHT_DEPTH 0.2
 
 int planet_id = -1;
@@ -20,7 +19,7 @@ int shadow_canvas_id = -1;
 
 float planetX = 0.0;
 float planetY = 0.0;
-float planetRadius = PLANET_RADIUS;
+float planetRadius = 800;
 float planetScaleFactor = 2.0;
 
 int planet_body_id = -1;
@@ -71,8 +70,8 @@ void setupPlanetEntity(int planetId)
   microViewGetSize(&viewWidth, &viewHeight);
 
   int shader_id;
-  float canvas_planet_height = (viewHeight * PLANET_RADIUS) / 2.0;
-  float canvas_planet_width = (viewHeight * PLANET_RADIUS) / 2.0;
+  float canvas_planet_height = planetRadius / 2.0;
+  float canvas_planet_width = planetRadius / 2.0;
   float planet_scale = planetScaleFactor;
 
   // Load shader and apply parameters
@@ -124,7 +123,7 @@ void setupPlanetEntity(int planetId)
       });
   
   // Body component
-  planet_body_id = microPhysicsBodyNewCircle(0, planetX, planetY, PlanetGetRadius() * viewHeight / 2.0 - 10, 1.0, 1, 1.0, 0.0, 1.0);
+  planet_body_id = microPhysicsBodyNewCircle(0, planetX, planetY, PlanetGetRadius()/2.0 - 10, 1.0, 1, 1.0, 0.0, 1.0);
   microECSEntityAddComponent(planetId, cid_body, &(CBody) {
       .body_id = planet_body_id,
       });
@@ -156,9 +155,9 @@ void setupShadow(int shadowId)
   microShaderApply(shadow_shader_id);
   microViewApply(); // send view matrix to shader
   microShaderSetUniform("resolution", canvas_posteffect_width, canvas_posteffect_height);
-  microShaderSetUniform("radius", PlanetGetRadius());
+  microShaderSetUniform("radius", PlanetGetRadius() / viewHeight);
   microShaderSetUniform("lightDepth", LIGHT_DEPTH);
-  microShaderSetUniform("planet_center", 0.0, 0.2 + PLANET_RADIUS);
+  microShaderSetUniform("planet_center", 0.0, 0.2 + PlanetGetRadius() / viewHeight);
   microShaderSetUniform("view_angle", 0.0);
   microShaderApply(current_shader);
 

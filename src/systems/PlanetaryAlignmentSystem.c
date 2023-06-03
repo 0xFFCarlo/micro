@@ -2,7 +2,7 @@
 #include "../components/CustomComponents.h"
 #include "../components/RenderingComponents.h"
 #include "../components/MotionComponents.h"
-#include "../ECS.h"
+#include "../micro/ECS.h"
 #include <math.h>
 
 void planetaryAligntmentSystem(float dt)
