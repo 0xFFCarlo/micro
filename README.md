@@ -6,8 +6,9 @@ Welcome to Micro, a C99 2D video game engine.
 
 This project depends on the following libraries:
 
-- SDL2
-- SDL2_mixer
+- SDL2: for handling window and user inputs
+- SDL2_mixer: for audio loading and playing
+- chipmunk: for 2D physics
 
 You will need to install these dependencies to be able to build the project. Here's how you can do it on some popular operating systems:
 
@@ -17,13 +18,13 @@ You can use the package manager `apt` to install the dependencies. Open a termin
 
 ```bash
 sudo apt update
-sudo apt install libsdl2-dev libsdl2-mixer-dev
+sudo apt install libsdl2-dev libsdl2-mixer-dev chipmunk-dev
 ```
 ### MacOS
 If you're on MacOS, you can use the brew package manager:
 
 ```bash
-brew install sdl2 sdl2_mixer
+brew install sdl2 sdl2_mixer chipmunk
 
 ```
 ### Windows
