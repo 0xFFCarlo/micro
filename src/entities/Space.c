@@ -34,7 +34,6 @@ void spaceUpdate(int spaceId, float dt)
   
   float normPlanetX = ((planetX - viewX) * 2.0) / windowHeight;
   float normPlanetY = ((planetY - viewY) * 2.0) / windowHeight;
-  float dist = sqrt(normPlanetX * normPlanetX + normPlanetY * normPlanetY);
 
   curr_time += dt * 0.03;
   
@@ -55,7 +54,6 @@ void SpaceEntityAdd()
   spaceId = microECSEntityNew(NULL, NULL);
   float canvas_space_height = 512;
   float canvas_space_width = viewWidth * (canvas_space_height / viewHeight);
-  float scale = viewWidth / canvas_space_width;
   float planet_radius = PlanetGetRadius() / viewHeight;
   float view_angle = 0.0;
   float nebulaColor[3] = {0.57, 0.27, 0.41};

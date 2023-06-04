@@ -8,8 +8,6 @@
 #include <stdio.h>
 #include <assert.h>
 
-#define LIGHT_DEPTH 0.2
-
 int planet_id = -1;
 int planet_shader_id = -1;
 int planet_canvas_id = -1;
@@ -21,6 +19,7 @@ float planetX = 0.0;
 float planetY = 0.0;
 float planetRadius = 800;
 float planetScaleFactor = 2.0;
+float planetLightDepth = 120;
 
 int planet_body_id = -1;
 
@@ -155,7 +154,7 @@ void setupShadow(int shadowId)
   microViewApply(); // send view matrix to shader
   microShaderSetUniform("resolution", canvas_posteffect_width, canvas_posteffect_height);
   microShaderSetUniform("radius", PlanetGetRadius() / viewHeight);
-  microShaderSetUniform("lightDepth", LIGHT_DEPTH);
+  microShaderSetUniform("lightDepth", planetLightDepth / viewHeight);
   microShaderSetUniform("planet_center", 0.0, 0.2 + PlanetGetRadius() / viewHeight);
   microShaderSetUniform("view_angle", 0.0);
   microShaderApply(current_shader);
