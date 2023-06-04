@@ -930,11 +930,16 @@ void microGraphicsInit()
     return;
   }
 
+  SDL_DisplayMode DM;
+  SDL_GetCurrentDisplayMode(0, &DM);
+  const unsigned int screenWidth = DM.w;
+  const unsigned int screenHeight = DM.h;
+
   //create window and opengl context
   window = SDL_CreateWindow("micro",
       SDL_WINDOWPOS_CENTERED,
       SDL_WINDOWPOS_CENTERED,
-      800, 600,
+      screenWidth, screenHeight,
       SDL_WINDOW_FULLSCREEN | SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN
       );
 
