@@ -115,9 +115,11 @@ void SpaceEntityAdd()
       });
   
   // Transform component
+  float viewportWidth, viewportHeight;
+  microViewGetViewport(&viewportWidth, &viewportHeight);
   microECSEntityAddComponent(spaceId, cid_transform, &(CTransform){ 
-      .width = canvas_space_width * scale,
-      .height = canvas_space_height * scale,
+      .width = viewportWidth,
+      .height = viewportHeight,
       .originX = 0,
       .originY = 0,
       .rotation = 0,

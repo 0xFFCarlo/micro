@@ -146,7 +146,6 @@ void setupShadow(int shadowId)
 
   float canvas_posteffect_height = 512.0;
   float canvas_posteffect_width = viewWidth * (canvas_posteffect_height / viewHeight);
-  float posteffect_scale = viewWidth / canvas_posteffect_width;
 
   // Load shader and apply parameters
   shadow_shader_id = microShaderLoadFromFile("./res/shaders/base_vert.glsl", "./res/shaders/shadow.glsl");
@@ -188,9 +187,11 @@ void setupShadow(int shadowId)
       .tw = texWidth,
       .th = texHeight,
       });
+  float viewportWidth, viewportHeight;
+  microViewGetViewport(&viewportWidth, &viewportHeight);
   microECSEntityAddComponent(shadowId, cid_transform, &(CTransform) {
-      .width = canvas_posteffect_width * posteffect_scale,
-      .height = canvas_posteffect_height * posteffect_scale,
+      .width = viewportWidth,
+      .height = viewportHeight,
       .originX = 0,
       .originY = 0,
       .rotation = 0,

@@ -60,6 +60,7 @@ extern void microViewSetSize(float width, float height);
 extern void microViewSetRotation(float rotation);
 extern void microViewGetCenter(float *centerX, float *centerY);
 extern void microViewGetSize(float *width, float *height);
+extern void microViewGetViewport(float *width, float *height);
 extern float microViewGetRotation();
 
 

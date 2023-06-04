@@ -1513,6 +1513,12 @@ float microViewGetRotation()
   return viewRotation;
 }
 
+void microViewGetViewport(float *width, float *height)
+{
+  *width = viewViewportW;
+  *height = viewViewportH;
+}
+
 RenderingDebugInfo microGetRenderingDebugInfo()
 {
   return debugInfo;

@@ -25,7 +25,9 @@ void gameStateInit()
 {
   int windowWidth, windowHeight;
   microWindowGetSize(&windowWidth, &windowHeight);
-
+  
+  int vpheight = 600;
+  int vpwidth = vpheight * ((float)windowWidth/ (float)windowHeight);
   microViewSet((MicroView){
       .viewportX = 0,
       .viewportY = 0,
@@ -33,8 +35,8 @@ void gameStateInit()
       .viewportHeight = windowHeight,
       .centerX = windowWidth/2.0,
       .centerY = windowHeight/2.0,
-      .width = windowWidth,
-      .height = windowHeight,
+      .width = vpwidth,
+      .height = vpheight,
       .rotation = 0,
       .flipY = 0
       });

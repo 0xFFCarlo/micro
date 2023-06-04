@@ -53,7 +53,7 @@ void updateLogGUI(int entityId, float dt)
 
 void LogGUIAdd()
 {
-  font_id = microFontLoadFromFile("./res/firacode.ttf", 14, MICRO_FILTER_NEAREST);
+  font_id = microFontLoadFromFile("./res/firacode.ttf", 20, MICRO_FILTER_NEAREST);
 
   int entityText = microECSEntityNew(NULL, NULL);
   microECSEntityAddComponent(entityText, cid_position, &(CPosition){
