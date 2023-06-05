@@ -7,6 +7,7 @@
 #include "../micro/Physics.h"
 #include <stdio.h>
 #include <assert.h>
+#include "../util/perlin_noise.h"
 
 int planet_id = -1;
 int planet_shader_id = -1;
@@ -61,6 +62,38 @@ void planetUpdate(int planetId, float dt)
   //microShaderSetUniform("view_center", normViewX, normViewY);
   microShaderSetUniform("view_angle", viewAngle);
   microShaderApply(0);
+  
+  CShadedCanvas* canvas = microECSEntityGetComponent(shadow_id, cid_shadedCanvas);
+  canvas->needsUpdate = 1;
+}
+
+unsigned char* makePlanetTexture(int width, int height)
+{
+  unsigned char* texture = (unsigned char*)malloc(width * height * 4);
+  for (int x = 0; x < width; x++) {
+    for (int y = 0; y < height; y++) {
+      float distX = (float)x - (float)width / 2.0;
+      float distY = (float)y - (float)height / 2.0;
+      float distNorm = sqrt(distX * distX + distY * distY) / ((float)width * 0.5);
+      // distNorm += noise2((float)x / 100.0, (float)y / 100.0) * 0.04;
+
+      //Compute color
+      float f = 20.0;
+      float r = (noise2((float)x / f, (float)y / f) + 1.0) * 0.5;
+      float r2 = ((double)rand() / (double)RAND_MAX -0.5) * 2.0;
+      int r_quant = (0.3 + r * 0.2 + r2 * 0.15) * 255;
+      // int r_q_reduced = floor((float)r_quant / 3) * 3;
+      int r_q_reduced = r_quant;
+      texture[(y * width + x) * 4 + 0] = r_q_reduced;
+      texture[(y * width + x) * 4 + 1] = r_q_reduced;
+      texture[(y * width + x) * 4 + 2] = r_q_reduced;
+      
+      //Compute alpha
+      texture[(y * width + x) * 4 + 3] = 255 * (distNorm < 1.0);
+    }
+  }
+
+  return texture;
 }
 
 void setupPlanetEntity(int planetId)
@@ -74,13 +107,13 @@ void setupPlanetEntity(int planetId)
   float planet_scale = planetScaleFactor;
 
   // Load shader and apply parameters
-  shader_id = microShaderLoadFromFile("./res/shaders/base_vert.glsl", "./res/shaders/planet.glsl");
-  assert(shader_id != -1);
-  int current_shader = microShaderGetCurrent();
-  microShaderApply(shader_id);
-  microViewApply(); // send view matrix to shader
-  microShaderSetUniform("resolution", canvas_planet_width, canvas_planet_height);
-  microShaderApply(current_shader);
+  // shader_id = microShaderLoadFromFile("./res/shaders/base_vert.glsl", "./res/shaders/planet.glsl");
+  // assert(shader_id != -1);
+  // int current_shader = microShaderGetCurrent();
+  // microShaderApply(shader_id);
+  // microViewApply(); // send view matrix to shader
+  // microShaderSetUniform("resolution", canvas_planet_width, canvas_planet_height);
+  // microShaderApply(current_shader);
 
   // Position component
   planetX = viewWidth / 2.f;
@@ -91,16 +124,19 @@ void setupPlanetEntity(int planetId)
       });
 
   // Shaded canvas component
-  planet_canvas_id = microCanvasCreate(canvas_planet_width, canvas_planet_height);
-  microECSEntityAddComponent(planetId, cid_shadedCanvas, &(CShadedCanvas) {
-      .canvasId = planet_canvas_id,
-      .shaderId = shader_id,
-      .width = canvas_planet_width,
-      .height = canvas_planet_height,
-      });
+  // planet_canvas_id = microCanvasCreate(canvas_planet_width, canvas_planet_height);
+  // microECSEntityAddComponent(planetId, cid_shadedCanvas, &(CShadedCanvas) {
+  //     .canvasId = planet_canvas_id,
+  //     .shaderId = shader_id,
+  //     .width = canvas_planet_width,
+  //     .height = canvas_planet_height,
+  //     .needsUpdate = 1,
+  //     });
 
   // Sprite component
-  int textureId = microCanvasGetTextureId(planet_canvas_id);
+  // int textureId = microCanvasGetTextureId(planet_canvas_id);
+  unsigned char* texture = makePlanetTexture(canvas_planet_width, canvas_planet_height);
+  int textureId = microTextureLoadFromMemory(texture, canvas_planet_width, canvas_planet_height, 4, MICRO_FILTER_NEAREST);
   microTextureSetFilter(textureId, MICRO_FILTER_NEAREST);
   int texWidth, texHeight;
   microTextureGetSize(textureId, &texWidth, &texHeight);
@@ -172,6 +208,7 @@ void setupShadow(int shadowId)
       .shaderId = shadow_shader_id,
       .width = canvas_posteffect_width,
       .height = canvas_posteffect_height,
+      .needsUpdate = 1,
       });
 
   // Sprite component

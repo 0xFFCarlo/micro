@@ -191,8 +191,8 @@ void PlayerEntityAdd()
   });
   
   // Sprite component
-  //int textureId = microResourceLoad("player", "./res/robot.png", "texture");
-  int textureId = microTextureLoadFromFile("./res/robot.png");
+  //int textureId = microTextureLoadFromFile("./res/robot.png");
+  int textureId = microTextureLoadFromFile("./res/player.png");
   microTextureSetFilter(textureId, MICRO_FILTER_NEAREST);
 
   microECSEntityAddComponent(player_entity_id, cid_sprite, &(CSprite){

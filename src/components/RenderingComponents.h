@@ -63,6 +63,7 @@ typedef struct {
   int width, height;
   int shaderId;
   int canvasId;
+  unsigned char needsUpdate;
 } CShadedCanvas;
 
 extern int cid_shadedCanvas;

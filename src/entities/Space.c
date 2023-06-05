@@ -43,6 +43,9 @@ void spaceUpdate(int spaceId, float dt)
   microShaderSetUniform("view_angle", viewAngle);
   microShaderSetUniform("time", curr_time);
   microShaderApply(0);
+
+  CShadedCanvas* canvas = microECSEntityGetComponent(spaceId, cid_shadedCanvas);
+  canvas->needsUpdate = 1;
 }
 
 void SpaceEntityAdd()
@@ -97,6 +100,7 @@ void SpaceEntityAdd()
       .shaderId = space_shader_id,
       .width = canvas_space_width,
       .height = canvas_space_height,
+      .needsUpdate = 1,
       });
 
   // Sprite component

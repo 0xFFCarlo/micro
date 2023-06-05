@@ -18,6 +18,7 @@ void shadedCanvasSystem(float dt) {
   //Update all shaded canvases
   for (int i = 0; i < components_count; i++) {
     CShadedCanvas* scanvas = &components_shaded_canvas[i];
+    if (scanvas->needsUpdate == 0) continue;
     microGraphicsRenderToCanvas(scanvas->canvasId);
     microGraphicsClear(0, 0, 0, 0);
     microShaderApply(scanvas->shaderId);
@@ -39,6 +40,7 @@ void shadedCanvasSystem(float dt) {
     microTextureGetSize(textureId, &texWidth, &texHeight);
     microGraphicsDrawRect(textureId, 0, 0, texWidth, texHeight, 0, 0, scanvas->width, scanvas->height, 1.0, 1.0, 1.0, 1.0);
     microGraphicsDisplay();
+    scanvas->needsUpdate = 0;
   }
   
   //Restore old view and shader
