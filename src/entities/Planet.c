@@ -101,7 +101,6 @@ void setupPlanetEntity(int planetId)
   float viewWidth, viewHeight;
   microViewGetSize(&viewWidth, &viewHeight);
 
-  int shader_id;
   float canvas_planet_height = planetRadius / 2.0;
   float canvas_planet_width = planetRadius / 2.0;
   float planet_scale = planetScaleFactor;

@@ -24,25 +24,10 @@ void animationSystem(float dt) {
     }
 
     // Update texture source
-    int startX, startY, width, height;
-    microAnimationGetStart(animation->animationId, &startX, &startY);
-    microAnimationGetFrameSize(animation->animationId, &width, &height);
-    int flipX = microAnimationGetFlipX(animation->animationId);
-    int flipY = microAnimationGetFlipY(animation->animationId);
-
-    sprite->tx = startX + animation->frameId * width;
-    sprite->ty = startY;
-    sprite->tw = width;
-    sprite->th = height;
-
-    if (flipX) {
-      sprite->tx += width;
-      sprite->tw = -width;
-    }
-
-    if (flipY) {
-      sprite->ty += height;
-      sprite->th = -height;
-    }
+    MicroTextureSource source = microAnimationGetFrame(animation->animationId, animation->frameId);
+    sprite->tx = source.x;
+    sprite->ty = source.y;
+    sprite->tw = source.w;
+    sprite->th = source.h;
   }
 }

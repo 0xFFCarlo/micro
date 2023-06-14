@@ -10,8 +10,13 @@
 #include <OpenGL/gl3.h>
 #endif
 #include <math.h>
+#include <dirent.h>
 
 #include "Graphics.h"
+
+#define STB_RECT_PACK_IMPLEMENTATION
+#include "stb_rect_pack.h"
+
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
@@ -23,6 +28,7 @@
 #define MICRO_MAX_SHADERS 64
 #define MICRO_MAX_FONTS 64
 #define MICRO_MAX_ANIMATIONS 64
+#define MICRO_MAX_ATLASES 16
 
 #define MICRO_MAX_ATTRIBUTES 16
 #define MICRO_MAX_UNIFORMS 16
@@ -30,6 +36,9 @@
 #define MICRO_VERTEX_BUFFER_SIZE (6 * 256)
 #define MICRO_MAX_SHADER_LEN 8000
 #define MICRO_FONT_TEXTURE_SIZE 512
+
+#define MICRO_ATLAS_MAX_WIDTH 2048
+#define MICRO_ATLAS_MAX_HEIGHT 2048
 
 //GL states
 static int currentTexture = 0;
@@ -64,8 +73,7 @@ static microCanvas microCanvases[MICRO_MAX_CANVASES];
 
 typedef struct microAnimation {
   char name[MICRO_MAX_NAME_LEN];
-  int startX, startY;
-  int frameWidth, frameHeight;
+  int* frames;
   int framesCount;
   float animationSpeed;
   int flipX, flipY;
@@ -81,6 +89,15 @@ typedef struct microFont {
 } microFont;
 static microFont microFonts[MICRO_MAX_FONTS];
 static int microFontsCount = 0;
+
+typedef struct microAtlas {
+  int textureId;
+  int width, height;
+  char** framesNames;
+  MicroTextureSource* frames;
+  int framesCount;
+} microAtlas;
+static microAtlas microAtlases[MICRO_MAX_ATLASES];
 
 //shader stuff
 static const char baseVertexShaderSrc[] = "#version 330 core\n"
@@ -159,52 +176,27 @@ void microGLCheckErrors()
 ////////////////////////////
 //TEXTURE
 ////////////////////////////
+int microBitmapLoadFromFile(const char *filepath, unsigned char **data,
+    unsigned int *width, unsigned int *height, unsigned int *channels)
+{
+  int w, h, c;
+  unsigned char* img = stbi_load(filepath, &w, &h, &c, 0);
+  if (img == NULL) return -1;
+  *data = img;
+  *width = w;
+  *height = h;
+  *channels = c;
+  return 0;
+}
+
 int microTextureLoadFromFile(const char* filepath)
 {
-  //Variables
-  int stbi_fmt = STBI_rgb_alpha;
-  int fsize = 0;
-
-  //Open file
-  FILE* file = fopen(filepath, "rb");
-
-  if (!file) {
-    printf("Error: can't open the file %s\n", filepath);
-    fclose(file);
-    return -1;
-  }
-
-  //Get file size
-  fseek(file, 0L, SEEK_END);
-  fsize = (int)ftell(file);
-
-  //Seek to the beginning
-  fseek(file, 0L, SEEK_SET);
-
-  //Read all the file into filedata
-  stbi_uc* fileData = (stbi_uc*)malloc(sizeof(stbi_uc) * fsize);
-  fread(fileData, sizeof(stbi_uc) * fsize, 1, file);
-  fclose(file);
-
-  //Get the image data
-  int width;
-  int height;
-  int channels;
-  unsigned char* data;
-  data = stbi_load_from_memory(fileData, fsize, &width, &height, &channels, stbi_fmt);
-  channels = 4;
-
-  //Free the filedata
-  free(fileData);
-
-  //Check for stb_image fail
-  if (data == NULL) {
-    printf("Error: can't generate texture\n");
-    printf("Details : %s\n", stbi_failure_reason());
-    return -1;
-  }
-  
-  return microTextureLoadFromMemory(data, width, height, channels, GL_LINEAR);
+  unsigned char* data; 
+  unsigned int width, height, channels;
+  if (microBitmapLoadFromFile(filepath, &data, &width, &height, &channels) != 0) return -1;
+  int id = microTextureLoadFromMemory(data, width, height, channels, MICRO_FILTER_LINEAR);
+  free(data);
+  return id;
 }
 
 int microTextureLoadFromMemory(const unsigned char *data, const unsigned int width, const unsigned int height, const unsigned int channels, const unsigned int filter)
@@ -298,6 +290,191 @@ void microTextureFree(int textureId)
 }
 
 
+/////////////////////////////
+/// Texture Atlas
+/////////////////////////////
+// TODO: sort frames by name in alphabetic order so that we can use binary search
+int microTextureAtlasLoadFromPath(const char *filepath)
+{
+  struct dirent *entry;
+  DIR *dir = opendir(filepath);
+
+  if (dir == NULL) {
+    printf("Error opening directory\n");
+    return -1;
+  }
+
+  stbrp_rect rects[512];
+  char *filepaths[512];
+  char filenames[512][MICRO_MAX_NAME_LEN];
+  const unsigned int padding = 1;
+
+  // 1. Store all frames and filepaths of images
+  int frameCount = 0;
+  while ((entry = readdir(dir)) != NULL) {
+    
+    // Skip `.` and `..` and `.DS_Store`
+    if(strcmp(entry->d_name, ".") == 0 ||
+       strcmp(entry->d_name, "..") == 0 ||
+       strcmp(entry->d_name, ".DS_Store") == 0
+       )
+      continue; 
+
+    // Check if it's a png or jpeg
+    if (strstr(entry->d_name, ".png") == NULL &&
+        strstr(entry->d_name, ".jpg") == NULL &&
+        strstr(entry->d_name, ".jpeg") == NULL)
+      continue;
+
+    // Store filepath
+    filepaths[frameCount] = malloc(strlen(filepath) + strlen(entry->d_name) + 2);
+    strcpy(filepaths[frameCount], filepath);
+    strcat(filepaths[frameCount], "/");
+    strcat(filepaths[frameCount], entry->d_name);
+
+    // Store filename without extension
+    assert(strlen(entry->d_name) < MICRO_MAX_NAME_LEN);
+    strcpy(filenames[frameCount], entry->d_name);
+    char *dot = strrchr(filenames[frameCount], '.');
+    if (dot) *dot = '\0';
+    
+    // Load image description and store it
+    stbi_info(filepaths[frameCount], &rects[frameCount].w, &rects[frameCount].h, NULL);
+    rects[frameCount].id = frameCount;
+    rects[frameCount].x = 0;
+    rects[frameCount].y = 0;
+
+    // Add padding
+    rects[frameCount].w += padding * 2;
+    rects[frameCount].h += padding * 2;
+    
+    frameCount++;
+    assert(frameCount < 512);
+  }
+  
+  // Sort frames by size
+  //qsort(rects, frameCount, sizeof(stbrp_rect), microAtlasSortBySize);
+
+  // 2. Pack frames into atlas
+  stbrp_context context;
+  stbrp_init_target(&context, MICRO_ATLAS_MAX_WIDTH, MICRO_ATLAS_MAX_HEIGHT, NULL, 0);
+  stbrp_pack_rects(&context, rects, frameCount);
+
+  // 3. Find atlas spot id
+  int spot = -1;
+  for (int i = 0; i < MICRO_MAX_ATLASES; i++) {
+    if (microAtlases[i].textureId == -1) {
+      spot = i;
+      break;
+    }
+  }
+  assert(spot != -1);
+  microAtlas* atlas = &microAtlases[spot];
+
+  // 4. Allocate the frames array and names
+  atlas->frames = malloc(frameCount * sizeof(MicroTextureSource));
+  atlas->framesNames = malloc(frameCount * sizeof(char*));
+  atlas->framesCount = frameCount;
+  atlas->width = MICRO_ATLAS_MAX_WIDTH;
+  atlas->height = MICRO_ATLAS_MAX_HEIGHT;
+  atlas->textureId = -1;
+  
+  // 5. Allocate bitmap for the atlas
+  const unsigned int atlasWidth = MICRO_ATLAS_MAX_WIDTH;
+  const unsigned int atlasHeight = MICRO_ATLAS_MAX_HEIGHT;
+  unsigned char *atlasData = malloc(atlasWidth * atlasHeight * 4);
+
+  // 6. Load each image and store it in the atlas
+  for (int frame_id = 0; frame_id < frameCount; frame_id++) {
+
+    const char* fullPath = filepaths[frame_id];
+    const char* name = filenames[frame_id];
+    const stbrp_rect* rect = &rects[frame_id];
+
+    int img_width, img_height, channels;
+    unsigned char *data = stbi_load(fullPath, &img_width, &img_height, &channels, 0);
+    if (data == NULL) {
+      printf("Error loading texture %s\n", fullPath);
+      continue;
+    }
+    
+    // Check if the texture is too big
+    if (img_width > atlasWidth || img_height > atlasHeight) {
+      printf("Error: texture %s is too big\n", fullPath);
+      abort();
+    }
+    
+    // Copy the bitmap to the atlas
+    for (int y = 0; y < img_height; y++) {
+      int ty = rect->x + padding + y;
+      int tx = rect->y + padding;
+      memcpy(&atlasData[tx + ty * atlasWidth], &data[y * img_width * channels], img_width * channels);
+    }
+
+    // Free the bitmap
+    stbi_image_free(data);
+      
+    // Store texture details 
+    MicroTextureSource source;
+    source.w = img_width;
+    source.h = img_height;
+    source.x = rect->x + padding;
+    source.y = rect->y + padding;
+    atlas->frames[frame_id] = source;
+    
+    // Store name without file extension
+    atlas->framesNames[frame_id] = malloc(strlen(name) + 1);
+    strcpy(atlas->framesNames[frame_id], name);
+  }
+
+  // 7. Create the texture atlas
+  int textureId = microTextureLoadFromMemory(atlasData, atlasWidth, atlasHeight, GL_RGBA, GL_NEAREST);
+  free(atlasData);
+  atlas->textureId = textureId;
+
+  // 8. Free the filepaths
+  for (int i = 0; i < frameCount; i++)
+    free(filepaths[i]);
+
+  // 9. Free the filenames
+  for (int i = 0; i < frameCount; i++)
+    free(filenames[i]);
+
+  // Close the directory
+  closedir(dir);
+
+  return spot;
+}
+
+MicroTextureSource microTextureAtlasGetRegion(int textureAtlasId, const char *name)
+{
+  // Find the frame id from the name
+  int frameId = -1;
+  for (int i = 0; i < microAtlases[textureAtlasId].framesCount; i++) {
+    if (strcmp(microAtlases[textureAtlasId].framesNames[i], name) == 0) {
+      frameId = i;
+      break;
+    }
+  }
+  assert(frameId != -1);
+  return microAtlases[textureAtlasId].frames[frameId];
+}
+
+int microTextureAtlasGetTextureId(int textureAtlasId)
+{
+  return microAtlases[textureAtlasId].textureId;
+}
+
+void microTextureAtlasFree(int textureAtlasId)
+{
+  microTextureFree(microAtlases[textureAtlasId].textureId);
+  for (int i = 0; i < microAtlases[textureAtlasId].framesCount; i++)
+    free(microAtlases[textureAtlasId].framesNames[i]);
+  free(microAtlases[textureAtlasId].framesNames);
+  free(microAtlases[textureAtlasId].frames);
+}
+
+
 
 ////////////////////////////
 //ANIMATION
@@ -350,29 +527,9 @@ void microAnimationLoadFromFile(const char *csv_filepath)
     int flipX = atoi(strtok(NULL, ","));
     int flipY = atoi(strtok(NULL, ","));
 
-    // Find spot in the resources buffer
-    int id = -1;
-    for (int i = 0; i < MICRO_MAX_ANIMATIONS; i++) {
-      if (microAnimations[i].framesCount == 0) {
-        id = i;
-        break;
-      }
-    }
-    assert(id != -1); 
-
-    // Create animation
-    assert(strlen(name) < MICRO_MAX_NAME_LEN);
-    strcpy(microAnimations[id].name, name);
-    microAnimations[id].startX = startX;
-    microAnimations[id].startY = startY;
-    microAnimations[id].frameWidth = frameWidth;
-    microAnimations[id].frameHeight = frameHeight;
-    microAnimations[id].framesCount = framesCount;
-    microAnimations[id].animationSpeed = animationSpeed;
-    microAnimations[id].flipX = flipX;
-    microAnimations[id].flipY = flipY;
+    microAnimationCreate(name, startX, startY, frameWidth, frameHeight, framesCount, animationSpeed, flipX, flipY);
   }
-  
+
   free(fileData);
 }
 
@@ -391,10 +548,55 @@ int microAnimationCreate(char* name, int startX, int startY, int frameWidth, int
   // create animation
   assert(strlen(name) < MICRO_MAX_NAME_LEN);
   strcpy(microAnimations[id].name, name);
-  microAnimations[id].startX = startX;
-  microAnimations[id].startY = startY;
-  microAnimations[id].frameWidth = frameWidth;
-  microAnimations[id].frameHeight = frameHeight;
+  microAnimation* animation = &microAnimations[id];
+  animation->frames = malloc(sizeof(int) * 4 * framesCount);
+  for (int i = 0; i < framesCount; i++) {
+    animation->frames[i * 4 + 0] = startX + i * frameWidth;
+    animation->frames[i * 4 + 1] = startY;
+    animation->frames[i * 4 + 2] = frameWidth;
+    animation->frames[i * 4 + 3] = frameHeight;
+    // Flip
+    if (flipX) {
+      animation->frames[i * 4 + 0] += frameWidth;
+      animation->frames[i * 4 + 2] = -frameWidth;
+    }
+
+    if (flipY) {
+      animation->frames[i * 4 + 1] += frameHeight;
+      animation->frames[i * 4 + 3] = -frameHeight;
+    }
+  }
+  microAnimations[id].framesCount = framesCount;
+  microAnimations[id].animationSpeed = animationSpeed;
+  microAnimations[id].flipX = flipX;
+  microAnimations[id].flipY = flipY;
+
+  return id;
+}
+
+int microAnimationCreateFromFrames(char* name, int* frames, int framesCount, float animationSpeed, int flipX, int flipY)
+{
+  // find spot in the resources buffer
+  int id = -1;
+  for (int i = 0; i < MICRO_MAX_ANIMATIONS; i++) {
+    if (microAnimations[i].framesCount == 0) {
+      id = i;
+      break;
+    }
+  }
+  assert(id != -1); 
+
+  // create animation
+  assert(strlen(name) < MICRO_MAX_NAME_LEN);
+  strcpy(microAnimations[id].name, name);
+  microAnimation* animation = &microAnimations[id];
+  animation->frames = malloc(sizeof(int) * 4 * framesCount);
+  for (int i = 0; i < framesCount; i++) {
+    animation->frames[i * 4 + 0] = frames[i * 4 + 0];
+    animation->frames[i * 4 + 1] = frames[i * 4 + 1];
+    animation->frames[i * 4 + 2] = frames[i * 4 + 2];
+    animation->frames[i * 4 + 3] = frames[i * 4 + 3];
+  }
   microAnimations[id].framesCount = framesCount;
   microAnimations[id].animationSpeed = animationSpeed;
   microAnimations[id].flipX = flipX;
@@ -408,16 +610,15 @@ const char* microAnimationGetName(int animationId)
   return microAnimations[animationId].name;
 }
 
-void microAnimationGetStart(int animationId, int *startX, int *startY)
+MicroTextureSource microAnimationGetFrame(int animationId, int frameId)
 {
-  *startX = microAnimations[animationId].startX;
-  *startY = microAnimations[animationId].startY;
-}
-
-void microAnimationGetFrameSize(int animationId, int *frameWidth, int *frameHeight)
-{
-  *frameWidth = microAnimations[animationId].frameWidth;
-  *frameHeight = microAnimations[animationId].frameHeight;
+  MicroTextureSource source;
+  frameId = frameId % microAnimations[animationId].framesCount;
+  source.x = microAnimations[animationId].frames[frameId * 4 + 0];
+  source.y = microAnimations[animationId].frames[frameId * 4 + 1];
+  source.w = microAnimations[animationId].frames[frameId * 4 + 2];
+  source.h = microAnimations[animationId].frames[frameId * 4 + 3];
+  return source;
 }
 
 int microAnimationGetFramesCount(int animationId)
@@ -433,6 +634,7 @@ float microAnimationGetSpeed(int animationId)
 void microAnimationFree(int animationId)
 {
   microAnimations[animationId].framesCount = 0;
+  free(microAnimations[animationId].frames);
 }
 
 int microAnimationGetFlipX(int animationId)
@@ -959,6 +1161,8 @@ void microGraphicsInit()
     microAnimations[i].framesCount = 0;
   for (int i = 0; i < MICRO_MAX_FONTS; i++)
     microFonts[i].textureId = -1;
+  for (int i = 0; i < MICRO_MAX_ATLASES; i++)
+    microAtlases[i].textureId = -1;
 
 	//Set OpenGL version
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);

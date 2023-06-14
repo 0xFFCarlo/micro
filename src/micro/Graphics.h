@@ -7,6 +7,8 @@
 /////////////////////////////
 // Texture
 /////////////////////////////
+extern int microBitmapLoadFromFile(const char *filepath, unsigned char **data,
+    unsigned int *width, unsigned int *height, unsigned int *channels);
 extern int microTextureLoadFromFile(const char *filepath);
 extern int microTextureLoadFromMemory(const unsigned char *data,
     const unsigned int width, const unsigned int height,
@@ -17,18 +19,31 @@ extern void microTextureFree(int textureId);
 
 
 /////////////////////////////
+/// Texture Atlas
+/////////////////////////////
+typedef struct {
+  int x, y, w, h;
+} MicroTextureSource;
+extern int microTextureAtlasLoadFromPath(const char *filepath);
+extern MicroTextureSource microTextureAtlasGetRegion(int textureAtlasId, const char *name);
+extern int microTextureAtlasGetTextureId(int textureAtlasId);
+extern void microTextureAtlasFree(int textureAtlasId);
+
+
+/////////////////////////////
 /// Animation
 /////////////////////////////
 extern void microAnimationLoadFromFile(const char *csv_filepath);
 extern int microAnimationCreate(char* name, int startX, int startY, int frameWidth, int frameHeight, int framesCount, float animationSpeed, int flipX, int flipY);
+extern int microAnimationCreateFromFrames(char* name, int* frames, int framesCount, float animationSpeed, int flipX, int flipY);
 extern const char* microAnimationGetName(int animationId);
-extern void microAnimationGetStart(int animationId, int *startX, int *startY);
-extern void microAnimationGetFrameSize(int animationId, int *frameWidth, int *frameHeight);
+extern MicroTextureSource microAnimationGetFrame(int animationId, int frameId);
 extern int microAnimationGetFramesCount(int animationId);
 extern float microAnimationGetSpeed(int animationId);
 extern int microAnimationGetFlipX(int animationId);
 extern int microAnimationGetFlipY(int animationId);
 extern void microAnimationFree(int animationId);
+
 
 ////////////////////////////
 /// Font
