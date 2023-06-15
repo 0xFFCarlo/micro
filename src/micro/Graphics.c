@@ -218,19 +218,19 @@ int microTextureLoadFromMemory(const unsigned char *data, const unsigned int wid
   assert(id != 0);
 
   microGLStateBindTexture(id);
-  
+
   int gl_filter = GL_LINEAR;
   if (filter == MICRO_FILTER_NEAREST) gl_filter = GL_NEAREST;
   else if (filter == MICRO_FILTER_LINEAR) gl_filter = GL_LINEAR;
-  
+
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filter);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter);
 
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  
+
   microGLCheckErrors();
-  
+
   glTexImage2D(GL_TEXTURE_2D, 0, fmt, width, height, 0, fmt,
       GL_UNSIGNED_BYTE, data);
 
@@ -312,12 +312,12 @@ int microTextureAtlasLoadFromPath(const char *filepath)
   // 1. Store all frames and filepaths of images
   int frameCount = 0;
   while ((entry = readdir(dir)) != NULL) {
-    
+
     // Skip `.` and `..` and `.DS_Store`
     if(strcmp(entry->d_name, ".") == 0 ||
-       strcmp(entry->d_name, "..") == 0 ||
-       strcmp(entry->d_name, ".DS_Store") == 0
-       )
+        strcmp(entry->d_name, "..") == 0 ||
+        strcmp(entry->d_name, ".DS_Store") == 0
+      )
       continue; 
 
     // Check if it's a png or jpeg
@@ -329,7 +329,7 @@ int microTextureAtlasLoadFromPath(const char *filepath)
     // Store filepath
     filepaths[frameCount] = malloc(strlen(filepath) + strlen(entry->d_name) + 2);
     strcpy(filepaths[frameCount], filepath);
-    strcat(filepaths[frameCount], "/");
+    //strcat(filepaths[frameCount], "/");
     strcat(filepaths[frameCount], entry->d_name);
 
     // Store filename without extension
@@ -337,7 +337,7 @@ int microTextureAtlasLoadFromPath(const char *filepath)
     strcpy(filenames[frameCount], entry->d_name);
     char *dot = strrchr(filenames[frameCount], '.');
     if (dot) *dot = '\0';
-    
+
     // Load image description and store it
     stbi_info(filepaths[frameCount], &rects[frameCount].w, &rects[frameCount].h, NULL);
     rects[frameCount].id = frameCount;
@@ -347,18 +347,30 @@ int microTextureAtlasLoadFromPath(const char *filepath)
     // Add padding
     rects[frameCount].w += padding * 2;
     rects[frameCount].h += padding * 2;
-    
+
     frameCount++;
     assert(frameCount < 512);
   }
-  
+
+  // Close the directory
+  closedir(dir);
+
   // Sort frames by size
   //qsort(rects, frameCount, sizeof(stbrp_rect), microAtlasSortBySize);
 
   // 2. Pack frames into atlas
   stbrp_context context;
-  stbrp_init_target(&context, MICRO_ATLAS_MAX_WIDTH, MICRO_ATLAS_MAX_HEIGHT, NULL, 0);
-  stbrp_pack_rects(&context, rects, frameCount);
+  stbrp_node nodes[MICRO_ATLAS_MAX_WIDTH];
+  stbrp_init_target(&context, MICRO_ATLAS_MAX_WIDTH, MICRO_ATLAS_MAX_HEIGHT, nodes, MICRO_ATLAS_MAX_WIDTH);
+  int packedSuccess = stbrp_pack_rects(&context, rects, frameCount);
+  if (packedSuccess == 0) {
+    printf("Could not pack frames into atlas\n");
+    
+    for (int i = 0; i < frameCount; i++)
+      free(filepaths[i]);
+
+    return -1;
+  }
 
   // 3. Find atlas spot id
   int spot = -1;
@@ -378,7 +390,7 @@ int microTextureAtlasLoadFromPath(const char *filepath)
   atlas->width = MICRO_ATLAS_MAX_WIDTH;
   atlas->height = MICRO_ATLAS_MAX_HEIGHT;
   atlas->textureId = -1;
-  
+
   // 5. Allocate bitmap for the atlas
   const unsigned int atlasWidth = MICRO_ATLAS_MAX_WIDTH;
   const unsigned int atlasHeight = MICRO_ATLAS_MAX_HEIGHT;
@@ -397,13 +409,13 @@ int microTextureAtlasLoadFromPath(const char *filepath)
       printf("Error loading texture %s\n", fullPath);
       continue;
     }
-    
+
     // Check if the texture is too big
     if (img_width > atlasWidth || img_height > atlasHeight) {
       printf("Error: texture %s is too big\n", fullPath);
       abort();
     }
-    
+
     // Copy the bitmap to the atlas
     for (int y = 0; y < img_height; y++) {
       int ty = rect->x + padding + y;
@@ -413,7 +425,7 @@ int microTextureAtlasLoadFromPath(const char *filepath)
 
     // Free the bitmap
     stbi_image_free(data);
-      
+
     // Store texture details 
     MicroTextureSource source;
     source.w = img_width;
@@ -421,27 +433,20 @@ int microTextureAtlasLoadFromPath(const char *filepath)
     source.x = rect->x + padding;
     source.y = rect->y + padding;
     atlas->frames[frame_id] = source;
-    
+
     // Store name without file extension
     atlas->framesNames[frame_id] = malloc(strlen(name) + 1);
     strcpy(atlas->framesNames[frame_id], name);
   }
 
   // 7. Create the texture atlas
-  int textureId = microTextureLoadFromMemory(atlasData, atlasWidth, atlasHeight, GL_RGBA, GL_NEAREST);
+  int textureId = microTextureLoadFromMemory(atlasData, atlasWidth, atlasHeight, 4, GL_NEAREST);
   free(atlasData);
   atlas->textureId = textureId;
 
   // 8. Free the filepaths
   for (int i = 0; i < frameCount; i++)
     free(filepaths[i]);
-
-  // 9. Free the filenames
-  for (int i = 0; i < frameCount; i++)
-    free(filenames[i]);
-
-  // Close the directory
-  closedir(dir);
 
   return spot;
 }
@@ -482,7 +487,7 @@ void microTextureAtlasFree(int textureAtlasId)
 void microAnimationLoadFromFile(const char *csv_filepath)
 {
   //TODO: test if the code works
-  
+
   FILE* file = fopen(csv_filepath, "r");
   if (!file) {
     printf("Error: can't open the file %s\n", csv_filepath);
@@ -650,108 +655,108 @@ int microAnimationGetFlipY(int animationId)
 
 int microFontLoadFromFile(const char *filepath, unsigned int fontSize, int filter)
 {
-    assert(filter == MICRO_FILTER_NEAREST || filter == MICRO_FILTER_LINEAR);
+  assert(filter == MICRO_FILTER_NEAREST || filter == MICRO_FILTER_LINEAR);
 
-    FILE* fp = fopen(filepath, "rb");
-    if (fp == NULL) {
-        printf("Failed to open font file\n");
-        return -1;
-    }
+  FILE* fp = fopen(filepath, "rb");
+  if (fp == NULL) {
+    printf("Failed to open font file\n");
+    return -1;
+  }
 
-    fseek(fp, 0, SEEK_END);
-    int size = ftell(fp);
-    fseek(fp, 0, SEEK_SET);
+  fseek(fp, 0, SEEK_END);
+  int size = ftell(fp);
+  fseek(fp, 0, SEEK_SET);
 
-    unsigned char* ttf_buffer = malloc(size);
-    if (ttf_buffer == NULL) {
-        printf("Failed to allocate memory for ttf_buffer\n");
-        fclose(fp);
-        return -1;
-    }
-
-    fread(ttf_buffer, 1, size, fp);
+  unsigned char* ttf_buffer = malloc(size);
+  if (ttf_buffer == NULL) {
+    printf("Failed to allocate memory for ttf_buffer\n");
     fclose(fp);
+    return -1;
+  }
 
-    stbtt_fontinfo font;
-    if (!stbtt_InitFont(&font, ttf_buffer, 0)) {
-        printf("Failed to initialize font\n");
-        free(ttf_buffer);
-        return -1;
+  fread(ttf_buffer, 1, size, fp);
+  fclose(fp);
+
+  stbtt_fontinfo font;
+  if (!stbtt_InitFont(&font, ttf_buffer, 0)) {
+    printf("Failed to initialize font\n");
+    free(ttf_buffer);
+    return -1;
+  }
+
+  float scale = stbtt_ScaleForPixelHeight(&font, fontSize);
+  assert(isinf(scale) == 0);
+  assert(isnan(scale) == 0);
+
+  int x = 0;
+  int y = 0;
+  int ascent;
+  const unsigned int padding = 3;
+  stbtt_GetFontVMetrics(&font, &ascent, 0, 0);
+  ascent *= scale;
+  int glyphOffset[128-32];
+  unsigned char buffer[MICRO_FONT_TEXTURE_SIZE * MICRO_FONT_TEXTURE_SIZE * 4];
+  memset(buffer, 0, sizeof(buffer));
+
+  for (int codepoint = 32; codepoint < 128; codepoint++) {
+    int advance, lsb, x0, y0, x1, y1;
+    stbtt_GetCodepointHMetrics(&font, codepoint, &advance, &lsb);
+    stbtt_GetCodepointBitmapBox(&font, codepoint, scale, scale, &x0, &y0, &x1, &y1);
+
+    // render character to buffer
+    int width = x1 - x0;
+    int height = y1 - y0;
+    unsigned char* bitmap = malloc(width * height);
+    stbtt_MakeCodepointBitmap(&font, bitmap, width, height, width, scale, scale, codepoint);
+
+    // move to next line if there's no room for the character
+    if (x + width >= MICRO_FONT_TEXTURE_SIZE) {
+      x = 0;
+      y += ascent + padding;
     }
 
-    float scale = stbtt_ScaleForPixelHeight(&font, fontSize);
-    assert(isinf(scale) == 0);
-    assert(isnan(scale) == 0);
-
-    int x = 0;
-    int y = 0;
-    int ascent;
-    const unsigned int padding = 3;
-    stbtt_GetFontVMetrics(&font, &ascent, 0, 0);
-    ascent *= scale;
-    int glyphOffset[128-32];
-    unsigned char buffer[MICRO_FONT_TEXTURE_SIZE * MICRO_FONT_TEXTURE_SIZE * 4];
-    memset(buffer, 0, sizeof(buffer));
-    
-    for (int codepoint = 32; codepoint < 128; codepoint++) {
-        int advance, lsb, x0, y0, x1, y1;
-        stbtt_GetCodepointHMetrics(&font, codepoint, &advance, &lsb);
-        stbtt_GetCodepointBitmapBox(&font, codepoint, scale, scale, &x0, &y0, &x1, &y1);
-        
-        // render character to buffer
-        int width = x1 - x0;
-        int height = y1 - y0;
-        unsigned char* bitmap = malloc(width * height);
-        stbtt_MakeCodepointBitmap(&font, bitmap, width, height, width, scale, scale, codepoint);
-        
-        // move to next line if there's no room for the character
-        if (x + width >= MICRO_FONT_TEXTURE_SIZE) {
-            x = 0;
-            y += ascent + padding;
+    // copy bitmap to buffer
+    assert(x + width < MICRO_FONT_TEXTURE_SIZE);
+    assert(y + height < MICRO_FONT_TEXTURE_SIZE);
+    glyphOffset[codepoint-32] = x + y * MICRO_FONT_TEXTURE_SIZE;
+    for (int i = 0; i < height; i++) {
+      for (int j = 0; j < width; j++) {
+        int px = x + j;
+        int py = y + i;
+        if (px >= 0 && px < MICRO_FONT_TEXTURE_SIZE && py >= 0 && py < MICRO_FONT_TEXTURE_SIZE) {
+          buffer[(py * MICRO_FONT_TEXTURE_SIZE + px) * 4 + 0] = 255;
+          buffer[(py * MICRO_FONT_TEXTURE_SIZE + px) * 4 + 1] = 255;
+          buffer[(py * MICRO_FONT_TEXTURE_SIZE + px) * 4 + 2] = 255;
+          buffer[(py * MICRO_FONT_TEXTURE_SIZE + px) * 4 + 3] = bitmap[i * width + j];
         }
-        
-        // copy bitmap to buffer
-        assert(x + width < MICRO_FONT_TEXTURE_SIZE);
-        assert(y + height < MICRO_FONT_TEXTURE_SIZE);
-        glyphOffset[codepoint-32] = x + y * MICRO_FONT_TEXTURE_SIZE;
-        for (int i = 0; i < height; i++) {
-            for (int j = 0; j < width; j++) {
-                int px = x + j;
-                int py = y + i;
-                if (px >= 0 && px < MICRO_FONT_TEXTURE_SIZE && py >= 0 && py < MICRO_FONT_TEXTURE_SIZE) {
-                    buffer[(py * MICRO_FONT_TEXTURE_SIZE + px) * 4 + 0] = 255;
-                    buffer[(py * MICRO_FONT_TEXTURE_SIZE + px) * 4 + 1] = 255;
-                    buffer[(py * MICRO_FONT_TEXTURE_SIZE + px) * 4 + 2] = 255;
-                    buffer[(py * MICRO_FONT_TEXTURE_SIZE + px) * 4 + 3] = bitmap[i * width + j];
-                }
-            }
-        }
-
-        free(bitmap);
-        
-        // move to next character
-        x += advance * scale + padding;
+      }
     }
 
-    // find spot
-    int id = -1;
-    for (int i = 0; i < MICRO_MAX_FONTS; i++) {
-        if (microFonts[i].textureId == -1) {
-            id = i;
-            break;
-        }
-    }
-    assert(id != -1);
-    microFontsCount++;
-   
-    // create texture and store data
-    microFonts[id].textureId = microTextureLoadFromMemory(buffer, MICRO_FONT_TEXTURE_SIZE, MICRO_FONT_TEXTURE_SIZE, 4, filter);
-    microFonts[id].fontSize = fontSize;
-    microFonts[id].fontInfo = font;
-    microFonts[id].ttf_buffer = ttf_buffer;
-    memcpy(microFonts[id].glyphsOffset, glyphOffset, sizeof(glyphOffset));
+    free(bitmap);
 
-    return id;
+    // move to next character
+    x += advance * scale + padding;
+  }
+
+  // find spot
+  int id = -1;
+  for (int i = 0; i < MICRO_MAX_FONTS; i++) {
+    if (microFonts[i].textureId == -1) {
+      id = i;
+      break;
+    }
+  }
+  assert(id != -1);
+  microFontsCount++;
+
+  // create texture and store data
+  microFonts[id].textureId = microTextureLoadFromMemory(buffer, MICRO_FONT_TEXTURE_SIZE, MICRO_FONT_TEXTURE_SIZE, 4, filter);
+  microFonts[id].fontSize = fontSize;
+  microFonts[id].fontInfo = font;
+  microFonts[id].ttf_buffer = ttf_buffer;
+  memcpy(microFonts[id].glyphsOffset, glyphOffset, sizeof(glyphOffset));
+
+  return id;
 }
 
 int microFontGetSize(int fontId)
@@ -770,7 +775,7 @@ void microFontFree(int fontId)
     printf("Error: invalid font id %d\n", fontId);
     return;
   }
-  
+
   if (microFonts[fontId].textureId == 0) {
     printf("Error: font %d is not loaded\n", fontId);
     return;
@@ -846,7 +851,7 @@ int microShaderLoadFromSource(const char *vertexShaderSrc, const char *fragmentS
   }
 
   // Compile fragment shader
-  
+
   const char* fragShaderSrcPtr = &fragmentShaderSrc[0];
   glShaderSource(fragShader, 1, &fragShaderSrcPtr, NULL);
   glCompileShader(fragShader);
@@ -891,7 +896,7 @@ int microShaderLoadFromSource(const char *vertexShaderSrc, const char *fragmentS
     shader.uniformsLocations[i] = glGetUniformLocation(program, shader.uniformsNames[i]);
     shader.uniformsValues[i] = 0.0;
   }
-  
+
   //Find a spot to store the shader
   int spot = -1;
   for (int i = 0; i < MICRO_MAX_SHADERS; i++) {
@@ -946,7 +951,7 @@ void microShaderSetUniform(const char *name, ...)
     }
   }
   assert(uniformId != -1); //Uniform not found
-  
+
   va_list args;
   va_start(args, name);
   switch (shader->uniformsTypes[uniformId]) {
@@ -1074,7 +1079,7 @@ int microCanvasCreate(int width, int height)
   glViewport(0, 0, width, height);
   assert(framebufferId != 0);
 
-  
+
   //create black texture
   const int textureId = microTextureLoadFromMemory(0, width, height, 4, MICRO_FILTER_NEAREST);
   assert(textureId != -1);
@@ -1096,11 +1101,11 @@ int microCanvasCreate(int width, int height)
     }
   }
   assert(canvasId != -1);
-  
+
   // Set "renderedTexture" as our colour attachement #0
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, microTextures[textureId].id, 0);
   microGLCheckErrors();
-  
+
   if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
     printf("Error creating framebuffer\n");
     return -1;
@@ -1164,33 +1169,33 @@ void microGraphicsInit()
   for (int i = 0; i < MICRO_MAX_ATLASES; i++)
     microAtlases[i].textureId = -1;
 
-	//Set OpenGL version
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-	
-	//Initilize Opengl
-	context = SDL_GL_CreateContext(window);
-	if (context == NULL) {
-		printf("Couldn't create OpenGL context\n");
-	}
+  //Set OpenGL version
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+
+  //Initilize Opengl
+  context = SDL_GL_CreateContext(window);
+  if (context == NULL) {
+    printf("Couldn't create OpenGL context\n");
+  }
 
   // Set VSYNC, try adaptive first and if not supported, use normal vsync
   if (SDL_GL_SetSwapInterval(-1) == -1)
-     SDL_GL_SetSwapInterval(1);
+    SDL_GL_SetSwapInterval(1);
   // SDL_GL_SetSwapInterval(0);
 
-	char *glVersion = (char*)glGetString(GL_VERSION);
-	if (glVersion) {
-		printf("OpenGL version: %s\n", glVersion);
-	}
+  char *glVersion = (char*)glGetString(GL_VERSION);
+  if (glVersion) {
+    printf("OpenGL version: %s\n", glVersion);
+  }
 
 #if defined(__linux__)
-	GLenum err = glewInit();
-	if (err != GLEW_OK)
-		exit(1); 
-	else
-		printf("GLEW version: %s\n", glewGetString(GLEW_VERSION));
+  GLenum err = glewInit();
+  if (err != GLEW_OK)
+    exit(1); 
+  else
+    printf("GLEW version: %s\n", glewGetString(GLEW_VERSION));
 #endif
 
   //Load base shader
@@ -1212,32 +1217,32 @@ void microGraphicsInit()
   microGLCheckErrors();
 
   //create VAO
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
+  glGenVertexArrays(1, &vao);
+  glBindVertexArray(vao);
   microGLCheckErrors();
 
-	//Create vertex buffer
-	glGenBuffers(1, &vbo);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * MICRO_VERTEX_BUFFER_SIZE * 2, &vertexbuf[0], GL_STATIC_DRAW);
-	glVertexAttribPointer(positionLoc, 2, GL_FLOAT, GL_FALSE, 0, 0);
-	glEnableVertexAttribArray(positionLoc);
+  //Create vertex buffer
+  glGenBuffers(1, &vbo);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(float) * MICRO_VERTEX_BUFFER_SIZE * 2, &vertexbuf[0], GL_STATIC_DRAW);
+  glVertexAttribPointer(positionLoc, 2, GL_FLOAT, GL_FALSE, 0, 0);
+  glEnableVertexAttribArray(positionLoc);
   microGLCheckErrors();
-	
+
   //Create texture coordinates buffer
-	glGenBuffers(1, &tbo);
-	glBindBuffer(GL_ARRAY_BUFFER, tbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * MICRO_VERTEX_BUFFER_SIZE * 2, &texsourcebuf[0], GL_STATIC_DRAW);
-	glVertexAttribPointer(texCoordLoc, 2, GL_FLOAT, GL_FALSE, 0, 0);
-	glEnableVertexAttribArray(texCoordLoc);
+  glGenBuffers(1, &tbo);
+  glBindBuffer(GL_ARRAY_BUFFER, tbo);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(float) * MICRO_VERTEX_BUFFER_SIZE * 2, &texsourcebuf[0], GL_STATIC_DRAW);
+  glVertexAttribPointer(texCoordLoc, 2, GL_FLOAT, GL_FALSE, 0, 0);
+  glEnableVertexAttribArray(texCoordLoc);
   microGLCheckErrors();
-  
+
   //Create color buffer
-	glGenBuffers(1, &cbo);
-	glBindBuffer(GL_ARRAY_BUFFER, cbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * MICRO_VERTEX_BUFFER_SIZE * 4, &colorbuf[0], GL_STATIC_DRAW);
-	glVertexAttribPointer(colorLoc, 4, GL_FLOAT, GL_FALSE, 0, 0);
-	glEnableVertexAttribArray(colorLoc);
+  glGenBuffers(1, &cbo);
+  glBindBuffer(GL_ARRAY_BUFFER, cbo);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(float) * MICRO_VERTEX_BUFFER_SIZE * 4, &colorbuf[0], GL_STATIC_DRAW);
+  glVertexAttribPointer(colorLoc, 4, GL_FLOAT, GL_FALSE, 0, 0);
+  glEnableVertexAttribArray(colorLoc);
   microGLCheckErrors();
 
   //Setup renderer
@@ -1251,7 +1256,7 @@ void microGraphicsInit()
           sizeof(microAnimations) +
           sizeof(microFonts)
           ) / (double)(1024)));
-  
+
   //Clear debug info
   debugInfo.drawCalls = 0;
   debugInfo.triangles = 0;
@@ -1295,18 +1300,18 @@ void microGraphicsDisplay()
 
   debugInfo.drawCalls++;
   debugInfo.triangles += countverts / 3;
-	
-  //Create vertex buffer
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * countverts * 2, &vertexbuf[0], GL_STATIC_DRAW);
-	
-  glBindBuffer(GL_ARRAY_BUFFER, tbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * countverts * 2, &texsourcebuf[0], GL_STATIC_DRAW);
-	
-	glBindBuffer(GL_ARRAY_BUFFER, cbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * countverts * 4, &colorbuf[0], GL_STATIC_DRAW);
 
-	glBindVertexArray(vao);
+  //Create vertex buffer
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(float) * countverts * 2, &vertexbuf[0], GL_STATIC_DRAW);
+
+  glBindBuffer(GL_ARRAY_BUFFER, tbo);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(float) * countverts * 2, &texsourcebuf[0], GL_STATIC_DRAW);
+
+  glBindBuffer(GL_ARRAY_BUFFER, cbo);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(float) * countverts * 4, &colorbuf[0], GL_STATIC_DRAW);
+
+  glBindVertexArray(vao);
   glDrawArrays(GL_TRIANGLES, 0, countverts); 
   microGLCheckErrors();
 
@@ -1365,7 +1370,7 @@ void microGraphicsDraw(int textureId, float x, float y, float x2, float y2,
   colorbuf[buffersize][3] = a;
 
   buffersize++;
-  
+
   //V3
   vertexbuf[buffersize][0] = x4;
   vertexbuf[buffersize][1] = y4;
@@ -1377,9 +1382,9 @@ void microGraphicsDraw(int textureId, float x, float y, float x2, float y2,
   colorbuf[buffersize][1] = g;
   colorbuf[buffersize][2] = b;
   colorbuf[buffersize][3] = a;
-  
+
   buffersize++;
-  
+
   //V4
   vertexbuf[buffersize][0] = x2;
   vertexbuf[buffersize][1] = y2;
@@ -1391,7 +1396,7 @@ void microGraphicsDraw(int textureId, float x, float y, float x2, float y2,
   colorbuf[buffersize][1] = g;
   colorbuf[buffersize][2] = b;
   colorbuf[buffersize][3] = a;
-  
+
   buffersize++;
 
   //V5
@@ -1524,7 +1529,7 @@ void microGraphicsDrawText(int fontId, const char *text,
 {
   const unsigned int textLen = strlen(text);
   const stbtt_fontinfo* fontInfo = &microFonts[fontId].fontInfo;
-  
+
   const float startX = x;
   const float scale = stbtt_ScaleForPixelHeight(fontInfo, microFonts[fontId].fontSize);
   assert(isnan(scale) == 0);
@@ -1534,7 +1539,7 @@ void microGraphicsDrawText(int fontId, const char *text,
   stbtt_GetFontVMetrics(fontInfo, &ascent, &descent, 0);
   ascent *= scale;
   assert(isnan(ascent) == 0);
-  
+
   char prevChar = '\n';
   for (unsigned int i = 0; i < textLen; i++)
   {
@@ -1546,13 +1551,13 @@ void microGraphicsDrawText(int fontId, const char *text,
       continue;
     }
     assert((int)c >= 32 && (int)c <= 126);
-    
+
     // Get glyph metrics and position in texture atlas
     const int glyphIndex = microFonts[fontId].glyphsOffset[(int)c - 32];
     int advance, lsb, x0, y0, x1, y1;
     stbtt_GetCodepointHMetrics(fontInfo, c, &advance, &lsb);
     stbtt_GetCodepointBitmapBox(fontInfo, c, scale, scale, &x0, &y0, &x1, &y1);
-    
+
     // Compute glyph texture coordinates
     const float tx = glyphIndex % MICRO_FONT_TEXTURE_SIZE;
     const float ty = (int)(glyphIndex / MICRO_FONT_TEXTURE_SIZE);
@@ -1565,11 +1570,11 @@ void microGraphicsDrawText(int fontId, const char *text,
       assert(isnan(kerning) == 0);
       x += kerning;
     }
-    
+
     // Apply the left side bearing to the next character
     if (prevChar != '\n')
       x += lsb * scale;
-    
+
     // Draw glyph
     microGraphicsDrawRect(microFontGetTextureId(fontId), tx, ty, tw, th,
         x, y + y0, tw, th, r, g, b, a);
@@ -1750,17 +1755,17 @@ void microSwapBuffers()
 Uint32 lastTime = 0;
 float microGraphicsDelayToNextFrame(float target_fps)
 {
-    //If frame finished early
-    int frame_time = SDL_GetTicks() - lastTime;
-    if (1000 / 70 > frame_time) {
-      //Wait the remaining time
-      SDL_Delay(1000 / 70 - frame_time);
-    }
+  //If frame finished early
+  int frame_time = SDL_GetTicks() - lastTime;
+  if (1000 / 70 > frame_time) {
+    //Wait the remaining time
+    SDL_Delay(1000 / 70 - frame_time);
+  }
 
-    // Calculate delta time
-    frame_time = SDL_GetTicks() - lastTime;
-    float deltaTime = (float)frame_time / 1000.0;
-    lastTime = SDL_GetTicks();
+  // Calculate delta time
+  frame_time = SDL_GetTicks() - lastTime;
+  float deltaTime = (float)frame_time / 1000.0;
+  lastTime = SDL_GetTicks();
 
-    return deltaTime;
+  return deltaTime;
 }

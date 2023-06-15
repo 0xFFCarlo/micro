@@ -63,6 +63,13 @@ void gameStateInit()
   // Physics world
   int world_id = microPhysicsWorldNew();
   printf("Physics world_id: %d\n", world_id);
+  
+  // Texture atlas
+  int atlas_id = microTextureAtlasLoadFromPath("res/");
+  MicroTextureSource ts = microTextureAtlasGetRegion(atlas_id, "heart");
+  MicroTextureSource ts_2 = microTextureAtlasGetRegion(atlas_id, "player");
+  printf("x: %d, y: %d, w: %d, h: %d\n", ts.x, ts.y, ts.w, ts.h);
+  printf("x: %d, y: %d, w: %d, h: %d\n", ts_2.x, ts_2.y, ts_2.w, ts_2.h);
 
   // Register entities
   SpaceEntityAdd();
