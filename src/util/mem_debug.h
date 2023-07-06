@@ -4,6 +4,7 @@
 #define DEBUG_MODE 1
 
 #include <stddef.h>
+#include <stdint.h>
 
 #if DEBUG_MODE == 1
 extern void *malloc_debug(size_t size, char *file, int line);

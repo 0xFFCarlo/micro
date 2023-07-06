@@ -1380,6 +1380,19 @@ void microGraphicsInit()
 
 void microGraphicsQuit()
 {
+  microAnimationFreeAll();
+  microFontFreeAll();
+  microParticleEmitterRemoveAll();
+
+  vector_free(&microParticleEmitters);
+  vector_free(&microFreedParticleEmitters);
+
+  //Delete VAO
+  glDeleteVertexArrays(1, &vao);
+  glDeleteBuffers(1, &vbo);
+  glDeleteBuffers(1, &tbo);
+  glDeleteBuffers(1, &cbo);
+
   //Delete context 
   SDL_GL_DeleteContext( context );
   SDL_DestroyWindow( window );
@@ -2068,3 +2081,9 @@ void microParticleEmitterRemove(int emitterId)
   vector_free(&emitter->freeParticles);
   vector_push_back(&microFreedParticleEmitters, &emitterId);
 }  
+
+void microParticleEmitterRemoveAll()
+{
+  for (int i = 0; i < microParticleEmitters.size; i++)
+    microParticleEmitterRemove(i);
+}

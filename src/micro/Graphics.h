@@ -84,6 +84,7 @@ extern float microParticleEmitterGetEmissionRate(int emitterId);
 extern void microParticleEmitterDraw(int emitterId);
 extern void microParticleEmittersUpdate(float dt);
 extern void microParticleEmitterRemove(int emitterId);
+extern void microParticleEmitterRemoveAll();
 
 
 /////////////////////////////

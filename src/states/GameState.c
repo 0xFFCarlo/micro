@@ -88,10 +88,10 @@ void gameStateUpdate(float dt)
 
 void gameStateFree()
 {
-  microResourceFree("atlas");
+  microResourceFreeAll();
   microECSFree();
-  microAnimationFreeAll();
-  microFontFreeAll();
+  microGraphicsQuit();
+  microPhysicsWorldFreeAll();
 
   memory_check_leaks();
   exit(0);

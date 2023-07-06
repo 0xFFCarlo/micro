@@ -56,6 +56,14 @@ void microPhysicsWorldFree(int worldId)
   vector_pop_back(&worlds);
 }
 
+void microPhysicsWorldFreeAll()
+{
+  for (int i = 0; i < worlds.size; i++)
+    microPhysicsWorldFree(i);
+  vector_free(&worlds);
+  worlds_initialized = 0;
+}
+
 int microPhysicsBodyNewCircle(int worldId, float cx, float cy, float radius, float mass, unsigned char isStatic, float moment, float elasticity, float friction)
 {
   World* world = &((World*)worlds.data)[worldId];

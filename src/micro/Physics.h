@@ -6,6 +6,7 @@ extern void microPhysicsWorldStep(int worldId, float dt);
 extern int microPhysicsWorldsCount();
 extern int microPhysicsWorldGetBodyCount(int worldId);
 extern void microPhysicsWorldFree(int worldId);
+extern void microPhysicsWorldFreeAll();
 
 extern int microPhysicsBodyNewCircle(int worldId, float cx, float cy, float radius, float mass, unsigned char isStatic, float moment, float elasticity, float friction);
 extern int microPhysicsBodyNewRect(int worldId, float cx, float cy, float width, float height, float mass, unsigned char isStatic, float elasticity);
