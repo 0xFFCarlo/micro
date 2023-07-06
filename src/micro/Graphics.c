@@ -1,7 +1,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_video.h>
 #if defined(__linux__)
-//#include <GLES3/gl3.h>
+//#include <GLES3/gl.h>
 //#include <GL/glu.h>
 #include <GL/glew.h>
 #include <GL/gl.h>
@@ -13,6 +13,7 @@
 #include <dirent.h>
 
 #include "Graphics.h"
+#include "Vector.h"
 
 #define STB_RECT_PACK_IMPLEMENTATION
 #include "stb_rect_pack.h"
@@ -23,22 +24,30 @@
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb_truetype.h"
 
+#include "../util/mem_debug.h"
+
 #define MICRO_MAX_TEXTURES 64
 #define MICRO_MAX_CANVASES 64
 #define MICRO_MAX_SHADERS 64
 #define MICRO_MAX_FONTS 64
 #define MICRO_MAX_ANIMATIONS 64
 #define MICRO_MAX_ATLASES 16
+#define MICRO_MAX_PARTICLE_EMITTERS 64
 
 #define MICRO_MAX_ATTRIBUTES 16
 #define MICRO_MAX_UNIFORMS 16
 #define MICRO_MAX_NAME_LEN 32
 #define MICRO_VERTEX_BUFFER_SIZE (6 * 256)
 #define MICRO_MAX_SHADER_LEN 8000
-#define MICRO_FONT_TEXTURE_SIZE 512
+#define MICRO_FONT_TEXTURE_SIZE 1024
 
-#define MICRO_ATLAS_MAX_WIDTH 2048
-#define MICRO_ATLAS_MAX_HEIGHT 2048
+#define MICRO_ATLAS_MAX_WIDTH 1024
+#define MICRO_ATLAS_MAX_HEIGHT 1024
+#define MICRO_ATLAS_MAX_TEXTURES 512
+
+#define MICRO_EMITTER_STEADY 0
+#define MICRO_EMITTER_EXPLOSION 1
+
 
 //GL states
 static int currentTexture = 0;
@@ -75,8 +84,6 @@ typedef struct microAnimation {
   char name[MICRO_MAX_NAME_LEN];
   int* frames;
   int framesCount;
-  float animationSpeed;
-  int flipX, flipY;
 } microAnimation;
 static microAnimation microAnimations[MICRO_MAX_ANIMATIONS];
 
@@ -98,6 +105,20 @@ typedef struct microAtlas {
   int framesCount;
 } microAtlas;
 static microAtlas microAtlases[MICRO_MAX_ATLASES];
+
+typedef struct microParticleEmitter {
+  int x, y;
+  uint8_t emitterType;
+  int width, height; 
+  float emissionRate;
+  MicroParticle (*particleGenerator)(int);
+
+  float emissionTimer;
+  Vector particles;
+  Vector freeParticles;
+} microParticleEmitter;
+static Vector microParticleEmitters;
+static Vector microFreedParticleEmitters;
 
 //shader stuff
 static const char baseVertexShaderSrc[] = "#version 330 core\n"
@@ -293,9 +314,117 @@ void microTextureFree(int textureId)
 /////////////////////////////
 /// Texture Atlas
 /////////////////////////////
+typedef struct {
+  char* name;
+  int frame_number;
+  int x , y, w, h;
+} animation_frame;
+
+// compare animation by name and frame number
+int microAnimationFrameCmp(const void* aa, const void* bb)
+{
+  animation_frame* a = *(animation_frame**)aa;
+  animation_frame* b = *(animation_frame**)bb;
+  int name_cmp = strcmp(a->name, b->name);
+  if (name_cmp != 0) return name_cmp;
+  return a->frame_number - b->frame_number;
+}
+
+void microAtlasGenerateAnimations(int textureAtlasId)
+{
+  const int verbose = 0;
+  microAtlas* atlas = &microAtlases[textureAtlasId];
+
+  animation_frame* animations[MICRO_MAX_ANIMATIONS];
+  int animations_count = 0;
+
+  // Parse all animation frames from names
+  for (int i = 0; i < atlas->framesCount; i++) {
+    char* frame_name = atlas->framesNames[i];
+    // Skip textures without animation name convention
+    if (strchr(frame_name, '_') == NULL) continue;
+
+    // Parse animation name and frame number
+    char* tmp = strdup(frame_name);
+    char* animation_name = strtok(tmp, "_");
+    char* frame_number_str = strtok(NULL, "_");
+    if (animation_name == NULL) continue;
+    if (frame_number_str == NULL) continue;
+    assert(strlen(animation_name) > 0);
+    assert(strlen(frame_number_str) > 0);
+
+    // parse frame number and make sure it is a number
+    int frame_number = atoi(frame_number_str);
+    if (frame_number == 0 && frame_number_str[0] != '0') continue;
+
+    // Get animation source rect
+    int x, y, w, h;
+    x = atlas->frames[i].x;
+    y = atlas->frames[i].y;
+    w = atlas->frames[i].w;
+    h = atlas->frames[i].h;
+
+    // Store animation frame
+    animations[animations_count] = malloc(sizeof(animation_frame));
+    animations[animations_count]->name = strdup(animation_name);
+    animations[animations_count]->frame_number = frame_number;
+    animations[animations_count]->x = x;
+    animations[animations_count]->y = y;
+    animations[animations_count]->w = w;
+    animations[animations_count]->h = h;
+    animations_count++;
+    assert(animations_count < MICRO_MAX_ANIMATIONS);
+
+    free(tmp);
+  }
+
+  // Sort animations by names and frame numbers
+  qsort(animations, animations_count, sizeof(animation_frame*), microAnimationFrameCmp);
+
+  // Create animations from animation frames with same name
+  char* last_animation_name = animations[0]->name;
+  int frames_params[4 * 1024];
+  int current_frame = 0;
+  for (int i = 0; i < animations_count; i++) {
+
+    if (strcmp(last_animation_name, animations[i]->name) != 0) {
+      // Create animation
+      if (verbose) printf("Creating animation %s with %d frames\n", last_animation_name, current_frame);
+      microAnimationCreateFromFrames(last_animation_name, frames_params, current_frame);
+
+      // Reset frame params
+      current_frame = 0;
+    }
+
+    // Store frame params
+    frames_params[current_frame * 4 + 0] = animations[i]->x;
+    frames_params[current_frame * 4 + 1] = animations[i]->y;
+    frames_params[current_frame * 4 + 2] = animations[i]->w;
+    frames_params[current_frame * 4 + 3] = animations[i]->h;
+    current_frame++;
+    assert(current_frame < 1024);
+
+    last_animation_name = animations[i]->name;
+  }
+
+  // Create last animation
+  if (current_frame) {
+    if (verbose) printf("Creating animation %s with %d frames\n", last_animation_name, current_frame);
+    microAnimationCreateFromFrames(last_animation_name, frames_params, current_frame);
+  }
+
+  // Free animations frames
+  for (int i = 0; i < animations_count; i++) {
+    free(animations[i]->name);
+    free(animations[i]);
+  }
+}
+
 // TODO: sort frames by name in alphabetic order so that we can use binary search
 int microTextureAtlasLoadFromPath(const char *filepath)
 {
+  const int verbose = 0;
+
   struct dirent *entry;
   DIR *dir = opendir(filepath);
 
@@ -304,10 +433,10 @@ int microTextureAtlasLoadFromPath(const char *filepath)
     return -1;
   }
 
-  stbrp_rect rects[512];
-  char *filepaths[512];
-  char filenames[512][MICRO_MAX_NAME_LEN];
   const unsigned int padding = 1;
+  stbrp_rect rects[MICRO_ATLAS_MAX_TEXTURES];
+  char *filepaths[MICRO_ATLAS_MAX_TEXTURES];
+  char filenames[MICRO_MAX_NAME_LEN][MICRO_ATLAS_MAX_TEXTURES];
 
   // 1. Store all frames and filepaths of images
   int frameCount = 0;
@@ -326,46 +455,51 @@ int microTextureAtlasLoadFromPath(const char *filepath)
         strstr(entry->d_name, ".jpeg") == NULL)
       continue;
 
+    stbrp_rect* frect = &rects[frameCount];
+    char* fname = filenames[frameCount];
+
     // Store filepath
     filepaths[frameCount] = malloc(strlen(filepath) + strlen(entry->d_name) + 2);
     strcpy(filepaths[frameCount], filepath);
-    //strcat(filepaths[frameCount], "/");
+    //strcat(fpath, "/");
     strcat(filepaths[frameCount], entry->d_name);
 
     // Store filename without extension
     assert(strlen(entry->d_name) < MICRO_MAX_NAME_LEN);
-    strcpy(filenames[frameCount], entry->d_name);
-    char *dot = strrchr(filenames[frameCount], '.');
+    strcpy(fname, entry->d_name);
+    char *dot = strrchr(fname, '.');
     if (dot) *dot = '\0';
 
     // Load image description and store it
-    stbi_info(filepaths[frameCount], &rects[frameCount].w, &rects[frameCount].h, NULL);
-    rects[frameCount].id = frameCount;
-    rects[frameCount].x = 0;
-    rects[frameCount].y = 0;
+    stbi_info(filepaths[frameCount], &frect->w, &frect->h, NULL);
+    frect->id = frameCount;
+    frect->x = 0;
+    frect->y = 0;
+    frect->was_packed = 0;
 
     // Add padding
-    rects[frameCount].w += padding * 2;
-    rects[frameCount].h += padding * 2;
+    frect->w += padding * 2;
+    frect->h += padding * 2;
 
     frameCount++;
-    assert(frameCount < 512);
+    assert(frameCount < MICRO_ATLAS_MAX_TEXTURES);
   }
 
   // Close the directory
   closedir(dir);
 
-  // Sort frames by size
-  //qsort(rects, frameCount, sizeof(stbrp_rect), microAtlasSortBySize);
-
   // 2. Pack frames into atlas
   stbrp_context context;
-  stbrp_node nodes[MICRO_ATLAS_MAX_WIDTH];
-  stbrp_init_target(&context, MICRO_ATLAS_MAX_WIDTH, MICRO_ATLAS_MAX_HEIGHT, nodes, MICRO_ATLAS_MAX_WIDTH);
+  stbrp_node nodes[MICRO_ATLAS_MAX_WIDTH * 2];
+  stbrp_init_target(&context, MICRO_ATLAS_MAX_WIDTH, MICRO_ATLAS_MAX_HEIGHT, nodes, MICRO_ATLAS_MAX_WIDTH * 2);
+  if (verbose) {
+    printf("Packing %d frames into atlas\n", frameCount);
+    printf("Atlas size: %dx%d\n", MICRO_ATLAS_MAX_WIDTH, MICRO_ATLAS_MAX_HEIGHT);
+  }
   int packedSuccess = stbrp_pack_rects(&context, rects, frameCount);
   if (packedSuccess == 0) {
     printf("Could not pack frames into atlas\n");
-    
+
     for (int i = 0; i < frameCount; i++)
       free(filepaths[i]);
 
@@ -404,6 +538,8 @@ int microTextureAtlasLoadFromPath(const char *filepath)
     const stbrp_rect* rect = &rects[frame_id];
 
     int img_width, img_height, channels;
+
+    if (verbose) printf("Loading texture %s\n", fullPath);
     unsigned char *data = stbi_load(fullPath, &img_width, &img_height, &channels, 0);
     if (data == NULL) {
       printf("Error loading texture %s\n", fullPath);
@@ -418,9 +554,9 @@ int microTextureAtlasLoadFromPath(const char *filepath)
 
     // Copy the bitmap to the atlas
     for (int y = 0; y < img_height; y++) {
-      int ty = rect->x + padding + y;
-      int tx = rect->y + padding;
-      memcpy(&atlasData[tx + ty * atlasWidth], &data[y * img_width * channels], img_width * channels);
+      int tx = rect->x + padding;
+      int ty = rect->y + padding + y;
+      memcpy(&atlasData[ty * atlasWidth * channels + tx * channels], &data[y * img_width * channels], img_width * channels);
     }
 
     // Free the bitmap
@@ -433,6 +569,7 @@ int microTextureAtlasLoadFromPath(const char *filepath)
     source.x = rect->x + padding;
     source.y = rect->y + padding;
     atlas->frames[frame_id] = source;
+    if (verbose) printf("Stored frame %s (%dx%d) at (%d, %d)\n", name, source.w, source.h, source.x, source.y);
 
     // Store name without file extension
     atlas->framesNames[frame_id] = malloc(strlen(name) + 1);
@@ -447,6 +584,9 @@ int microTextureAtlasLoadFromPath(const char *filepath)
   // 8. Free the filepaths
   for (int i = 0; i < frameCount; i++)
     free(filepaths[i]);
+
+  // 9. Generate animations from atlas frames
+  microAtlasGenerateAnimations(spot);
 
   return spot;
 }
@@ -488,12 +628,12 @@ void microAnimationLoadFromFile(const char *csv_filepath)
 {
   //TODO: test if the code works
 
-  FILE* file = fopen(csv_filepath, "r");
-  if (!file) {
-    printf("Error: can't open the file %s\n", csv_filepath);
-    fclose(file);
-    return;
-  }
+  /* FILE* file = fopen(csv_filepath, "r");
+     if (!file) {
+     printf("Error: can't open the file %s\n", csv_filepath);
+     fclose(file);
+     return;
+     }
 
   // Get file size
   fseek(file, 0L, SEEK_END);
@@ -520,66 +660,21 @@ void microAnimationLoadFromFile(const char *csv_filepath)
 
   // Parse each animation
   for (int i = 0; i < animationsCount; i++) {
-    line = strtok(NULL, "\n");
-    assert(line != NULL);
-    char* name = strtok(line, ",");
-    int startX = atoi(strtok(NULL, ","));
-    int startY = atoi(strtok(NULL, ","));
-    int frameWidth = atoi(strtok(NULL, ","));
-    int frameHeight = atoi(strtok(NULL, ","));
-    int framesCount = atoi(strtok(NULL, ","));
-    float animationSpeed = atof(strtok(NULL, ","));
-    int flipX = atoi(strtok(NULL, ","));
-    int flipY = atoi(strtok(NULL, ","));
-
-    microAnimationCreate(name, startX, startY, frameWidth, frameHeight, framesCount, animationSpeed, flipX, flipY);
+  line = strtok(NULL, "\n");
+  assert(line != NULL);
+  char* name = strtok(line, ",");
+  int startX = atoi(strtok(NULL, ","));
+  int startY = atoi(strtok(NULL, ","));
+  int frameWidth = atoi(strtok(NULL, ","));
+  int frameHeight = atoi(strtok(NULL, ","));
+  int framesCount = atoi(strtok(NULL, ","));
+  microAnimationCreate(name, startX, startY, frameWidth, frameHeight, framesCount);
   }
 
-  free(fileData);
+  free(fileData); */
 }
 
-int microAnimationCreate(char* name, int startX, int startY, int frameWidth, int frameHeight, int framesCount, float animationSpeed, int flipX, int flipY)
-{
-  // find spot in the resources buffer
-  int id = -1;
-  for (int i = 0; i < MICRO_MAX_ANIMATIONS; i++) {
-    if (microAnimations[i].framesCount == 0) {
-      id = i;
-      break;
-    }
-  }
-  assert(id != -1); 
-
-  // create animation
-  assert(strlen(name) < MICRO_MAX_NAME_LEN);
-  strcpy(microAnimations[id].name, name);
-  microAnimation* animation = &microAnimations[id];
-  animation->frames = malloc(sizeof(int) * 4 * framesCount);
-  for (int i = 0; i < framesCount; i++) {
-    animation->frames[i * 4 + 0] = startX + i * frameWidth;
-    animation->frames[i * 4 + 1] = startY;
-    animation->frames[i * 4 + 2] = frameWidth;
-    animation->frames[i * 4 + 3] = frameHeight;
-    // Flip
-    if (flipX) {
-      animation->frames[i * 4 + 0] += frameWidth;
-      animation->frames[i * 4 + 2] = -frameWidth;
-    }
-
-    if (flipY) {
-      animation->frames[i * 4 + 1] += frameHeight;
-      animation->frames[i * 4 + 3] = -frameHeight;
-    }
-  }
-  microAnimations[id].framesCount = framesCount;
-  microAnimations[id].animationSpeed = animationSpeed;
-  microAnimations[id].flipX = flipX;
-  microAnimations[id].flipY = flipY;
-
-  return id;
-}
-
-int microAnimationCreateFromFrames(char* name, int* frames, int framesCount, float animationSpeed, int flipX, int flipY)
+int microAnimationCreateFromFrames(char* name, int* frames, int framesCount)
 {
   // find spot in the resources buffer
   int id = -1;
@@ -603,11 +698,21 @@ int microAnimationCreateFromFrames(char* name, int* frames, int framesCount, flo
     animation->frames[i * 4 + 3] = frames[i * 4 + 3];
   }
   microAnimations[id].framesCount = framesCount;
-  microAnimations[id].animationSpeed = animationSpeed;
-  microAnimations[id].flipX = flipX;
-  microAnimations[id].flipY = flipY;
 
   return id;
+}
+
+int microAnimationGet(char* name)
+{
+  for (int i = 0; i < MICRO_MAX_ANIMATIONS; i++) {
+    if (strcmp(microAnimations[i].name, name) == 0)
+      return i;
+
+    if (microAnimations[i].framesCount == 0)
+      break;
+  }
+  abort();
+  return -1;
 }
 
 const char* microAnimationGetName(int animationId)
@@ -615,14 +720,20 @@ const char* microAnimationGetName(int animationId)
   return microAnimations[animationId].name;
 }
 
-MicroTextureSource microAnimationGetFrame(int animationId, int frameId)
+MicroTextureSource microAnimationGetFrame(int animationId, int frameId, int flipX, int flipY)
 {
   MicroTextureSource source;
   frameId = frameId % microAnimations[animationId].framesCount;
-  source.x = microAnimations[animationId].frames[frameId * 4 + 0];
-  source.y = microAnimations[animationId].frames[frameId * 4 + 1];
-  source.w = microAnimations[animationId].frames[frameId * 4 + 2];
-  source.h = microAnimations[animationId].frames[frameId * 4 + 3];
+
+  int width = microAnimations[animationId].frames[frameId * 4 + 2];
+  if (flipX) width = -width;
+  int height = microAnimations[animationId].frames[frameId * 4 + 3];
+  if (flipY) height = -height;
+
+  source.x = microAnimations[animationId].frames[frameId * 4 + 0] - flipX * width;
+  source.y = microAnimations[animationId].frames[frameId * 4 + 1] - flipY * height;
+  source.w = width;
+  source.h = height;
   return source;
 }
 
@@ -631,27 +742,19 @@ int microAnimationGetFramesCount(int animationId)
   return microAnimations[animationId].framesCount;
 }
 
-float microAnimationGetSpeed(int animationId)
-{
-  return microAnimations[animationId].animationSpeed;
-}
-
 void microAnimationFree(int animationId)
 {
   microAnimations[animationId].framesCount = 0;
   free(microAnimations[animationId].frames);
 }
 
-int microAnimationGetFlipX(int animationId)
+void microAnimationFreeAll()
 {
-  return microAnimations[animationId].flipX;
+  for (int i = 0; i < MICRO_MAX_ANIMATIONS; i++) {
+    if (microAnimations[i].framesCount == 0) continue;
+    microAnimationFree(i);
+  }
 }
-
-int microAnimationGetFlipY(int animationId)
-{
-  return microAnimations[animationId].flipY;
-}
-
 
 int microFontLoadFromFile(const char *filepath, unsigned int fontSize, int filter)
 {
@@ -785,6 +888,14 @@ void microFontFree(int fontId)
   free(microFonts[fontId].ttf_buffer);
   microFonts[fontId].textureId = 0;
   microFontsCount--;
+}
+
+void microFontFreeAll()
+{
+  for (int i = 0; i < MICRO_MAX_FONTS; i++) {
+    if (microFonts[i].textureId == -1) continue;
+    microFontFree(i);
+  }
 }
 
 
@@ -1148,6 +1259,7 @@ void microGraphicsInit()
       SDL_WINDOWPOS_CENTERED,
       screenWidth, screenHeight,
       SDL_WINDOW_FULLSCREEN | SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN
+      // SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN
       );
 
   if (!window) {
@@ -1168,6 +1280,8 @@ void microGraphicsInit()
     microFonts[i].textureId = -1;
   for (int i = 0; i < MICRO_MAX_ATLASES; i++)
     microAtlases[i].textureId = -1;
+  microParticleEmitters = vector_create(sizeof(microParticleEmitter));
+  microFreedParticleEmitters = vector_create(sizeof(int));
 
   //Set OpenGL version
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
@@ -1769,3 +1883,188 @@ float microGraphicsDelayToNextFrame(float target_fps)
 
   return deltaTime;
 }
+
+
+
+////////////////////////////
+/// Particle emitter
+////////////////////////////
+int microParticleEmitterCreateSteady(int x, int y, float emissionRate, MicroParticle (*generationFunc)(int))
+{
+  //Create emitter
+  microParticleEmitter newEmitter;
+  newEmitter.particles = vector_create(sizeof(MicroParticle));
+  newEmitter.freeParticles = vector_create(sizeof(int));
+  newEmitter.particleGenerator = generationFunc;
+  newEmitter.emitterType = MICRO_EMITTER_STEADY;
+  newEmitter.emissionTimer = 0;
+  newEmitter.emissionRate = emissionRate;
+  newEmitter.width = 1;
+  newEmitter.height = 1;
+  newEmitter.x = x;
+  newEmitter.y = y;
+
+  int spot = -1;
+  if (microFreedParticleEmitters.size > 0) {
+    //Reuse a freed emitter
+    spot = *(int*)vector_back(&microFreedParticleEmitters);
+    vector_pop_back(&microFreedParticleEmitters);
+    memcpy(vector_at(&microParticleEmitters, spot), &newEmitter, sizeof(microParticleEmitter));
+  }
+  else
+  {
+    vector_push_back(&microParticleEmitters, &newEmitter);
+    spot = microParticleEmitters.size - 1;
+  }
+
+  return spot;
+}
+
+int microParticleEmitterCreateExplostion(int x, int y, int particlesCount, MicroParticle (*generationFunc)(int))
+{
+  //Create emitter
+  microParticleEmitter newEmitter;
+  newEmitter.particles = vector_create(sizeof(MicroParticle));
+  newEmitter.freeParticles = vector_create(sizeof(int));
+  newEmitter.particleGenerator = generationFunc;
+  newEmitter.emitterType = MICRO_EMITTER_EXPLOSION;
+  newEmitter.emissionTimer = 0;
+  newEmitter.emissionRate = 0;
+  newEmitter.width = 1;
+  newEmitter.height = 1;
+  newEmitter.x = x;
+  newEmitter.y = y;
+
+  int spot = -1;
+  if (microFreedParticleEmitters.size > 0) {
+    //Reuse a freed emitter
+    spot = *(int*)vector_back(&microFreedParticleEmitters);
+    vector_pop_back(&microFreedParticleEmitters);
+    memcpy(vector_at(&microParticleEmitters, spot), &newEmitter, sizeof(microParticleEmitter));
+  }
+  else
+  {
+    vector_push_back(&microParticleEmitters, &newEmitter);
+    spot = microParticleEmitters.size - 1;
+  }
+  microParticleEmitter* emitter = vector_at(&microParticleEmitters, spot);
+
+  //Create particles if it is an explosion
+  for (int i = 0; i < particlesCount; i++) {
+    MicroParticle p = generationFunc(spot);
+    vector_push_back(&emitter->particles, &p);
+  }
+
+  return spot;
+} 
+
+void microParticleEmitterSetPosition(int emitterId, int x, int y)
+{
+  microParticleEmitter* emitter = vector_at(&microParticleEmitters, emitterId);
+  emitter->x = x;
+  emitter->y = y;
+} 
+
+void microParticleEmitterSetSize(int emitterId, int width, int height)
+{
+  microParticleEmitter* emitter = vector_at(&microParticleEmitters, emitterId);
+  emitter->width = width;
+  emitter->height = height;
+} 
+
+void microParticleEmitterSetEmissionRate(int emitterId, float emissionRate)
+{
+  microParticleEmitter* emitter = vector_at(&microParticleEmitters, emitterId);
+  emitter->emissionRate = emissionRate;
+} 
+
+void microParticleEmitterSetGenerationFunc(int emitterId, MicroParticle (*generationFunc)(int))
+{
+  microParticleEmitter* emitter = vector_at(&microParticleEmitters, emitterId);
+  emitter->particleGenerator = generationFunc;
+} 
+void microParticleEmitterGetPosition(int emitterId, int *x, int *y)
+{
+  microParticleEmitter* emitter = vector_at(&microParticleEmitters, emitterId);
+  *x = emitter->x;
+  *y = emitter->y;
+} 
+
+float microParticleEmitterGetEmissionRate(int emitterId)
+{
+  microParticleEmitter* emitter = vector_at(&microParticleEmitters, emitterId);
+  return emitter->emissionRate;
+} 
+
+void microParticleEmittersUpdate(float dt)
+{
+  for (int i = 0; i < microParticleEmitters.size; i++) {
+
+    microParticleEmitter* emitter = vector_at(&microParticleEmitters, i);
+    Vector* particles = &emitter->particles;
+
+    //Update particles
+    for (int j = 0; j < particles->size; j++) {
+      MicroParticle *p = vector_at(particles, j);
+      p->x += p->vx * dt;
+      p->y += p->vy * dt;
+      p->life -= dt;
+      p->alpha = p->startAlpha * (p->life / p->maxLife) + p->endAlpha * (1 - p->life / p->maxLife);
+      p->rotation += p->rotationSpeed * dt;
+      p->scale = p->startScale * (p->life / p->maxLife) + p->endScale * (1 - p->life / p->maxLife);
+    }
+
+    //Remove dead particles
+    for (int j = 0; j < particles->size; j++) {
+      MicroParticle *p = vector_at(particles, j);
+      if (p->life <= 0) {
+        vector_push_back(&emitter->freeParticles, &j);
+      }
+    }
+
+    //Emit new particles
+    if (emitter->emitterType == MICRO_EMITTER_STEADY) {
+      emitter->emissionTimer += dt;
+
+      if (emitter->emissionTimer > 1.0 / emitter->emissionRate) {
+        MicroParticle p = emitter->particleGenerator(i);
+        p.x = emitter->x - (float)emitter->width / 2 + rand() % emitter->width;
+        p.y = emitter->y - (float)emitter->height / 2 + rand() % emitter->height;
+        p.life = p.maxLife;
+        p.alpha = p.startAlpha;
+        p.scale = p.startScale;
+
+        if (emitter->freeParticles.size > 0) {
+          int spot = *(int*)vector_back(&emitter->freeParticles);
+          vector_pop_back(&emitter->freeParticles);
+          memcpy(vector_at(particles, spot), &p, sizeof(MicroParticle));
+        } else {
+          vector_push_back(particles, &p);
+        }
+
+        emitter->emissionTimer = 0;
+      }
+    }
+  }
+}  
+
+void microParticleEmitterDraw(int emitterId)
+{
+  microParticleEmitter* emitter = vector_at(&microParticleEmitters, emitterId);
+  Vector* particles = &emitter->particles;
+
+  for (int i = 0; i < particles->size; i++) {
+    MicroParticle *p = vector_at(particles, i);
+    if (p->life <= 0.0) continue;
+    microGraphicsDrawRectRot(p->textureId, p->tx, p->ty, p->tw, p->th, p->x - p->scale/2,
+        p->y - p->scale/2, p->scale, p->scale, p->scale/2, p->scale/2, p->rotation, 1.0, 1.0, 1.0, p->alpha);
+  }
+}
+
+void microParticleEmitterRemove(int emitterId)
+{
+  microParticleEmitter* emitter = vector_at(&microParticleEmitters, emitterId);
+  vector_free(&emitter->particles);
+  vector_free(&emitter->freeParticles);
+  vector_push_back(&microFreedParticleEmitters, &emitterId);
+}  

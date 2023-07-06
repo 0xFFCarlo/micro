@@ -4,6 +4,7 @@
 #include "./micro/State.h"
 
 #include "states/GameState.h"
+#include <string.h>
 
 int main(int argc, char const *argv[])
 {

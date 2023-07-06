@@ -34,15 +34,13 @@ extern void microTextureAtlasFree(int textureAtlasId);
 /// Animation
 /////////////////////////////
 extern void microAnimationLoadFromFile(const char *csv_filepath);
-extern int microAnimationCreate(char* name, int startX, int startY, int frameWidth, int frameHeight, int framesCount, float animationSpeed, int flipX, int flipY);
-extern int microAnimationCreateFromFrames(char* name, int* frames, int framesCount, float animationSpeed, int flipX, int flipY);
+extern int microAnimationCreateFromFrames(char* name, int* frames, int framesCount);
+extern int microAnimationGet(char* name);
 extern const char* microAnimationGetName(int animationId);
-extern MicroTextureSource microAnimationGetFrame(int animationId, int frameId);
+extern MicroTextureSource microAnimationGetFrame(int animationId, int frameId, int flipX, int flipY);
 extern int microAnimationGetFramesCount(int animationId);
-extern float microAnimationGetSpeed(int animationId);
-extern int microAnimationGetFlipX(int animationId);
-extern int microAnimationGetFlipY(int animationId);
 extern void microAnimationFree(int animationId);
+extern void microAnimationFreeAll();
 
 
 ////////////////////////////
@@ -52,6 +50,40 @@ extern int microFontLoadFromFile(const char *filepath, unsigned int fontSize, in
 extern int microFontGetTextureId(int fontId);
 extern int microFontGetSize(int fontId);
 extern void microFontFree(int fontId);
+extern void microFontFreeAll();
+
+
+////////////////////////////
+/// Particle emitter
+////////////////////////////
+typedef struct {
+  float x, y;
+  float life;
+  float alpha;
+  float scale;
+  
+  int textureId;
+  float tx, ty, tw, th;
+  float vx, vy;
+  float maxLife;
+  float rotation;
+  float rotationSpeed;
+  float startScale;
+  float endScale;
+  float startAlpha;
+  float endAlpha;
+} MicroParticle;
+extern int microParticleEmitterCreateSteady(int x, int y, float emissionRate, MicroParticle (*generationFunc)(int));
+extern int microParticleEmitterCreateExplostion(int x, int y, int particlesCount, MicroParticle (*generationFunc)(int));
+extern void microParticleEmitterSetPosition(int emitterId, int x, int y);
+extern void microParticleEmitterSetSize(int emitterId, int width, int height);
+extern void microParticleEmitterSetEmissionRate(int emitterId, float emissionRate);
+extern void microParticleEmitterSetGenerationFunc(int emitterId, MicroParticle (*generationFunc)(int));
+extern void microParticleEmitterGetPosition(int emitterId, int *x, int *y);
+extern float microParticleEmitterGetEmissionRate(int emitterId);
+extern void microParticleEmitterDraw(int emitterId);
+extern void microParticleEmittersUpdate(float dt);
+extern void microParticleEmitterRemove(int emitterId);
 
 
 /////////////////////////////

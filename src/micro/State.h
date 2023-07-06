@@ -10,6 +10,7 @@ typedef struct {
 } MicroState;
 
 extern void microStateSet(MicroState state);
+extern void microStateQuit();
 extern void microStateUpdate(float dt);
 extern void microStateFree();
 

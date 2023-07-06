@@ -3,12 +3,14 @@
 #include "Graphics.h"
 #include <string.h>
 #include <assert.h>
+#include <stdio.h>
 
 #define MICRO_RESOURCES_MAX 512
 #define MICRO_RESOURCES_NAME_MAX_LEN 32
 #define MICRO_TYPE_TEXTURE 0
 #define MICRO_TYPE_SOUND 1
 #define MICRO_TYPE_MUSIC 2
+#define MICRO_TYPE_ATLAS 3
 
 
 typedef struct Resource {
@@ -64,6 +66,11 @@ int microResourceLoad(const char* name, const char* filepath, const char* type)
     resourceId = microTextureLoadFromFile(filepath);
     resourceType = MICRO_TYPE_TEXTURE;
   }
+  else if (strcompare(type, "atlas") == CMP_EQUAL)
+  {
+    resourceId = microTextureAtlasLoadFromPath(filepath);
+    resourceType = MICRO_TYPE_ATLAS;
+  }
   else if (strcompare(type, "sound") == CMP_EQUAL)
   {
     resourceId = microSoundLoadFromFile(filepath, MICRO_SOUNDTYPE_SOUNDEFFECT);	
@@ -73,6 +80,11 @@ int microResourceLoad(const char* name, const char* filepath, const char* type)
   {
     resourceId = microSoundLoadFromFile(filepath, MICRO_SOUNDTYPE_MUSIC);	
     resourceType = MICRO_TYPE_MUSIC;
+  }
+  else
+  {
+    printf("Error: resource type %s not supported\n", type);
+    return -1;
   }
 
   //store resource sorted by name in resources array
@@ -85,6 +97,7 @@ int microResourceLoad(const char* name, const char* filepath, const char* type)
   resources[i].resourceType = resourceType;
   strcpy(resources[i].name, name);
   resourcesCount++;
+  assert(resourcesCount < MICRO_RESOURCES_MAX);
 
   return resourceId;
 }
@@ -106,6 +119,8 @@ int microResourceFree(const char* name)
     microTextureFree(res->resourceId);
   else if (res->resourceType == MICRO_TYPE_SOUND || res->resourceType == MICRO_TYPE_MUSIC)
     microSoundFree(res->resourceId);
+  else if (res->resourceType == MICRO_TYPE_ATLAS)
+    microTextureAtlasFree(res->resourceId);
 
   return 1;
 }
@@ -122,6 +137,10 @@ void microResourceFreeAll()
     else if (res->resourceType == MICRO_TYPE_SOUND || res->resourceType == MICRO_TYPE_MUSIC)
     {
       microSoundFree(res->resourceId);
+    }
+    else if (res->resourceType == MICRO_TYPE_ATLAS)
+    {
+      microTextureAtlasFree(res->resourceId);
     }
   }	
 }

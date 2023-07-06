@@ -8,6 +8,7 @@
 #include "../micro/Graphics.h"
 #include "../micro/ECS.h"
 #include "../micro/Physics.h"
+#include "../micro/Resources.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
@@ -28,10 +29,8 @@ int player_idle = -1;
 int player_state = 0;
 int player_direction = 0;
   
-int player_idle_r = -1;
-int player_idle_l = -1;
-int player_walk_r = -1;
-int player_walk_l = -1;
+int anim_player_idle = -1;
+int anim_player_walk = -1;
   
 float toPlanetNormX = 0.0;
 float toPlanetNormY = 0.0;
@@ -126,26 +125,32 @@ void playerUpdate(int entityId, float dt)
   CAnimation* animation = (CAnimation*)microECSEntityGetComponent(player_entity_id, cid_animation);
   if (player_state == PLAYER_STATE_WALK) {
     if (player_direction == PLAYER_DIRECTION_RIGHT) {
-      if (animation->animationId != player_walk_r)
+      if (animation->animationId != anim_player_walk)
         animation->frameId = 0;
-      animation->animationId = player_walk_r;
+      animation->animationId = anim_player_walk;
+      animation->flipX = 0;
     } else {
-      if (animation->animationId != player_walk_l)
+      if (animation->animationId != anim_player_walk)
         animation->frameId = 0;
-      animation->animationId = player_walk_l;
+      animation->animationId = anim_player_walk;
+      animation->flipX = 1;
     }
+    animation->framesDuration = 0.3;
   }
   else
   {
     if (player_direction == PLAYER_DIRECTION_RIGHT) {
-      if (animation->animationId != player_idle_r)
+      if (animation->animationId != anim_player_idle)
         animation->frameId = 0;
-      animation->animationId = player_idle_r;
+      animation->animationId = anim_player_idle;
+      animation->flipX = 0;
     } else {
-      if (animation->animationId != player_idle_l)
+      if (animation->animationId != anim_player_idle)
         animation->frameId = 0;
-      animation->animationId = player_idle_l;
+      animation->animationId = anim_player_idle;
+      animation->flipX = 1;
     }
+    animation->framesDuration = 1.0;
   }
   player_state = PLAYER_STATE_IDLE;
   
@@ -168,10 +173,10 @@ float PlayerGetRotation()
 
 void PlayerEntityAdd()
 {
-  player_idle_r = microAnimationCreate("player_idle_r", 0, 0, 16, 16, 2, 1.0, 0, 0);
-  player_idle_l = microAnimationCreate("player_idle_r", 0, 0, 16, 16, 2, 1.0, 1, 0);
-  player_walk_r = microAnimationCreate("player_walk_r", 0, 16, 16, 16, 4, 0.3, 0, 0);
-  player_walk_l = microAnimationCreate("player_walk_l", 0, 16, 16, 16, 4, 0.3, 1, 0);
+  // anim_player_idle = microAnimationGet("player-idle");
+  // anim_player_walk = microAnimationGet("player-walk");
+  anim_player_idle = microAnimationGet("redsauron-small-idle");
+  anim_player_walk = microAnimationGet("redsauron-small-walk");
 
   player_entity_id = microECSEntityNew(NULL, NULL); 
   assert(player_entity_id != -1);
@@ -192,7 +197,8 @@ void PlayerEntityAdd()
   
   // Sprite component
   //int textureId = microTextureLoadFromFile("./res/robot.png");
-  int textureId = microTextureLoadFromFile("./res/player.png");
+  int atlasId = microResourceGet("atlas");
+  int textureId = microTextureAtlasGetTextureId(atlasId);
   microTextureSetFilter(textureId, MICRO_FILTER_NEAREST);
 
   microECSEntityAddComponent(player_entity_id, cid_sprite, &(CSprite){
@@ -223,13 +229,17 @@ void PlayerEntityAdd()
   // Layer component
   microECSEntityAddComponent(player_entity_id, cid_drawable, &(CDrawable){
     .layerId = 4,
+    .visible = 1,
   });
 
   // Animation component
   microECSEntityAddComponent(player_entity_id, cid_animation, &(CAnimation){
-    .animationId = player_idle_l,
+    .animationId = anim_player_idle,
     .frameId = 0,
     .timeSinceLastFrame = 0,
+    .framesDuration = 1.0,
+    .flipX = 0,
+    .flipY = 0,
   });
 
   // Update component

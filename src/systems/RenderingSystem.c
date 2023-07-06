@@ -35,6 +35,9 @@ void renderingSystem(float dt) {
 
     const int entityId = entities.entityIds[i];
     CPosition* p = (CPosition*)microECSEntityGetComponent(entityId, cid_position);
+    CDrawable* drawable = (CDrawable*)microECSEntityGetComponent(entityId, cid_drawable);
+
+    if (drawable->visible == 0) continue;
     
     // Determine if entity is HUD
     const unsigned int entity_hud = microECSEntityHasComponent(entityId, cid_hud);
@@ -81,6 +84,12 @@ void renderingSystem(float dt) {
           p->x, p->y, t->width, t->height, t->originX,
           t->originY, t->rotation, color->r, color->g, color->b,
           color->a);
+    }
+
+    // Draw particles
+    if (microECSEntityHasComponent(entityId, cid_particle_emitter)) {
+      CParticleEmitter* emitter = (CParticleEmitter*)microECSEntityGetComponent(entityId, cid_particle_emitter);
+      microParticleEmitterDraw(emitter->emitterId);
     }
 
     // Draw text

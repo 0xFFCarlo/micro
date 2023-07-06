@@ -1,9 +1,11 @@
 #ifndef RENDERING_COMPONENTS_H
 #define RENDERING_COMPONENTS_H
 
+#include <stdint.h>
+
 // Sprite
 typedef struct {
-    int textureId;
+    uint8_t textureId;
     float tx, ty, tw, th;
 } CSprite;
 
@@ -13,7 +15,7 @@ extern void RegisterCSprite();
 
 // Text 
 typedef struct {
-  int fontId;
+  uint8_t fontId;
   float lineSpacing;
   char* text;
 } CText;
@@ -33,7 +35,8 @@ extern void RegisterCColor();
 
 // Layer
 typedef struct {
-    int layerId;
+    uint8_t layerId;
+    uint8_t visible;
 } CDrawable;
 
 extern int cid_drawable;
@@ -50,7 +53,10 @@ extern void RegisterCHud();
 // Animation
 typedef struct {
     int animationId;
-    int frameId;
+    uint16_t frameId;
+    float framesDuration;
+    uint8_t flipX;
+    uint8_t flipY;
     float timeSinceLastFrame;
 } CAnimation;
 
@@ -74,9 +80,18 @@ extern void RegisterCShadedCanvas();
 typedef struct {
   unsigned char followRotation;
 } CLockOnView;
-
 extern int cid_lock_on_view;
 extern void RegisterCLockOnView();
+
+
+// ParticleEmitter
+typedef struct {
+  uint16_t emitterId;
+  uint16_t offsetX, offsetY;
+} CParticleEmitter;
+extern int cid_particle_emitter;
+extern void RegisterCParticleEmitter();
+
 
 extern void RegisterRenderingComponents();
 

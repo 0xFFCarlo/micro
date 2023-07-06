@@ -10,6 +10,7 @@ int cid_hud = -1;
 int cid_animation = -1;
 int cid_shadedCanvas = -1;
 int cid_lock_on_view = -1;
+int cid_particle_emitter = -1;
 
 
 void RegisterCSprite()
@@ -51,6 +52,11 @@ void RegisterCLockOnView()
   cid_lock_on_view = microECSComponentRegister(sizeof(CLockOnView));
 }
 
+void RegisterCParticleEmitter()
+{
+  cid_particle_emitter = microECSComponentRegister(sizeof(CParticleEmitter));
+}
+
 void RegisterRenderingComponents()
 {
   RegisterCSprite();
@@ -61,4 +67,5 @@ void RegisterRenderingComponents()
   RegisterCAnimation();
   RegisterCShadedCanvas();
   RegisterCLockOnView();
+  RegisterCParticleEmitter();
 }

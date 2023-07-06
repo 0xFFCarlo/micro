@@ -6,6 +6,7 @@
 #include "../micro/Graphics.h"
 #include "../micro/ECS.h"
 #include "../micro/Physics.h"
+#include "../micro/State.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
@@ -22,13 +23,18 @@ float frames_time = 0.0;
 void handle_event(int entity, SDL_Event event)
 {
     if (event.type == SDL_QUIT) {
-      exit(0);
+      microStateQuit();
     }
 
     if (event.type == SDL_KEYDOWN)
     {
       if (event.key.keysym.scancode == SDL_SCANCODE_Q)
-        exit(0);
+        microStateQuit();
+
+      if (event.key.keysym.scancode == SDL_SCANCODE_L) {
+          CDrawable* drawable = (CDrawable*)microECSEntityGetComponent(log_gui_entity_id, cid_drawable);
+          drawable->visible = !drawable->visible;
+      }
     }
 }
 
@@ -53,26 +59,27 @@ void updateLogGUI(int entityId, float dt)
 
 void LogGUIAdd()
 {
-  font_id = microFontLoadFromFile("./res/firacode.ttf", 20, MICRO_FILTER_NEAREST);
+  font_id = microFontLoadFromFile("./res/fonts/firacode.ttf", 20, MICRO_FILTER_NEAREST);
 
-  int entityText = microECSEntityNew(NULL, NULL);
-  microECSEntityAddComponent(entityText, cid_position, &(CPosition){
+  log_gui_entity_id = microECSEntityNew(NULL, NULL);
+  microECSEntityAddComponent(log_gui_entity_id, cid_position, &(CPosition){
     .x = 16,
     .y = 16
   });
-  microECSEntityAddComponent(entityText, cid_text, &(CText){
+  microECSEntityAddComponent(log_gui_entity_id, cid_text, &(CText){
     .text = logText,
     .lineSpacing = 3,
     .fontId = font_id,
   });
-  microECSEntityAddComponent(entityText, cid_drawable, &(CDrawable){
-    .layerId = 5
+  microECSEntityAddComponent(log_gui_entity_id, cid_drawable, &(CDrawable){
+    .layerId = 5,
+    .visible = 0,
   });
-  microECSEntityAddComponent(entityText, cid_hud, NULL);
-  microECSEntityAddComponent(entityText, cid_event_listener, &(CEventListener){
+  microECSEntityAddComponent(log_gui_entity_id, cid_hud, NULL);
+  microECSEntityAddComponent(log_gui_entity_id, cid_event_listener, &(CEventListener){
     .on_event = handle_event
   });
-  microECSEntityAddComponent(entityText, cid_update, &(CUpdate){
+  microECSEntityAddComponent(log_gui_entity_id, cid_update, &(CUpdate){
     .update = updateLogGUI
   });
 }

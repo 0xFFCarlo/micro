@@ -14,7 +14,7 @@ void animationSystem(float dt) {
     CAnimation* animation = &components_animation[i];
     CSprite* sprite = (CSprite*)microECSEntityGetComponent(entityId, cid_sprite);
     int framesCount = microAnimationGetFramesCount(animation->animationId);
-    float frameDuration = microAnimationGetSpeed(animation->animationId) / (float)framesCount;
+    float frameDuration = animation->framesDuration / (float)framesCount;
 
     // Update animation frame
     animation->timeSinceLastFrame += dt;
@@ -24,7 +24,7 @@ void animationSystem(float dt) {
     }
 
     // Update texture source
-    MicroTextureSource source = microAnimationGetFrame(animation->animationId, animation->frameId);
+    MicroTextureSource source = microAnimationGetFrame(animation->animationId, animation->frameId, animation->flipX, animation->flipY);
     sprite->tx = source.x;
     sprite->ty = source.y;
     sprite->tw = source.w;

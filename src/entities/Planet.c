@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include "../util/perlin_noise.h"
+#include "Cave.h"
 
 int planet_id = -1;
 int planet_shader_id = -1;
@@ -34,7 +35,6 @@ void PlanetGetPos(float* x, float* y)
   *x = planetX;
   *y = planetY;
 }
-
 
 // Updates shader parameters to show the shadows at the planet position
 void planetUpdate(int planetId, float dt)
@@ -113,7 +113,7 @@ void setupPlanetEntity(int planetId)
   // microViewApply(); // send view matrix to shader
   // microShaderSetUniform("resolution", canvas_planet_width, canvas_planet_height);
   // microShaderApply(current_shader);
-
+  
   // Position component
   planetX = viewWidth / 2.f;
   planetY = viewHeight / 2.f + (float)canvas_planet_height + (float)viewHeight * 0.2 / 2.0;
@@ -121,7 +121,7 @@ void setupPlanetEntity(int planetId)
       .x = planetX,
       .y = planetY,
       });
-
+  
   // Shaded canvas component
   // planet_canvas_id = microCanvasCreate(canvas_planet_width, canvas_planet_height);
   // microECSEntityAddComponent(planetId, cid_shadedCanvas, &(CShadedCanvas) {
@@ -169,8 +169,11 @@ void setupPlanetEntity(int planetId)
       .b = 1.0,
       .a = 1.0 
       });
-  microECSEntityAddComponent(planetId, cid_drawable, &(CDrawable){ .layerId = 1 });
+  microECSEntityAddComponent(planetId, cid_drawable, &(CDrawable){ .layerId = 1, .visible = 1});
   microECSEntityAddComponent(planetId, cid_update, &(CUpdate){ .update = planetUpdate });
+  
+  // Add caves
+  CaveAddEntity(planetX, planetY - PlanetGetRadius() / 2.0 + 32.0 / 2 - 4);
 }
 
 void setupShadow(int shadowId)
@@ -237,7 +240,7 @@ void setupShadow(int shadowId)
       .b = 1.0,
       .a = 1.0
       });
-  microECSEntityAddComponent(shadowId, cid_drawable, &(CDrawable){.layerId = 2});
+  microECSEntityAddComponent(shadowId, cid_drawable, &(CDrawable){.layerId = 2, .visible = 1});
   microECSEntityAddComponent(shadowId, cid_hud, &(CHud){});
 }
 

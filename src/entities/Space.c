@@ -52,6 +52,8 @@ void SpaceEntityAdd()
 {
   float viewWidth, viewHeight;
   microViewGetSize(&viewWidth, &viewHeight);
+  float viewX, viewY;
+  microViewGetCenter(&viewX, &viewY);
 
   // Create planet
   spaceId = microECSEntityNew(NULL, NULL);
@@ -66,6 +68,9 @@ void SpaceEntityAdd()
   float starfieldThreshold1 = 40.0;
   float starfieldThreshold2 = 40.0;
 
+  float planetX, planetY;
+  PlanetGetPos(&planetX, &planetY);
+
   // Load shader and apply parameters
   space_shader_id = microShaderLoadFromFile("./res/shaders/base_vert.glsl", "./res/shaders/space.glsl");
   assert(space_shader_id != -1);
@@ -74,10 +79,10 @@ void SpaceEntityAdd()
   microViewApply(); // send view matrix to shader
   microShaderSetUniform("resolution", canvas_space_width, canvas_space_height);
   microShaderSetUniform("time", curr_time);
-  microShaderSetUniform("view_center", 0.0, 0.2 + 1.0);
+  microShaderSetUniform("view_center", 0.0, (viewY - planetY) * 1.8 / viewHeight);
   microShaderSetUniform("view_angle", view_angle);
   microShaderSetUniform("planet_radius", planet_radius);
-  microShaderSetUniform("planet_center", 0.0, 0.2 + 1.0);
+  microShaderSetUniform("planet_center", 0.0, (viewY - planetY) * 1.8 / viewHeight);
   microShaderSetUniform("nebulaColor", nebulaColor[0], nebulaColor[1], nebulaColor[2]);
   microShaderSetUniform("starfieldThreshold1", starfieldThreshold1);
   microShaderSetUniform("starfieldThreshold2", starfieldThreshold2);
@@ -134,7 +139,7 @@ void SpaceEntityAdd()
       .b = 1.0,
       .a = 1.0 
       });
-  microECSEntityAddComponent(spaceId, cid_drawable, &(CDrawable){.layerId = 0});
+  microECSEntityAddComponent(spaceId, cid_drawable, &(CDrawable){.layerId = 0, .visible = 1});
   microECSEntityAddComponent(spaceId, cid_hud, &(CHud){});
   microECSEntityAddComponent(spaceId, cid_update, &(CUpdate){.update = spaceUpdate});
 }

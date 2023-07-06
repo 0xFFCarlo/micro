@@ -2,6 +2,7 @@
 #include "../micro/ECS.h"
 #include "../micro/Graphics.h"
 #include "../micro/Physics.h"
+#include "../micro/Resources.h"
 
 #include "../components/MotionComponents.h"
 #include "../components/RenderingComponents.h"
@@ -16,10 +17,12 @@
 #include "../systems/PhysicsSystem.h"
 #include "../systems/PlanetaryAlignmentSystem.h"
 #include "../systems/GravitySystem.h"
+#include "../systems/ParticlesSystem.h"
 #include "../entities/Space.h"
 #include "../entities/Planet.h"
 #include "../entities/Player.h"
 #include "../entities/LogGUI.h"
+#include "../util/mem_debug.h"
 
 void gameStateInit()
 {
@@ -54,8 +57,9 @@ void gameStateInit()
   microECSSystemAdd(gravitySystem);
   microECSSystemAdd(updateSystem);
   microECSSystemAdd(physicsSystem);
-  microECSSystemAdd(lockOnViewSystem);
   microECSSystemAdd(planetaryAligntmentSystem);
+  microECSSystemAdd(particlesSystem);
+  microECSSystemAdd(lockOnViewSystem);
   microECSSystemAdd(shadedCanvasSystem);
   microECSSystemAdd(animationSystem);
   microECSSystemAdd(renderingSystem);
@@ -63,14 +67,10 @@ void gameStateInit()
   // Physics world
   int world_id = microPhysicsWorldNew();
   printf("Physics world_id: %d\n", world_id);
-  
-  // Texture atlas
-  int atlas_id = microTextureAtlasLoadFromPath("res/");
-  MicroTextureSource ts = microTextureAtlasGetRegion(atlas_id, "heart");
-  MicroTextureSource ts_2 = microTextureAtlasGetRegion(atlas_id, "player");
-  printf("x: %d, y: %d, w: %d, h: %d\n", ts.x, ts.y, ts.w, ts.h);
-  printf("x: %d, y: %d, w: %d, h: %d\n", ts_2.x, ts_2.y, ts_2.w, ts_2.h);
 
+  // Texture atlas
+  microResourceLoad("atlas", "res/textures/", "atlas");
+  
   // Register entities
   SpaceEntityAdd();
   PlanetEntityAdd();
@@ -88,7 +88,13 @@ void gameStateUpdate(float dt)
 
 void gameStateFree()
 {
-  //TODO: 
+  microResourceFree("atlas");
+  microECSFree();
+  microAnimationFreeAll();
+  microFontFreeAll();
+
+  memory_check_leaks();
+  exit(0);
 }
 
 MicroState gameStateGet()
