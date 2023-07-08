@@ -16,6 +16,14 @@ typedef struct {
 extern int cid_gravity;
 extern void RegisterCGravity();
 
+typedef struct {
+  int health; 
+  int maxHealth;
+} CHealth;
+
+extern int cid_health;
+extern void RegisterCHealth();
+
 extern void RegisterCustomComponents();
 
 #endif /* end of include guard: CUSTOM_COMPONENTS_H */

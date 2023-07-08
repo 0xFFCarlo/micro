@@ -31,6 +31,7 @@ int player_direction = 0;
   
 int anim_player_idle = -1;
 int anim_player_walk = -1;
+int anim_player_jump = -1;
   
 float toPlanetNormX = 0.0;
 float toPlanetNormY = 0.0;
@@ -171,12 +172,25 @@ float PlayerGetRotation()
   return playerRotation;
 }
 
+int PlayerGetHealth()
+{
+  CHealth* health = (CHealth*)microECSEntityGetComponent(player_entity_id, cid_health);
+  return health->health;
+}
+
+int PlayerGetMaxHealth()
+{
+  CHealth* health = (CHealth*)microECSEntityGetComponent(player_entity_id, cid_health);
+  return health->health;
+}
+
 void PlayerEntityAdd()
 {
-  // anim_player_idle = microAnimationGet("player-idle");
-  // anim_player_walk = microAnimationGet("player-walk");
-  anim_player_idle = microAnimationGet("redsauron-small-idle");
-  anim_player_walk = microAnimationGet("redsauron-small-walk");
+  anim_player_idle = microAnimationGet("player-idle");
+  anim_player_walk = microAnimationGet("player-walk");
+  anim_player_jump = microAnimationGet("player-jump");
+  // anim_player_idle = microAnimationGet("redsauron-small-idle");
+  // anim_player_walk = microAnimationGet("redsauron-small-walk");
 
   player_entity_id = microECSEntityNew(NULL, NULL); 
   assert(player_entity_id != -1);
@@ -258,6 +272,12 @@ void PlayerEntityAdd()
   microECSEntityAddComponent(player_entity_id, cid_planetary_alignment, &(CPlanetaryAlignment) {
     .planet_x = planetX,
     .planet_y = planetY,
+  });
+
+  // Health
+  microECSEntityAddComponent(player_entity_id, cid_health, &(CHealth) {
+    .health = 16,
+    .maxHealth = 16,
   });
 
   // Gravity component

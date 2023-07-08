@@ -1,5 +1,6 @@
 #include "Vector.h"
 #include <memory.h>
+#include <assert.h>
 #include "../util/mem_debug.h"
 
 Vector vector_create(unsigned int dataSize) {
@@ -44,5 +45,6 @@ void* vector_back(Vector* vec) {
 }
 
 void* vector_at(Vector* vec, unsigned int index) {
+  assert(index < vec->size);
   return (char*)vec->data + index * vec->dataSize;
 }

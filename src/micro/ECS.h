@@ -10,6 +10,7 @@ extern void microECSEntityRemoveComponent(int entityId, const int componentTypeI
 extern void* microECSEntityGetComponent(int entityId, const int componentTypeId);
 extern int microECSEntityHasComponent(int entityId, const int componentTypeId);
 extern int microECSEntitiesCount();
+extern void microECSEntityFreeAll();
 
 // Component
 extern int microECSComponentRegister(int size);
@@ -39,6 +40,7 @@ typedef struct {
 extern int microECSCachedQueryCreate(int* componentTypeIds, int size, int(*sort_compare)(int, int));
 extern void microECSCachedQueryFree(int queryId);
 extern ecs_entity_list microECSCachedQueryRun(int queryId);
+extern void microECSCachedQueryFreeAll();
 
 
 #endif /* end of include guard: ECS_H */

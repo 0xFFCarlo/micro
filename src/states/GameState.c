@@ -22,6 +22,7 @@
 #include "../entities/Planet.h"
 #include "../entities/Player.h"
 #include "../entities/LogGUI.h"
+#include "../entities/GUI.h"
 #include "../util/mem_debug.h"
 
 void gameStateInit()
@@ -70,12 +71,13 @@ void gameStateInit()
 
   // Texture atlas
   microResourceLoad("atlas", "res/textures/", "atlas");
-  
+
   // Register entities
   SpaceEntityAdd();
   PlanetEntityAdd();
   PlayerEntityAdd();
   LogGUIAdd();
+  GUIInit();
 }
 
 void gameStateUpdate(float dt)

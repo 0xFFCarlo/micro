@@ -9,6 +9,7 @@
 #include <assert.h>
 #include "../util/perlin_noise.h"
 #include "Cave.h"
+#include "Resource.h"
 
 int planet_id = -1;
 int planet_shader_id = -1;
@@ -174,6 +175,12 @@ void setupPlanetEntity(int planetId)
   
   // Add caves
   CaveAddEntity(planetX, planetY - PlanetGetRadius() / 2.0 + 32.0 / 2 - 4);
+
+  // Add rock
+  float angle = (double)rand() / (double)RAND_MAX * 2.0 * M_PI;
+  int x = planetX + PlanetGetRadius() / 2.0 * cos(angle);
+  int y = planetY + PlanetGetRadius() / 2.0 * sin(angle);
+  ResourceAddEntity(x, y + 16.0 / 2 - 4);
 }
 
 void setupShadow(int shadowId)
@@ -185,7 +192,7 @@ void setupShadow(int shadowId)
   float canvas_posteffect_width = viewWidth * (canvas_posteffect_height / viewHeight);
 
   // Load shader and apply parameters
-  shadow_shader_id = microShaderLoadFromFile("./res/shaders/base_vert.glsl", "./res/shaders/shadow.glsl");
+  shadow_shader_id = microShaderLoadFromFile("./res/shaders/dummy_vert.glsl", "./res/shaders/shadow.glsl");
   assert(shadow_shader_id != -1);
   int current_shader = microShaderGetCurrent();
   microShaderApply(shadow_shader_id);

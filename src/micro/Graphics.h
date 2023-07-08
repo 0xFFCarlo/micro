@@ -74,7 +74,7 @@ typedef struct {
   float endAlpha;
 } MicroParticle;
 extern int microParticleEmitterCreateSteady(int x, int y, float emissionRate, MicroParticle (*generationFunc)(int));
-extern int microParticleEmitterCreateExplostion(int x, int y, int particlesCount, MicroParticle (*generationFunc)(int));
+extern int microParticleEmitterCreateExplosion(int x, int y, int particlesCount, MicroParticle (*generationFunc)(int));
 extern void microParticleEmitterSetPosition(int emitterId, int x, int y);
 extern void microParticleEmitterSetSize(int emitterId, int width, int height);
 extern void microParticleEmitterSetEmissionRate(int emitterId, float emissionRate);
@@ -146,30 +146,55 @@ typedef struct RenderingDebugInfo {
   int textureSwitches;
   int shaderSwitches;
 } RenderingDebugInfo;
+
+// Initializes graphics system
 extern void microGraphicsInit();
+
+// Frees all memory used by graphics system
 extern void microGraphicsQuit();
+
+// Clears screen
 extern void microGraphicsClear();
+
+// Draws geometry still in queue to screen
 extern void microGraphicsDisplay();
+
+// Set rendering target to screen
 extern void microGraphicsRenderToScreen();
+
+// Set rendering target to canvas
 extern void microGraphicsRenderToCanvas(int canvasId);
+
+// Draw rectangle
 extern void microGraphicsDrawRect(
     int textureId, float tx, float ty,
     float tw, float th, float x, float y,
     float w, float h, float r, float g, float b, float a);
+
+// Draw rectangle with rotation
 extern void microGraphicsDrawRectRot(
     int textureId, float tx, float ty, 
     float tw, float th,
     float x, float y, float w, float h,
     float originX, float originY,
     float rotation, float r, float g, float b, float a);
+
+// Draw text with font
 extern void microGraphicsDrawText(
     int fontId, const char *text,
     float x, float y, float lineSpacing, 
     float r, float g, float b, float a);
 
+// Get rendering debug info
 extern RenderingDebugInfo microGetRenderingDebugInfo();
+
+// Reset rendering debug info
 extern void microRenderingDebugInfoClear();
+
+// Get current window size
 extern void microWindowGetSize(int *width, int *height);
+
+// Swap buffers (finalizes frame)
 extern void microSwapBuffers();
 
 //CAP framerate and returns delta time in seconds

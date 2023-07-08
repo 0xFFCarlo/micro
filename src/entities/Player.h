@@ -6,5 +6,7 @@ extern void PlayerGetPos(float *x, float *y);
 extern float PlayerGetRotation();
 extern void PlayerMove(int direction);
 extern void PlayerJump();
+extern int PlayerGetHealth();
+extern int PlayerGetMaxHealth();
 
 #endif /* end of include guard: PLAYER_H */

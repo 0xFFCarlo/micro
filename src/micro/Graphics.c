@@ -436,7 +436,7 @@ int microTextureAtlasLoadFromPath(const char *filepath)
   const unsigned int padding = 1;
   stbrp_rect rects[MICRO_ATLAS_MAX_TEXTURES];
   char *filepaths[MICRO_ATLAS_MAX_TEXTURES];
-  char filenames[MICRO_MAX_NAME_LEN][MICRO_ATLAS_MAX_TEXTURES];
+  char filenames[MICRO_ATLAS_MAX_TEXTURES][MICRO_MAX_NAME_LEN];
 
   // 1. Store all frames and filepaths of images
   int frameCount = 0;
@@ -459,9 +459,8 @@ int microTextureAtlasLoadFromPath(const char *filepath)
     char* fname = filenames[frameCount];
 
     // Store filepath
-    filepaths[frameCount] = malloc(strlen(filepath) + strlen(entry->d_name) + 2);
+    filepaths[frameCount] = malloc(strlen(filepath) + strlen(entry->d_name) + 1);
     strcpy(filepaths[frameCount], filepath);
-    //strcat(fpath, "/");
     strcat(filepaths[frameCount], entry->d_name);
 
     // Store filename without extension
@@ -480,6 +479,8 @@ int microTextureAtlasLoadFromPath(const char *filepath)
     // Add padding
     frect->w += padding * 2;
     frect->h += padding * 2;
+    
+    if (verbose) printf("Loading %s to %s\n", filepaths[frameCount], filepaths[frameCount]);
 
     frameCount++;
     assert(frameCount < MICRO_ATLAS_MAX_TEXTURES);
@@ -538,7 +539,7 @@ int microTextureAtlasLoadFromPath(const char *filepath)
     const stbrp_rect* rect = &rects[frame_id];
 
     int img_width, img_height, channels;
-
+     
     if (verbose) printf("Loading texture %s\n", fullPath);
     unsigned char *data = stbi_load(fullPath, &img_width, &img_height, &channels, 0);
     if (data == NULL) {
@@ -1267,6 +1268,9 @@ void microGraphicsInit()
     return;
   }
 
+  // Hide cursor
+  SDL_ShowCursor(SDL_DISABLE);
+
   //clear memory allocations
   for (int i = 0; i < MICRO_MAX_TEXTURES; i++)
     microTextures[i].id = -1;
@@ -1380,18 +1384,19 @@ void microGraphicsInit()
 
 void microGraphicsQuit()
 {
-  microAnimationFreeAll();
-  microFontFreeAll();
-  microParticleEmitterRemoveAll();
-
-  vector_free(&microParticleEmitters);
-  vector_free(&microFreedParticleEmitters);
 
   //Delete VAO
   glDeleteVertexArrays(1, &vao);
   glDeleteBuffers(1, &vbo);
   glDeleteBuffers(1, &tbo);
   glDeleteBuffers(1, &cbo);
+
+  microAnimationFreeAll();
+  microFontFreeAll();
+  microParticleEmitterRemoveAll();
+
+  vector_free(&microParticleEmitters);
+  vector_free(&microFreedParticleEmitters);
 
   //Delete context 
   SDL_GL_DeleteContext( context );
@@ -1933,7 +1938,7 @@ int microParticleEmitterCreateSteady(int x, int y, float emissionRate, MicroPart
   return spot;
 }
 
-int microParticleEmitterCreateExplostion(int x, int y, int particlesCount, MicroParticle (*generationFunc)(int))
+int microParticleEmitterCreateExplosion(int x, int y, int particlesCount, MicroParticle (*generationFunc)(int))
 {
   //Create emitter
   microParticleEmitter newEmitter;
@@ -2019,6 +2024,7 @@ void microParticleEmittersUpdate(float dt)
     //Update particles
     for (int j = 0; j < particles->size; j++) {
       MicroParticle *p = vector_at(particles, j);
+      if (p->life <= 0) continue;
       p->x += p->vx * dt;
       p->y += p->vy * dt;
       p->life -= dt;

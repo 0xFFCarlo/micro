@@ -72,7 +72,7 @@ void SpaceEntityAdd()
   PlanetGetPos(&planetX, &planetY);
 
   // Load shader and apply parameters
-  space_shader_id = microShaderLoadFromFile("./res/shaders/base_vert.glsl", "./res/shaders/space.glsl");
+  space_shader_id = microShaderLoadFromFile("./res/shaders/dummy_vert.glsl", "./res/shaders/space.glsl");
   assert(space_shader_id != -1);
   int current_shader = microShaderGetCurrent();
   microShaderApply(space_shader_id);

@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <string.h>
 #include "Vector.h"
+#include "../util/mem_debug.h"
 
 #define MAX_COMPONENTS 32
 #define MAX_ENTITIES 2048
@@ -291,6 +292,13 @@ int microECSEntityHasComponent(int entityId, const int componentTypeId)
   return uint128_get_bit(&entities[entityId].components, componentTypeId);
 }
 
+void microECSEntityFreeAll()
+{
+  for (int i = 0; i < entities_count; i++)
+    if (entities[i].alive)
+      microECSEntityFree(i);
+}
+
 
 // Component
 int microECSComponentRegister(int size)
@@ -371,6 +379,7 @@ void microECSAllocateComponents()
     components_count[i] = 0;
     memory_used += component_size * MAX_ENTITIES;
   }
+  is_components_data_allocated = 1;
 
   unsigned long memory = memory_used;
   memory += sizeof(components_count);
@@ -393,6 +402,10 @@ void microECSAllocateComponents()
 
 void microECSFree()
 {
+  // Free entities
+  microECSEntityFreeAll();
+  microECSCachedQueryFreeAll();
+
   if (is_components_data_allocated == 1) {
     // Free components vectors
     for (int i = 0; i < components_types_count; i++)
@@ -504,4 +517,10 @@ ecs_entity_list microECSCachedQueryRun(int queryId)
 
   query->updated = 1;
   return query->entities;
+}
+
+void microECSCachedQueryFreeAll()
+{
+  for (int i = 0; i < cached_queries_count; i++)
+    microECSCachedQueryFree(i);
 }
