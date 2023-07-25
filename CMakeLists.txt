@@ -17,6 +17,12 @@ elseif(UNIX)
   link_directories(/usr/local/lib)
 endif()
 
+# Optimization flags
+# set(CMAKE_C_FLAGS_RELEASE "-O3")
+
+# Add warnings
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
+
 # Add include directories
 include_directories(${CMAKE_SOURCE_DIR}/src/ext) # external libraries
 include_directories(${CMAKE_SOURCE_DIR}/src/systems)

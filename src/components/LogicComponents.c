@@ -1,19 +1,22 @@
-#include <stdlib.h>
 #include "LogicComponents.h"
 #include "../micro/ECS.h"
+#include <stdlib.h>
 
 int cid_update = -1;
 int cid_event_listener = -1;
 
-void RegisterCUpdate() {
+void RegisterCUpdate()
+{
   cid_update = microECSComponentRegister(sizeof(CUpdate));
 }
 
-void RegisterCEventListener() {
+void RegisterCEventListener()
+{
   cid_event_listener = microECSComponentRegister(sizeof(CEventListener));
 }
 
-void RegisterLogicComponents() {
+void RegisterLogicComponents()
+{
   RegisterCUpdate();
   RegisterCEventListener();
 }

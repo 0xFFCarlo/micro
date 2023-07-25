@@ -2,27 +2,25 @@
 #define ECS_H
 
 // Entity
-extern int microECSEntityNew( void* data, void(*free)(void*) );
+extern int microECSEntityNew(void *data, void (*free)(void *));
 extern void microECSEntityFree(int entityId);
 extern int microECSEntityIsAlive(int entityId);
-extern void microECSEntityAddComponent(int entityId, const int componentTypeId, void* data);
+extern void microECSEntityAddComponent(int entityId, const int componentTypeId, void *data);
 extern void microECSEntityRemoveComponent(int entityId, const int componentTypeId);
-extern void* microECSEntityGetComponent(int entityId, const int componentTypeId);
+extern void *microECSEntityGetComponent(int entityId, const int componentTypeId);
 extern int microECSEntityHasComponent(int entityId, const int componentTypeId);
 extern int microECSEntitiesCount();
 extern void microECSEntityFreeAll();
 
 // Component
 extern int microECSComponentRegister(int size);
-extern void* microECSComponentsGet(int componentTypeId);
+extern void *microECSComponentsGet(int componentTypeId);
 extern int microECSComponentsCount(int componentTypeId);
 extern int microECSComponentGetEntityId(int componentTypeId, int index);
-
 
 // System
 extern int microECSSystemAdd(void (*system)(float dt));
 extern void microECSSystemRemove(int systemId);
-
 
 // World
 extern void microECSInit();
@@ -30,17 +28,16 @@ extern void microECSAllocateComponents();
 extern void microECSFree();
 extern void microECSRun(float dt);
 
-
 // Query
-typedef struct {
-  int* entityIds;
+typedef struct
+{
+  int *entityIds;
   int size;
 } ecs_entity_list;
 
-extern int microECSCachedQueryCreate(int* componentTypeIds, int size, int(*sort_compare)(int, int));
+extern int microECSCachedQueryCreate(int *componentTypeIds, int size, int (*sort_compare)(int, int));
 extern void microECSCachedQueryFree(int queryId);
 extern ecs_entity_list microECSCachedQueryRun(int queryId);
 extern void microECSCachedQueryFreeAll();
-
 
 #endif /* end of include guard: ECS_H */

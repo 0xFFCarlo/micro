@@ -3,10 +3,11 @@
 
 #include <SDL2/SDL_events.h>
 
-typedef struct {
-  void(*init)();
-  void(*update)(float dt);
-  void(*free)();
+typedef struct
+{
+  void (*init)();
+  void (*update)(float dt);
+  void (*free)();
 } MicroState;
 
 extern void microStateSet(MicroState state);

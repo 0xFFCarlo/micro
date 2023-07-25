@@ -1,6 +1,6 @@
-#include <stdlib.h>
 #include "RenderingComponents.h"
 #include "../micro/ECS.h"
+#include <stdlib.h>
 
 int cid_sprite = -1;
 int cid_text = -1;
@@ -11,7 +11,6 @@ int cid_animation = -1;
 int cid_shadedCanvas = -1;
 int cid_lock_on_view = -1;
 int cid_particle_emitter = -1;
-
 
 void RegisterCSprite()
 {
@@ -38,7 +37,8 @@ void RegisterCHud()
   cid_hud = microECSComponentRegister(sizeof(CHud));
 }
 
-void RegisterCAnimation() {
+void RegisterCAnimation()
+{
   cid_animation = microECSComponentRegister(sizeof(CAnimation));
 }
 

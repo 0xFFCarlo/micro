@@ -1,16 +1,16 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_video.h>
 #if defined(__linux__)
-//#include <GLES3/gl.h>
-//#include <GL/glu.h>
-#include <GL/glew.h>
+// #include <GLES3/gl.h>
+// #include <GL/glu.h>
 #include <GL/gl.h>
+#include <GL/glew.h>
 #else
 #define GL_SILENCE_DEPRECATION
 #include <OpenGL/gl3.h>
 #endif
-#include <math.h>
 #include <dirent.h>
+#include <math.h>
 
 #include "Graphics.h"
 #include "Vector.h"
@@ -48,12 +48,10 @@
 #define MICRO_EMITTER_STEADY 0
 #define MICRO_EMITTER_EXPLOSION 1
 
-
-//GL states
+// GL states
 static int currentTexture = 0;
 static int currentShader = -1;
 
-//texture buffers
 typedef struct microTexture
 {
   GLuint id;
@@ -80,36 +78,40 @@ typedef struct microCanvas
 } microCanvas;
 static microCanvas microCanvases[MICRO_MAX_CANVASES];
 
-typedef struct microAnimation {
+typedef struct microAnimation
+{
   char name[MICRO_MAX_NAME_LEN];
-  int* frames;
+  int *frames;
   int framesCount;
 } microAnimation;
 static microAnimation microAnimations[MICRO_MAX_ANIMATIONS];
 
-typedef struct microFont {
+typedef struct microFont
+{
   int textureId;
   int fontSize;
   stbtt_fontinfo fontInfo;
-  unsigned char* ttf_buffer;
-  int glyphsOffset[128-32];
+  unsigned char *ttf_buffer;
+  int glyphsOffset[128 - 32];
 } microFont;
 static microFont microFonts[MICRO_MAX_FONTS];
 static int microFontsCount = 0;
 
-typedef struct microAtlas {
+typedef struct microAtlas
+{
   int textureId;
   int width, height;
-  char** framesNames;
-  MicroTextureSource* frames;
+  char **framesNames;
+  MicroTextureSource *frames;
   int framesCount;
 } microAtlas;
 static microAtlas microAtlases[MICRO_MAX_ATLASES];
 
-typedef struct microParticleEmitter {
+typedef struct microParticleEmitter
+{
   int x, y;
   uint8_t emitterType;
-  int width, height; 
+  int width, height;
   float emissionRate;
   MicroParticle (*particleGenerator)(int);
 
@@ -119,41 +121,42 @@ typedef struct microParticleEmitter {
 } microParticleEmitter;
 static Vector microParticleEmitters;
 static Vector microFreedParticleEmitters;
+static unsigned int microTotalParticles = 0;
 
-//shader stuff
-static const char baseVertexShaderSrc[] = "#version 330 core\n"
-"layout (location = 0) in vec2 position;\n"
-"layout (location = 1) in vec2 texcoord;\n"
-"layout (location = 2) in vec4 color;\n"
-"out vec4 o_color;\n"
-"out vec2 o_texcoord;\n"
-"uniform mat4 u_view;\n"
-"void main()\n"
-"{\n"
-"  gl_Position = u_view * vec4(position, 0.0, 1.0);\n"
-"  o_color = color;\n"
-"  o_texcoord = texcoord;\n"
-"}\n";
+// shader base programs
+static const char
+  baseVertexShaderSrc[] = "#version 330 core\n"
+                          "layout (location = 0) in vec2 position;\n"
+                          "layout (location = 1) in vec2 texcoord;\n"
+                          "layout (location = 2) in vec4 color;\n"
+                          "out vec4 o_color;\n"
+                          "out vec2 o_texcoord;\n"
+                          "uniform mat4 u_view;\n"
+                          "void main()\n"
+                          "{\n"
+                          "  gl_Position = u_view * vec4(position, 0.0, 1.0);\n"
+                          "  o_color = color;\n"
+                          "  o_texcoord = texcoord;\n"
+                          "}\n";
 
-static const char baseFragmentShaderSrc[] = "#version 330 core\n"
-"in vec4 o_color;\n"
-"in vec2 o_texcoord;\n"
-"out vec4 fragColor;\n"
-"uniform sampler2D u_texture;\n"
-"void main()\n"
-"{\n"
-" //texture + alpha blending\n"
-"  vec4 texColor = texture(u_texture, o_texcoord);\n"
-"  fragColor = texColor * o_color;\n"
-"}\n";
+static const char baseFragmentShaderSrc
+  [] = "#version 330 core\n"
+       "in vec4 o_color;\n"
+       "in vec2 o_texcoord;\n"
+       "out vec4 fragColor;\n"
+       "uniform sampler2D u_texture;\n"
+       "void main()\n"
+       "{\n"
+       " //texture + alpha blending\n"
+       "  vec4 texColor = texture(u_texture, o_texcoord);\n"
+       "  fragColor = texColor * o_color;\n"
+       "}\n";
 
 static int defaultShaderId = -1;
 
-
-
-//renderer buffers
-static SDL_GLContext* context = NULL;
-static SDL_Window* window = NULL;
+// renderer buffers and states
+static SDL_GLContext *context = NULL;
+static SDL_Window *window = NULL;
 static float vertexbuf[MICRO_VERTEX_BUFFER_SIZE][2];
 static float texsourcebuf[MICRO_VERTEX_BUFFER_SIZE][2];
 static float colorbuf[MICRO_VERTEX_BUFFER_SIZE][4];
@@ -163,7 +166,7 @@ static int countverts;
 static int wireframe;
 static RenderingDebugInfo debugInfo;
 
-//view infos
+// current view state
 float viewViewportX, viewViewportY, viewViewportW, viewViewportH;
 float viewCenterX, viewCenterY;
 float viewWidth, viewHeight;
@@ -173,11 +176,12 @@ int viewFlipY = 0;
 int viewUpdated = 0;
 
 ////////////////////////////
-//GL STATES
+// GL STATES
 ////////////////////////////
 void microGLStateBindTexture(int textureId)
 {
-  if (currentTexture == textureId) return;
+  if (currentTexture == textureId)
+    return;
   glBindTexture(GL_TEXTURE_2D, textureId);
   currentTexture = textureId;
 }
@@ -195,14 +199,16 @@ void microGLCheckErrors()
 }
 
 ////////////////////////////
-//TEXTURE
+// TEXTURE
 ////////////////////////////
 int microBitmapLoadFromFile(const char *filepath, unsigned char **data,
-    unsigned int *width, unsigned int *height, unsigned int *channels)
+                            unsigned int *width, unsigned int *height,
+                            unsigned int *channels)
 {
   int w, h, c;
-  unsigned char* img = stbi_load(filepath, &w, &h, &c, 0);
-  if (img == NULL) return -1;
+  unsigned char *img = stbi_load(filepath, &w, &h, &c, 0);
+  if (img == NULL)
+    return -1;
   *data = img;
   *width = w;
   *height = h;
@@ -210,30 +216,43 @@ int microBitmapLoadFromFile(const char *filepath, unsigned char **data,
   return 0;
 }
 
-int microTextureLoadFromFile(const char* filepath)
+int microTextureLoadFromFile(const char *filepath)
 {
-  unsigned char* data; 
+  unsigned char *data;
   unsigned int width, height, channels;
-  if (microBitmapLoadFromFile(filepath, &data, &width, &height, &channels) != 0) return -1;
-  int id = microTextureLoadFromMemory(data, width, height, channels, MICRO_FILTER_LINEAR);
+  if (microBitmapLoadFromFile(filepath, &data, &width, &height, &channels) != 0)
+    return -1;
+  int id = microTextureLoadFromMemory(data, width, height, channels,
+                                      MICRO_FILTER_LINEAR);
   free(data);
   return id;
 }
 
-int microTextureLoadFromMemory(const unsigned char *data, const unsigned int width, const unsigned int height, const unsigned int channels, const unsigned int filter)
+int microTextureLoadFromMemory(const unsigned char *data,
+                               const unsigned int width,
+                               const unsigned int height,
+                               const unsigned int channels,
+                               const enum MicroFilter filter)
 {
-  //Get the texture format
+  // Get the texture format
   unsigned int fmt = GL_RGBA;
-  switch (channels) {
-    case 1: fmt = GL_ALPHA; break;
-    case 3: fmt = GL_RGB; break;
-    case 4: fmt = GL_RGBA; break;
-    default:
-            printf("Error: data file format [%d] not recognized\n", fmt);
-            return -1;
+  switch (channels)
+  {
+  case 1:
+    fmt = GL_ALPHA;
+    break;
+  case 3:
+    fmt = GL_RGB;
+    break;
+  case 4:
+    fmt = GL_RGBA;
+    break;
+  default:
+    printf("Error: data file format [%d] not recognized\n", fmt);
+    return -1;
   }
 
-  //Create texture
+  // Create texture
   GLuint id;
   glGenTextures(1, &id);
   assert(id != 0);
@@ -241,8 +260,10 @@ int microTextureLoadFromMemory(const unsigned char *data, const unsigned int wid
   microGLStateBindTexture(id);
 
   int gl_filter = GL_LINEAR;
-  if (filter == MICRO_FILTER_NEAREST) gl_filter = GL_NEAREST;
-  else if (filter == MICRO_FILTER_LINEAR) gl_filter = GL_LINEAR;
+  if (filter == MICRO_FILTER_NEAREST)
+    gl_filter = GL_NEAREST;
+  else if (filter == MICRO_FILTER_LINEAR)
+    gl_filter = GL_LINEAR;
 
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filter);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter);
@@ -252,23 +273,25 @@ int microTextureLoadFromMemory(const unsigned char *data, const unsigned int wid
 
   microGLCheckErrors();
 
-  glTexImage2D(GL_TEXTURE_2D, 0, fmt, width, height, 0, fmt,
-      GL_UNSIGNED_BYTE, data);
+  glTexImage2D(GL_TEXTURE_2D, 0, fmt, width, height, 0, fmt, GL_UNSIGNED_BYTE,
+               data);
 
   glFlush();
 
-  //Check for opengl errors
+  // Check for opengl errors
   microGLCheckErrors();
 
-  //find spot in the resources buffer
+  // find spot in the resources buffer
   microTexture texture;
   texture.id = id;
   texture.width = width;
   texture.height = height;
   texture.channels = channels;
   int spot = -1;
-  for (int i = 0; i < MICRO_MAX_TEXTURES; i++) {
-    if (microTextures[i].id == -1) {
+  for (int i = 0; i < MICRO_MAX_TEXTURES; i++)
+  {
+    if (microTextures[i].id == (GLuint)-1)
+    {
       spot = i;
       microTextures[i] = texture;
       break;
@@ -276,86 +299,97 @@ int microTextureLoadFromMemory(const unsigned char *data, const unsigned int wid
   }
   assert(spot != -1);
 
-  return spot;    
+  return spot;
 }
 
-void microTextureSetFilter(int textureId, int filter)
+void microTextureSetFilter(const int textureId, const enum MicroFilter filter)
 {
   microGLStateBindTexture(microTextures[textureId].id);
   currentTexture = microTextures[textureId].id;
-  if (filter == MICRO_FILTER_LINEAR) {
-    filter = GL_LINEAR;
-  } else if (filter == MICRO_FILTER_NEAREST) {
-    filter = GL_NEAREST;
-  } else {
+
+  int gl_filter = GL_LINEAR;
+  if (filter == MICRO_FILTER_LINEAR)
+    gl_filter = GL_LINEAR;
+  else if (filter == MICRO_FILTER_NEAREST)
+    gl_filter = GL_NEAREST;
+  else
+  {
     printf("Error: filter %d not recognized\n", filter);
     return;
   }
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filter);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter);
 }
 
-
-void microTextureGetSize(int textureId, int *width, int *height)
+void microTextureGetSize(const int textureId, int *width, int *height)
 {
-  if (width != NULL) *width = microTextures[textureId].width;
-  if (height != NULL) *height = microTextures[textureId].height;
+  if (width != NULL)
+    *width = microTextures[textureId].width;
+  if (height != NULL)
+    *height = microTextures[textureId].height;
 }
 
-void microTextureFree(int textureId)
+void microTextureFree(const int textureId)
 {
-  if (microTextures[textureId].id != -1) {
+  if (microTextures[textureId].id != (GLuint)-1)
+  {
     glDeleteTextures(1, &microTextures[textureId].id);
     microTextures[textureId].id = -1;
   }
 }
 
-
 /////////////////////////////
 /// Texture Atlas
 /////////////////////////////
-typedef struct {
-  char* name;
+typedef struct
+{
+  char *name;
   int frame_number;
-  int x , y, w, h;
+  int x, y, w, h;
 } animation_frame;
 
 // compare animation by name and frame number
-int microAnimationFrameCmp(const void* aa, const void* bb)
+int microAnimationFrameCmp(const void *aa, const void *bb)
 {
-  animation_frame* a = *(animation_frame**)aa;
-  animation_frame* b = *(animation_frame**)bb;
+  animation_frame *a = *(animation_frame **)aa;
+  animation_frame *b = *(animation_frame **)bb;
   int name_cmp = strcmp(a->name, b->name);
-  if (name_cmp != 0) return name_cmp;
+  if (name_cmp != 0)
+    return name_cmp;
   return a->frame_number - b->frame_number;
 }
 
 void microAtlasGenerateAnimations(int textureAtlasId)
 {
   const int verbose = 0;
-  microAtlas* atlas = &microAtlases[textureAtlasId];
+  microAtlas *atlas = &microAtlases[textureAtlasId];
 
-  animation_frame* animations[MICRO_MAX_ANIMATIONS];
+  animation_frame *animations[MICRO_MAX_ANIMATIONS];
   int animations_count = 0;
 
   // Parse all animation frames from names
-  for (int i = 0; i < atlas->framesCount; i++) {
-    char* frame_name = atlas->framesNames[i];
+  for (int i = 0; i < atlas->framesCount; i++)
+  {
+    char *frame_name = atlas->framesNames[i];
     // Skip textures without animation name convention
-    if (strchr(frame_name, '_') == NULL) continue;
+    if (strchr(frame_name, '_') == NULL)
+      continue;
 
     // Parse animation name and frame number
-    char* tmp = strdup(frame_name);
-    char* animation_name = strtok(tmp, "_");
-    char* frame_number_str = strtok(NULL, "_");
-    if (animation_name == NULL) continue;
-    if (frame_number_str == NULL) continue;
+    char *tmp = strdup(frame_name);
+    char *animation_name = strtok(tmp, "_");
+    char *frame_number_str = strtok(NULL, "_");
+    if (animation_name == NULL)
+      continue;
+    if (frame_number_str == NULL)
+      continue;
     assert(strlen(animation_name) > 0);
     assert(strlen(frame_number_str) > 0);
 
     // parse frame number and make sure it is a number
     int frame_number = atoi(frame_number_str);
-    if (frame_number == 0 && frame_number_str[0] != '0') continue;
+    if (frame_number == 0 && frame_number_str[0] != '0')
+      continue;
 
     // Get animation source rect
     int x, y, w, h;
@@ -379,18 +413,24 @@ void microAtlasGenerateAnimations(int textureAtlasId)
   }
 
   // Sort animations by names and frame numbers
-  qsort(animations, animations_count, sizeof(animation_frame*), microAnimationFrameCmp);
+  qsort(animations, animations_count, sizeof(animation_frame *),
+        microAnimationFrameCmp);
 
   // Create animations from animation frames with same name
-  char* last_animation_name = animations[0]->name;
+  char *last_animation_name = animations[0]->name;
   int frames_params[4 * 1024];
   int current_frame = 0;
-  for (int i = 0; i < animations_count; i++) {
+  for (int i = 0; i < animations_count; i++)
+  {
 
-    if (strcmp(last_animation_name, animations[i]->name) != 0) {
+    if (strcmp(last_animation_name, animations[i]->name) != 0)
+    {
       // Create animation
-      if (verbose) printf("Creating animation %s with %d frames\n", last_animation_name, current_frame);
-      microAnimationCreateFromFrames(last_animation_name, frames_params, current_frame);
+      if (verbose)
+        printf("Creating animation %s with %d frames\n", last_animation_name,
+               current_frame);
+      microAnimationCreateFromFrames(last_animation_name, frames_params,
+                                     current_frame);
 
       // Reset frame params
       current_frame = 0;
@@ -408,19 +448,23 @@ void microAtlasGenerateAnimations(int textureAtlasId)
   }
 
   // Create last animation
-  if (current_frame) {
-    if (verbose) printf("Creating animation %s with %d frames\n", last_animation_name, current_frame);
-    microAnimationCreateFromFrames(last_animation_name, frames_params, current_frame);
+  if (current_frame)
+  {
+    if (verbose)
+      printf("Creating animation %s with %d frames\n", last_animation_name,
+             current_frame);
+    microAnimationCreateFromFrames(last_animation_name, frames_params,
+                                   current_frame);
   }
 
   // Free animations frames
-  for (int i = 0; i < animations_count; i++) {
+  for (int i = 0; i < animations_count; i++)
+  {
     free(animations[i]->name);
     free(animations[i]);
   }
 }
 
-// TODO: sort frames by name in alphabetic order so that we can use binary search
 int microTextureAtlasLoadFromPath(const char *filepath)
 {
   const int verbose = 0;
@@ -428,7 +472,8 @@ int microTextureAtlasLoadFromPath(const char *filepath)
   struct dirent *entry;
   DIR *dir = opendir(filepath);
 
-  if (dir == NULL) {
+  if (dir == NULL)
+  {
     printf("Error opening directory\n");
     return -1;
   }
@@ -440,14 +485,13 @@ int microTextureAtlasLoadFromPath(const char *filepath)
 
   // 1. Store all frames and filepaths of images
   int frameCount = 0;
-  while ((entry = readdir(dir)) != NULL) {
+  while ((entry = readdir(dir)) != NULL)
+  {
 
     // Skip `.` and `..` and `.DS_Store`
-    if(strcmp(entry->d_name, ".") == 0 ||
-        strcmp(entry->d_name, "..") == 0 ||
-        strcmp(entry->d_name, ".DS_Store") == 0
-      )
-      continue; 
+    if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 ||
+        strcmp(entry->d_name, ".DS_Store") == 0)
+      continue;
 
     // Check if it's a png or jpeg
     if (strstr(entry->d_name, ".png") == NULL &&
@@ -455,11 +499,12 @@ int microTextureAtlasLoadFromPath(const char *filepath)
         strstr(entry->d_name, ".jpeg") == NULL)
       continue;
 
-    stbrp_rect* frect = &rects[frameCount];
-    char* fname = filenames[frameCount];
+    stbrp_rect *frect = &rects[frameCount];
+    char *fname = filenames[frameCount];
 
     // Store filepath
-    filepaths[frameCount] = malloc(strlen(filepath) + strlen(entry->d_name) + 1);
+    filepaths[frameCount] = malloc(strlen(filepath) + strlen(entry->d_name) +
+                                   1);
     strcpy(filepaths[frameCount], filepath);
     strcat(filepaths[frameCount], entry->d_name);
 
@@ -467,7 +512,8 @@ int microTextureAtlasLoadFromPath(const char *filepath)
     assert(strlen(entry->d_name) < MICRO_MAX_NAME_LEN);
     strcpy(fname, entry->d_name);
     char *dot = strrchr(fname, '.');
-    if (dot) *dot = '\0';
+    if (dot)
+      *dot = '\0';
 
     // Load image description and store it
     stbi_info(filepaths[frameCount], &frect->w, &frect->h, NULL);
@@ -479,8 +525,10 @@ int microTextureAtlasLoadFromPath(const char *filepath)
     // Add padding
     frect->w += padding * 2;
     frect->h += padding * 2;
-    
-    if (verbose) printf("Loading %s to %s\n", filepaths[frameCount], filepaths[frameCount]);
+
+    if (verbose)
+      printf("Loading %s to %s\n", filepaths[frameCount],
+             filepaths[frameCount]);
 
     frameCount++;
     assert(frameCount < MICRO_ATLAS_MAX_TEXTURES);
@@ -492,13 +540,17 @@ int microTextureAtlasLoadFromPath(const char *filepath)
   // 2. Pack frames into atlas
   stbrp_context context;
   stbrp_node nodes[MICRO_ATLAS_MAX_WIDTH * 2];
-  stbrp_init_target(&context, MICRO_ATLAS_MAX_WIDTH, MICRO_ATLAS_MAX_HEIGHT, nodes, MICRO_ATLAS_MAX_WIDTH * 2);
-  if (verbose) {
+  stbrp_init_target(&context, MICRO_ATLAS_MAX_WIDTH, MICRO_ATLAS_MAX_HEIGHT,
+                    nodes, MICRO_ATLAS_MAX_WIDTH * 2);
+  if (verbose)
+  {
     printf("Packing %d frames into atlas\n", frameCount);
-    printf("Atlas size: %dx%d\n", MICRO_ATLAS_MAX_WIDTH, MICRO_ATLAS_MAX_HEIGHT);
+    printf("Atlas size: %dx%d\n", MICRO_ATLAS_MAX_WIDTH,
+           MICRO_ATLAS_MAX_HEIGHT);
   }
   int packedSuccess = stbrp_pack_rects(&context, rects, frameCount);
-  if (packedSuccess == 0) {
+  if (packedSuccess == 0)
+  {
     printf("Could not pack frames into atlas\n");
 
     for (int i = 0; i < frameCount; i++)
@@ -509,18 +561,20 @@ int microTextureAtlasLoadFromPath(const char *filepath)
 
   // 3. Find atlas spot id
   int spot = -1;
-  for (int i = 0; i < MICRO_MAX_ATLASES; i++) {
-    if (microAtlases[i].textureId == -1) {
+  for (int i = 0; i < MICRO_MAX_ATLASES; i++)
+  {
+    if (microAtlases[i].textureId == -1)
+    {
       spot = i;
       break;
     }
   }
   assert(spot != -1);
-  microAtlas* atlas = &microAtlases[spot];
+  microAtlas *atlas = &microAtlases[spot];
 
   // 4. Allocate the frames array and names
   atlas->frames = malloc(frameCount * sizeof(MicroTextureSource));
-  atlas->framesNames = malloc(frameCount * sizeof(char*));
+  atlas->framesNames = malloc(frameCount * sizeof(char *));
   atlas->framesCount = frameCount;
   atlas->width = MICRO_ATLAS_MAX_WIDTH;
   atlas->height = MICRO_ATLAS_MAX_HEIGHT;
@@ -532,45 +586,55 @@ int microTextureAtlasLoadFromPath(const char *filepath)
   unsigned char *atlasData = malloc(atlasWidth * atlasHeight * 4);
 
   // 6. Load each image and store it in the atlas
-  for (int frame_id = 0; frame_id < frameCount; frame_id++) {
+  for (int frame_id = 0; frame_id < frameCount; frame_id++)
+  {
 
-    const char* fullPath = filepaths[frame_id];
-    const char* name = filenames[frame_id];
-    const stbrp_rect* rect = &rects[frame_id];
+    const char *fullPath = filepaths[frame_id];
+    const char *name = filenames[frame_id];
+    const stbrp_rect *rect = &rects[frame_id];
 
     int img_width, img_height, channels;
-     
-    if (verbose) printf("Loading texture %s\n", fullPath);
-    unsigned char *data = stbi_load(fullPath, &img_width, &img_height, &channels, 0);
-    if (data == NULL) {
+
+    if (verbose)
+      printf("Loading texture %s\n", fullPath);
+    unsigned char *data = stbi_load(fullPath, &img_width, &img_height,
+                                    &channels, 0);
+    if (data == NULL)
+    {
       printf("Error loading texture %s\n", fullPath);
       continue;
     }
 
     // Check if the texture is too big
-    if (img_width > atlasWidth || img_height > atlasHeight) {
+    if ((unsigned int)img_width > atlasWidth ||
+        (unsigned int)img_height > atlasHeight)
+    {
       printf("Error: texture %s is too big\n", fullPath);
       abort();
     }
 
     // Copy the bitmap to the atlas
-    for (int y = 0; y < img_height; y++) {
+    for (int y = 0; y < img_height; y++)
+    {
       int tx = rect->x + padding;
       int ty = rect->y + padding + y;
-      memcpy(&atlasData[ty * atlasWidth * channels + tx * channels], &data[y * img_width * channels], img_width * channels);
+      memcpy(&atlasData[ty * atlasWidth * channels + tx * channels],
+             &data[y * img_width * channels], img_width * channels);
     }
 
     // Free the bitmap
     stbi_image_free(data);
 
-    // Store texture details 
+    // Store texture details
     MicroTextureSource source;
     source.w = img_width;
     source.h = img_height;
     source.x = rect->x + padding;
     source.y = rect->y + padding;
     atlas->frames[frame_id] = source;
-    if (verbose) printf("Stored frame %s (%dx%d) at (%d, %d)\n", name, source.w, source.h, source.x, source.y);
+    if (verbose)
+      printf("Stored frame %s (%dx%d) at (%d, %d)\n", name, source.w, source.h,
+             source.x, source.y);
 
     // Store name without file extension
     atlas->framesNames[frame_id] = malloc(strlen(name) + 1);
@@ -578,7 +642,8 @@ int microTextureAtlasLoadFromPath(const char *filepath)
   }
 
   // 7. Create the texture atlas
-  int textureId = microTextureLoadFromMemory(atlasData, atlasWidth, atlasHeight, 4, GL_NEAREST);
+  int textureId = microTextureLoadFromMemory(atlasData, atlasWidth, atlasHeight,
+                                             4, GL_NEAREST);
   free(atlasData);
   atlas->textureId = textureId;
 
@@ -592,12 +657,15 @@ int microTextureAtlasLoadFromPath(const char *filepath)
   return spot;
 }
 
-MicroTextureSource microTextureAtlasGetRegion(int textureAtlasId, const char *name)
+MicroTextureSource microTextureAtlasGetRegion(int textureAtlasId,
+                                              const char *name)
 {
   // Find the frame id from the name
   int frameId = -1;
-  for (int i = 0; i < microAtlases[textureAtlasId].framesCount; i++) {
-    if (strcmp(microAtlases[textureAtlasId].framesNames[i], name) == 0) {
+  for (int i = 0; i < microAtlases[textureAtlasId].framesCount; i++)
+  {
+    if (strcmp(microAtlases[textureAtlasId].framesNames[i], name) == 0)
+    {
       frameId = i;
       break;
     }
@@ -620,79 +688,30 @@ void microTextureAtlasFree(int textureAtlasId)
   free(microAtlases[textureAtlasId].frames);
 }
 
-
-
 ////////////////////////////
-//ANIMATION
+// ANIMATION
 ////////////////////////////
-void microAnimationLoadFromFile(const char *csv_filepath)
-{
-  //TODO: test if the code works
-
-  /* FILE* file = fopen(csv_filepath, "r");
-     if (!file) {
-     printf("Error: can't open the file %s\n", csv_filepath);
-     fclose(file);
-     return;
-     }
-
-  // Get file size
-  fseek(file, 0L, SEEK_END);
-  int fsize = (int)ftell(file);
-
-  // Seek to the beginning
-  fseek(file, 0L, SEEK_SET);
-
-  //Read all the file into filedata
-  char* fileData = (char*)malloc(sizeof(char) * fsize);
-  fread(fileData, sizeof(char) * fsize, 1, file);
-  fclose(file);
-
-  // Parse the file
-  char* line = strtok(fileData, "\n");
-
-  //Get the number of animations
-  int animationsCount = atoi(line);
-  assert(animationsCount < MICRO_MAX_ANIMATIONS);
-
-  // Skip the first line
-  line = strtok(NULL, "\n");
-  assert(line != NULL);
-
-  // Parse each animation
-  for (int i = 0; i < animationsCount; i++) {
-  line = strtok(NULL, "\n");
-  assert(line != NULL);
-  char* name = strtok(line, ",");
-  int startX = atoi(strtok(NULL, ","));
-  int startY = atoi(strtok(NULL, ","));
-  int frameWidth = atoi(strtok(NULL, ","));
-  int frameHeight = atoi(strtok(NULL, ","));
-  int framesCount = atoi(strtok(NULL, ","));
-  microAnimationCreate(name, startX, startY, frameWidth, frameHeight, framesCount);
-  }
-
-  free(fileData); */
-}
-
-int microAnimationCreateFromFrames(char* name, int* frames, int framesCount)
+int microAnimationCreateFromFrames(char *name, int *frames, int framesCount)
 {
   // find spot in the resources buffer
   int id = -1;
-  for (int i = 0; i < MICRO_MAX_ANIMATIONS; i++) {
-    if (microAnimations[i].framesCount == 0) {
+  for (int i = 0; i < MICRO_MAX_ANIMATIONS; i++)
+  {
+    if (microAnimations[i].framesCount == 0)
+    {
       id = i;
       break;
     }
   }
-  assert(id != -1); 
+  assert(id != -1);
 
   // create animation
   assert(strlen(name) < MICRO_MAX_NAME_LEN);
   strcpy(microAnimations[id].name, name);
-  microAnimation* animation = &microAnimations[id];
+  microAnimation *animation = &microAnimations[id];
   animation->frames = malloc(sizeof(int) * 4 * framesCount);
-  for (int i = 0; i < framesCount; i++) {
+  for (int i = 0; i < framesCount; i++)
+  {
     animation->frames[i * 4 + 0] = frames[i * 4 + 0];
     animation->frames[i * 4 + 1] = frames[i * 4 + 1];
     animation->frames[i * 4 + 2] = frames[i * 4 + 2];
@@ -703,9 +722,10 @@ int microAnimationCreateFromFrames(char* name, int* frames, int framesCount)
   return id;
 }
 
-int microAnimationGet(char* name)
+int microAnimationGet(char *name)
 {
-  for (int i = 0; i < MICRO_MAX_ANIMATIONS; i++) {
+  for (int i = 0; i < MICRO_MAX_ANIMATIONS; i++)
+  {
     if (strcmp(microAnimations[i].name, name) == 0)
       return i;
 
@@ -716,23 +736,28 @@ int microAnimationGet(char* name)
   return -1;
 }
 
-const char* microAnimationGetName(int animationId)
+const char *microAnimationGetName(int animationId)
 {
   return microAnimations[animationId].name;
 }
 
-MicroTextureSource microAnimationGetFrame(int animationId, int frameId, int flipX, int flipY)
+MicroTextureSource microAnimationGetFrame(int animationId, int frameId,
+                                          int flipX, int flipY)
 {
   MicroTextureSource source;
   frameId = frameId % microAnimations[animationId].framesCount;
 
   int width = microAnimations[animationId].frames[frameId * 4 + 2];
-  if (flipX) width = -width;
+  if (flipX)
+    width = -width;
   int height = microAnimations[animationId].frames[frameId * 4 + 3];
-  if (flipY) height = -height;
+  if (flipY)
+    height = -height;
 
-  source.x = microAnimations[animationId].frames[frameId * 4 + 0] - flipX * width;
-  source.y = microAnimations[animationId].frames[frameId * 4 + 1] - flipY * height;
+  source.x = microAnimations[animationId].frames[frameId * 4 + 0] -
+             flipX * width;
+  source.y = microAnimations[animationId].frames[frameId * 4 + 1] -
+             flipY * height;
   source.w = width;
   source.h = height;
   return source;
@@ -751,18 +776,22 @@ void microAnimationFree(int animationId)
 
 void microAnimationFreeAll()
 {
-  for (int i = 0; i < MICRO_MAX_ANIMATIONS; i++) {
-    if (microAnimations[i].framesCount == 0) continue;
+  for (int i = 0; i < MICRO_MAX_ANIMATIONS; i++)
+  {
+    if (microAnimations[i].framesCount == 0)
+      continue;
     microAnimationFree(i);
   }
 }
 
-int microFontLoadFromFile(const char *filepath, unsigned int fontSize, int filter)
+int microFontLoadFromFile(const char *filepath, unsigned int fontSize,
+                          int filter)
 {
   assert(filter == MICRO_FILTER_NEAREST || filter == MICRO_FILTER_LINEAR);
 
-  FILE* fp = fopen(filepath, "rb");
-  if (fp == NULL) {
+  FILE *fp = fopen(filepath, "rb");
+  if (fp == NULL)
+  {
     printf("Failed to open font file\n");
     return -1;
   }
@@ -771,8 +800,9 @@ int microFontLoadFromFile(const char *filepath, unsigned int fontSize, int filte
   int size = ftell(fp);
   fseek(fp, 0, SEEK_SET);
 
-  unsigned char* ttf_buffer = malloc(size);
-  if (ttf_buffer == NULL) {
+  unsigned char *ttf_buffer = malloc(size);
+  if (ttf_buffer == NULL)
+  {
     printf("Failed to allocate memory for ttf_buffer\n");
     fclose(fp);
     return -1;
@@ -782,7 +812,8 @@ int microFontLoadFromFile(const char *filepath, unsigned int fontSize, int filte
   fclose(fp);
 
   stbtt_fontinfo font;
-  if (!stbtt_InitFont(&font, ttf_buffer, 0)) {
+  if (!stbtt_InitFont(&font, ttf_buffer, 0))
+  {
     printf("Failed to initialize font\n");
     free(ttf_buffer);
     return -1;
@@ -798,23 +829,27 @@ int microFontLoadFromFile(const char *filepath, unsigned int fontSize, int filte
   const unsigned int padding = 3;
   stbtt_GetFontVMetrics(&font, &ascent, 0, 0);
   ascent *= scale;
-  int glyphOffset[128-32];
+  int glyphOffset[128 - 32];
   unsigned char buffer[MICRO_FONT_TEXTURE_SIZE * MICRO_FONT_TEXTURE_SIZE * 4];
   memset(buffer, 0, sizeof(buffer));
 
-  for (int codepoint = 32; codepoint < 128; codepoint++) {
+  for (int codepoint = 32; codepoint < 128; codepoint++)
+  {
     int advance, lsb, x0, y0, x1, y1;
     stbtt_GetCodepointHMetrics(&font, codepoint, &advance, &lsb);
-    stbtt_GetCodepointBitmapBox(&font, codepoint, scale, scale, &x0, &y0, &x1, &y1);
+    stbtt_GetCodepointBitmapBox(&font, codepoint, scale, scale, &x0, &y0, &x1,
+                                &y1);
 
     // render character to buffer
     int width = x1 - x0;
     int height = y1 - y0;
-    unsigned char* bitmap = malloc(width * height);
-    stbtt_MakeCodepointBitmap(&font, bitmap, width, height, width, scale, scale, codepoint);
+    unsigned char *bitmap = malloc(width * height);
+    stbtt_MakeCodepointBitmap(&font, bitmap, width, height, width, scale, scale,
+                              codepoint);
 
     // move to next line if there's no room for the character
-    if (x + width >= MICRO_FONT_TEXTURE_SIZE) {
+    if (x + width >= MICRO_FONT_TEXTURE_SIZE)
+    {
       x = 0;
       y += ascent + padding;
     }
@@ -822,16 +857,21 @@ int microFontLoadFromFile(const char *filepath, unsigned int fontSize, int filte
     // copy bitmap to buffer
     assert(x + width < MICRO_FONT_TEXTURE_SIZE);
     assert(y + height < MICRO_FONT_TEXTURE_SIZE);
-    glyphOffset[codepoint-32] = x + y * MICRO_FONT_TEXTURE_SIZE;
-    for (int i = 0; i < height; i++) {
-      for (int j = 0; j < width; j++) {
+    glyphOffset[codepoint - 32] = x + y * MICRO_FONT_TEXTURE_SIZE;
+    for (int i = 0; i < height; i++)
+    {
+      for (int j = 0; j < width; j++)
+      {
         int px = x + j;
         int py = y + i;
-        if (px >= 0 && px < MICRO_FONT_TEXTURE_SIZE && py >= 0 && py < MICRO_FONT_TEXTURE_SIZE) {
+        if (px >= 0 && px < MICRO_FONT_TEXTURE_SIZE && py >= 0 &&
+            py < MICRO_FONT_TEXTURE_SIZE)
+        {
           buffer[(py * MICRO_FONT_TEXTURE_SIZE + px) * 4 + 0] = 255;
           buffer[(py * MICRO_FONT_TEXTURE_SIZE + px) * 4 + 1] = 255;
           buffer[(py * MICRO_FONT_TEXTURE_SIZE + px) * 4 + 2] = 255;
-          buffer[(py * MICRO_FONT_TEXTURE_SIZE + px) * 4 + 3] = bitmap[i * width + j];
+          buffer[(py * MICRO_FONT_TEXTURE_SIZE + px) * 4 +
+                 3] = bitmap[i * width + j];
         }
       }
     }
@@ -844,8 +884,10 @@ int microFontLoadFromFile(const char *filepath, unsigned int fontSize, int filte
 
   // find spot
   int id = -1;
-  for (int i = 0; i < MICRO_MAX_FONTS; i++) {
-    if (microFonts[i].textureId == -1) {
+  for (int i = 0; i < MICRO_MAX_FONTS; i++)
+  {
+    if (microFonts[i].textureId == -1)
+    {
       id = i;
       break;
     }
@@ -854,7 +896,10 @@ int microFontLoadFromFile(const char *filepath, unsigned int fontSize, int filte
   microFontsCount++;
 
   // create texture and store data
-  microFonts[id].textureId = microTextureLoadFromMemory(buffer, MICRO_FONT_TEXTURE_SIZE, MICRO_FONT_TEXTURE_SIZE, 4, filter);
+  microFonts[id].textureId = microTextureLoadFromMemory(buffer,
+                                                        MICRO_FONT_TEXTURE_SIZE,
+                                                        MICRO_FONT_TEXTURE_SIZE,
+                                                        4, filter);
   microFonts[id].fontSize = fontSize;
   microFonts[id].fontInfo = font;
   microFonts[id].ttf_buffer = ttf_buffer;
@@ -875,12 +920,14 @@ int microFontGetTextureId(int fontId)
 
 void microFontFree(int fontId)
 {
-  if (fontId < 0 || fontId >= MICRO_MAX_FONTS) {
+  if (fontId < 0 || fontId >= MICRO_MAX_FONTS)
+  {
     printf("Error: invalid font id %d\n", fontId);
     return;
   }
 
-  if (microFonts[fontId].textureId == 0) {
+  if (microFonts[fontId].textureId == 0)
+  {
     printf("Error: font %d is not loaded\n", fontId);
     return;
   }
@@ -893,41 +940,43 @@ void microFontFree(int fontId)
 
 void microFontFreeAll()
 {
-  for (int i = 0; i < MICRO_MAX_FONTS; i++) {
-    if (microFonts[i].textureId == -1) continue;
+  for (int i = 0; i < MICRO_MAX_FONTS; i++)
+  {
+    if (microFonts[i].textureId == -1)
+      continue;
     microFontFree(i);
   }
 }
 
-
-
 ////////////////////////////
-//SHADER
+// SHADER
 ////////////////////////////
-void readShaderFile(const char* filepath, char* dst)
+void readShaderFile(const char *filepath, char *dst)
 {
-  FILE* file = fopen(filepath, "rb");
-  if (!file) {
+  FILE *file = fopen(filepath, "rb");
+  if (!file)
+  {
     printf("Error: can't open the file %s\n", filepath);
     fclose(file);
     return;
   }
 
-  //Get file size
+  // Get file size
   fseek(file, 0L, SEEK_END);
   int fsize = (int)ftell(file);
   assert(fsize < MICRO_MAX_SHADER_LEN);
 
-  //Seek to the beginning
+  // Seek to the beginning
   fseek(file, 0L, SEEK_SET);
 
-  //Read all the file into filedata
+  // Read all the file into filedata
   fread(dst, sizeof(char) * fsize, 1, file);
   dst[fsize] = '\0';
   fclose(file);
 }
 
-int microShaderLoadFromFile(const char *vertexShaderPath, const char *fragmentShaderPath)
+int microShaderLoadFromFile(const char *vertexShaderPath,
+                            const char *fragmentShaderPath)
 {
   char vertShaderSrc[MICRO_MAX_SHADER_LEN];
   char fragShaderSrc[MICRO_MAX_SHADER_LEN];
@@ -936,7 +985,8 @@ int microShaderLoadFromFile(const char *vertexShaderPath, const char *fragmentSh
   return microShaderLoadFromSource(&vertShaderSrc[0], &fragShaderSrc[0]);
 }
 
-int microShaderLoadFromSource(const char *vertexShaderSrc, const char *fragmentShaderSrc)
+int microShaderLoadFromSource(const char *vertexShaderSrc,
+                              const char *fragmentShaderSrc)
 {
   GLuint vertShader = glCreateShader(GL_VERTEX_SHADER);
   GLuint fragShader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -946,7 +996,7 @@ int microShaderLoadFromSource(const char *vertexShaderSrc, const char *fragmentS
 
   // Compile vertex shader
 
-  const char* vertShaderSrcPtr = &vertexShaderSrc[0];
+  const char *vertShaderSrcPtr = &vertexShaderSrc[0];
   glShaderSource(vertShader, 1, &vertShaderSrcPtr, NULL);
   glCompileShader(vertShader);
 
@@ -957,14 +1007,15 @@ int microShaderLoadFromSource(const char *vertexShaderSrc, const char *fragmentS
   glGetShaderiv(vertShader, GL_INFO_LOG_LENGTH, &logLength);
   assert(logLength < 4096);
   glGetShaderInfoLog(vertShader, logLength, NULL, &errorLog[0]);
-  if (logLength != 0) {
+  if (logLength != 0)
+  {
     printf("Error compiling vertex shader\n");
     printf("%s\n", &errorLog[0]);
   }
 
   // Compile fragment shader
 
-  const char* fragShaderSrcPtr = &fragmentShaderSrc[0];
+  const char *fragShaderSrcPtr = &fragmentShaderSrc[0];
   glShaderSource(fragShader, 1, &fragShaderSrcPtr, NULL);
   glCompileShader(fragShader);
 
@@ -974,7 +1025,8 @@ int microShaderLoadFromSource(const char *vertexShaderSrc, const char *fragmentS
   glGetShaderiv(fragShader, GL_INFO_LOG_LENGTH, &logLength);
   assert(logLength < 4096);
   glGetShaderInfoLog(fragShader, logLength, NULL, &errorLog[0]);
-  if (logLength != 0) {
+  if (logLength != 0)
+  {
     printf("Error compiling fragment shader\n");
     printf("%s\n", &errorLog[0]);
   }
@@ -996,23 +1048,27 @@ int microShaderLoadFromSource(const char *vertexShaderSrc, const char *fragmentS
 
   microShader shader;
   shader.programId = program;
-  assert(shader.programId != -1);
+  assert(shader.programId != (GLuint)-1);
 
-  //Load uniforms
+  // Load uniforms
   glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &shader.uniformsCount);
   for (int i = 0; i < shader.uniformsCount; i++)
   {
     GLsizei length;
     GLint size;
-    glGetActiveUniform(program, (GLuint)i, MICRO_MAX_NAME_LEN, &length, &size, &shader.uniformsTypes[i], shader.uniformsNames[i]);
-    shader.uniformsLocations[i] = glGetUniformLocation(program, shader.uniformsNames[i]);
+    glGetActiveUniform(program, (GLuint)i, MICRO_MAX_NAME_LEN, &length, &size,
+                       &shader.uniformsTypes[i], shader.uniformsNames[i]);
+    shader.uniformsLocations[i] = glGetUniformLocation(program,
+                                                       shader.uniformsNames[i]);
     shader.uniformsValues[i] = 0.0;
   }
 
-  //Find a spot to store the shader
+  // Find a spot to store the shader
   int spot = -1;
-  for (int i = 0; i < MICRO_MAX_SHADERS; i++) {
-    if (microShaders[i].programId == -1) {
+  for (int i = 0; i < MICRO_MAX_SHADERS; i++)
+  {
+    if (microShaders[i].programId == (GLuint)-1)
+    {
       spot = i;
       microShaders[i] = shader;
       break;
@@ -1036,15 +1092,18 @@ int microShaderGetCurrent()
 
 void microShaderFree(int shaderId)
 {
-  if (shaderId == -1 || microShaders[shaderId].programId == -1) return;
-  if (currentShader == shaderId) currentShader = -1;
+  if (shaderId == -1 || microShaders[shaderId].programId == (GLuint)-1)
+    return;
+  if (currentShader == shaderId)
+    currentShader = -1;
   glDeleteProgram(microShaders[shaderId].programId);
   microShaders[shaderId].programId = -1;
 }
 
 void microShaderApply(int shaderId)
 {
-  if (currentShader == shaderId) return;
+  if (currentShader == shaderId)
+    return;
   glUseProgram(microShaders[shaderId].programId);
   currentShader = shaderId;
   debugInfo.shaderSwitches++;
@@ -1055,102 +1114,114 @@ void microShaderSetUniform(const char *name, ...)
   int uniformLoc = -1;
   int uniformId = -1;
   microShader *shader = &microShaders[currentShader];
-  for (int i = 0; i < shader->uniformsCount; i++) {
-    if (strcmp(shader->uniformsNames[i], name) == 0) {
+  for (int i = 0; i < shader->uniformsCount; i++)
+  {
+    if (strcmp(shader->uniformsNames[i], name) == 0)
+    {
       uniformId = i;
       uniformLoc = shader->uniformsLocations[i];
-
     }
   }
-  assert(uniformId != -1); //Uniform not found
+  assert(uniformId != -1); // Uniform not found
 
   va_list args;
   va_start(args, name);
-  switch (shader->uniformsTypes[uniformId]) {
-    case GL_FLOAT:
-      shader->uniformsValues[uniformId * 4] = (double)va_arg(args, double);
-      glUniform1f(uniformLoc, shader->uniformsValues[uniformId * 4]);
-      break;
-    case GL_FLOAT_VEC2:
-      shader->uniformsValues[uniformId * 4] = (double)va_arg(args, double);
-      shader->uniformsValues[uniformId * 4 + 1] = (double)va_arg(args, double);
-      glUniform2f(uniformLoc, shader->uniformsValues[uniformId * 4],
-          shader->uniformsValues[uniformId * 4 + 1]);
-      break;
-    case GL_FLOAT_VEC3:
-      shader->uniformsValues[uniformId * 4] = (double)va_arg(args, double);
-      shader->uniformsValues[uniformId * 4 + 1] = (double)va_arg(args, double);
-      shader->uniformsValues[uniformId * 4 + 2] = (double)va_arg(args, double);
-      glUniform3f(uniformLoc, shader->uniformsValues[uniformId * 4],
-          shader->uniformsValues[uniformId * 4 + 1],
-          shader->uniformsValues[uniformId * 4 + 2]);
-      break;
-    case GL_FLOAT_VEC4:
-      shader->uniformsValues[uniformId * 4] = (double)va_arg(args, double);
-      shader->uniformsValues[uniformId * 4 + 1] = (double)va_arg(args, double);
-      shader->uniformsValues[uniformId * 4 + 2] = (double)va_arg(args, double);
-      shader->uniformsValues[uniformId * 4 + 3] = (double)va_arg(args, double);
-      glUniform4f(uniformLoc, shader->uniformsValues[uniformId * 4],
-          shader->uniformsValues[uniformId * 4 + 1],
-          shader->uniformsValues[uniformId * 4 + 2],
-          shader->uniformsValues[uniformId * 4 + 3]);
-      break;
-    case GL_FLOAT_MAT4:
-      assert(0); //Not implemented
-      break;
-    default:
-      assert(0); //Unsupported uniform type
+  switch (shader->uniformsTypes[uniformId])
+  {
+  case GL_FLOAT:
+    shader->uniformsValues[uniformId * 4] = (double)va_arg(args, double);
+    glUniform1f(uniformLoc, shader->uniformsValues[uniformId * 4]);
+    break;
+  case GL_FLOAT_VEC2:
+    shader->uniformsValues[uniformId * 4] = (double)va_arg(args, double);
+    shader->uniformsValues[uniformId * 4 + 1] = (double)va_arg(args, double);
+    glUniform2f(uniformLoc, shader->uniformsValues[uniformId * 4],
+                shader->uniformsValues[uniformId * 4 + 1]);
+    break;
+  case GL_FLOAT_VEC3:
+    shader->uniformsValues[uniformId * 4] = (double)va_arg(args, double);
+    shader->uniformsValues[uniformId * 4 + 1] = (double)va_arg(args, double);
+    shader->uniformsValues[uniformId * 4 + 2] = (double)va_arg(args, double);
+    glUniform3f(uniformLoc, shader->uniformsValues[uniformId * 4],
+                shader->uniformsValues[uniformId * 4 + 1],
+                shader->uniformsValues[uniformId * 4 + 2]);
+    break;
+  case GL_FLOAT_VEC4:
+    shader->uniformsValues[uniformId * 4] = (double)va_arg(args, double);
+    shader->uniformsValues[uniformId * 4 + 1] = (double)va_arg(args, double);
+    shader->uniformsValues[uniformId * 4 + 2] = (double)va_arg(args, double);
+    shader->uniformsValues[uniformId * 4 + 3] = (double)va_arg(args, double);
+    glUniform4f(uniformLoc, shader->uniformsValues[uniformId * 4],
+                shader->uniformsValues[uniformId * 4 + 1],
+                shader->uniformsValues[uniformId * 4 + 2],
+                shader->uniformsValues[uniformId * 4 + 3]);
+    break;
+  case GL_FLOAT_MAT4:
+    assert(0); // Not implemented
+    break;
+  default:
+    assert(0); // Unsupported uniform type
   }
 }
 
-void microShaderGetUniform1(const char *name, double* v1)
+void microShaderGetUniform1(const char *name, double *v1)
 {
   assert(currentShader != -1);
   microShader *shader = &microShaders[currentShader];
-  for (int i = 0; i < shader->uniformsCount; i++) {
-    if (strcmp(shader->uniformsNames[i], name) == 0) {
+  for (int i = 0; i < shader->uniformsCount; i++)
+  {
+    if (strcmp(shader->uniformsNames[i], name) == 0)
+    {
       *v1 = shader->uniformsValues[i * 4];
       return;
     }
   }
-  assert(0); //Uniform not found
+  assert(0); // Uniform not found
 }
 
-void microShaderGetUniform2(const char *name, double* v1, double* v2)
+void microShaderGetUniform2(const char *name, double *v1, double *v2)
 {
   assert(currentShader != -1);
   microShader *shader = &microShaders[currentShader];
-  for (int i = 0; i < shader->uniformsCount; i++) {
-    if (strcmp(shader->uniformsNames[i], name) == 0) {
+  for (int i = 0; i < shader->uniformsCount; i++)
+  {
+    if (strcmp(shader->uniformsNames[i], name) == 0)
+    {
       *v1 = shader->uniformsValues[i * 4];
       *v2 = shader->uniformsValues[i * 4 + 1];
       return;
     }
   }
-  assert(0); //Uniform not found
+  assert(0); // Uniform not found
 }
 
-void microShaderGetUniform3(const char *name, double* v1, double* v2, double* v3)
+void microShaderGetUniform3(const char *name, double *v1, double *v2,
+                            double *v3)
 {
   assert(currentShader != -1);
   microShader *shader = &microShaders[currentShader];
-  for (int i = 0; i < shader->uniformsCount; i++) {
-    if (strcmp(shader->uniformsNames[i], name) == 0) {
+  for (int i = 0; i < shader->uniformsCount; i++)
+  {
+    if (strcmp(shader->uniformsNames[i], name) == 0)
+    {
       *v1 = shader->uniformsValues[i * 4];
       *v2 = shader->uniformsValues[i * 4 + 1];
       *v3 = shader->uniformsValues[i * 4 + 2];
       return;
     }
   }
-  assert(0); //Uniform not found
+  assert(0); // Uniform not found
 }
 
-void microShaderGetUniform4(const char *name, double* v1, double* v2, double* v3, double* v4)
+void microShaderGetUniform4(const char *name, double *v1, double *v2,
+                            double *v3, double *v4)
 {
   assert(currentShader != -1);
   microShader *shader = &microShaders[currentShader];
-  for (int i = 0; i < shader->uniformsCount; i++) {
-    if (strcmp(shader->uniformsNames[i], name) == 0) {
+  for (int i = 0; i < shader->uniformsCount; i++)
+  {
+    if (strcmp(shader->uniformsNames[i], name) == 0)
+    {
       *v1 = shader->uniformsValues[i * 4];
       *v2 = shader->uniformsValues[i * 4 + 1];
       *v3 = shader->uniformsValues[i * 4 + 2];
@@ -1158,7 +1229,7 @@ void microShaderGetUniform4(const char *name, double* v1, double* v2, double* v3
       return;
     }
   }
-  assert(0); //Uniform not found
+  assert(0); // Uniform not found
 }
 
 void microShaderSetMatrix4(const char *name, float *matrix)
@@ -1166,47 +1237,48 @@ void microShaderSetMatrix4(const char *name, float *matrix)
   int uniformLoc = -1;
   int uniformId = -1;
   microShader *shader = &microShaders[currentShader];
-  for (int i = 0; i < shader->uniformsCount; i++) {
-    if (strcmp(shader->uniformsNames[i], name) == 0) {
+  for (int i = 0; i < shader->uniformsCount; i++)
+  {
+    if (strcmp(shader->uniformsNames[i], name) == 0)
+    {
       uniformId = i;
       uniformLoc = shader->uniformsLocations[i];
-
     }
   }
-  assert(uniformId != -1); //Uniform not found
+  assert(uniformId != -1); // Uniform not found
   glUniformMatrix4fv(uniformLoc, 1, GL_FALSE, matrix);
 }
-
-
 
 ////////////////////////////
 /// CANVAS
 ///////////////////////////
 int microCanvasCreate(int width, int height)
 {
-  //create framebuffer
+  // create framebuffer
   GLuint framebufferId = 0;
   glGenFramebuffers(1, &framebufferId);
   glBindFramebuffer(GL_FRAMEBUFFER, framebufferId);
   glViewport(0, 0, width, height);
   assert(framebufferId != 0);
 
-
-  //create black texture
-  const int textureId = microTextureLoadFromMemory(0, width, height, 4, MICRO_FILTER_NEAREST);
+  // create black texture
+  const int textureId = microTextureLoadFromMemory(0, width, height, 4,
+                                                   MICRO_FILTER_NEAREST);
   assert(textureId != -1);
   assert(microTextures[textureId].id != 0);
   microGLCheckErrors();
 
-  //find spot in the resources buffer
+  // find spot in the resources buffer
   microCanvas canvas;
   canvas.framebufferId = framebufferId;
   canvas.microTextureId = textureId;
   canvas.width = width;
   canvas.height = height;
   int canvasId = -1;
-  for (int i = 0; i < MICRO_MAX_CANVASES; i++) {
-    if (microCanvases[i].framebufferId == -1) {
+  for (int i = 0; i < MICRO_MAX_CANVASES; i++)
+  {
+    if (microCanvases[i].framebufferId == (GLuint)-1)
+    {
       canvasId = i;
       microCanvases[i] = canvas;
       break;
@@ -1215,10 +1287,12 @@ int microCanvasCreate(int width, int height)
   assert(canvasId != -1);
 
   // Set "renderedTexture" as our colour attachement #0
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, microTextures[textureId].id, 0);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                         microTextures[textureId].id, 0);
   microGLCheckErrors();
 
-  if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+  {
     printf("Error creating framebuffer\n");
     return -1;
   }
@@ -1238,13 +1312,13 @@ void microCanvasFree(int canvasId)
   microTextureFree(microCanvases[canvasId].microTextureId);
 }
 
-
 ////////////////////////////
 // RENDERING
 ///////////////////////////
 void microGraphicsInit()
 {
-  if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+  if (SDL_Init(SDL_INIT_VIDEO) < 0)
+  {
     printf("Failed to initialize th SDL2 library\n");
     return;
   }
@@ -1254,16 +1328,16 @@ void microGraphicsInit()
   const unsigned int screenWidth = DM.w;
   const unsigned int screenHeight = DM.h;
 
-  //create window and opengl context
-  window = SDL_CreateWindow("micro",
-      SDL_WINDOWPOS_CENTERED,
-      SDL_WINDOWPOS_CENTERED,
-      screenWidth, screenHeight,
-      SDL_WINDOW_FULLSCREEN | SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN
-      // SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN
-      );
+  // create window and opengl context
+  window = SDL_CreateWindow("micro", SDL_WINDOWPOS_CENTERED,
+                            SDL_WINDOWPOS_CENTERED, screenWidth, screenHeight,
+                            SDL_WINDOW_FULLSCREEN | SDL_WINDOW_OPENGL |
+                              SDL_WINDOW_SHOWN
+                            // SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN
+  );
 
-  if (!window) {
+  if (!window)
+  {
     printf("Failed to create the window\n");
     return;
   }
@@ -1271,7 +1345,7 @@ void microGraphicsInit()
   // Hide cursor
   SDL_ShowCursor(SDL_DISABLE);
 
-  //clear memory allocations
+  // clear memory allocations
   for (int i = 0; i < MICRO_MAX_TEXTURES; i++)
     microTextures[i].id = -1;
   for (int i = 0; i < MICRO_MAX_CANVASES; i++)
@@ -1287,14 +1361,15 @@ void microGraphicsInit()
   microParticleEmitters = vector_create(sizeof(microParticleEmitter));
   microFreedParticleEmitters = vector_create(sizeof(int));
 
-  //Set OpenGL version
+  // Set OpenGL version
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
-  //Initilize Opengl
+  // Initilize Opengl
   context = SDL_GL_CreateContext(window);
-  if (context == NULL) {
+  if (context == NULL)
+  {
     printf("Couldn't create OpenGL context\n");
   }
 
@@ -1303,21 +1378,23 @@ void microGraphicsInit()
     SDL_GL_SetSwapInterval(1);
   // SDL_GL_SetSwapInterval(0);
 
-  char *glVersion = (char*)glGetString(GL_VERSION);
-  if (glVersion) {
+  char *glVersion = (char *)glGetString(GL_VERSION);
+  if (glVersion)
+  {
     printf("OpenGL version: %s\n", glVersion);
   }
 
 #if defined(__linux__)
   GLenum err = glewInit();
   if (err != GLEW_OK)
-    exit(1); 
+    exit(1);
   else
     printf("GLEW version: %s\n", glewGetString(GLEW_VERSION));
 #endif
 
-  //Load base shader
-  defaultShaderId = microShaderLoadFromSource(baseVertexShaderSrc, baseFragmentShaderSrc);
+  // Load base shader
+  defaultShaderId = microShaderLoadFromSource(baseVertexShaderSrc,
+                                              baseFragmentShaderSrc);
   int programId = microShaderGetProgramID(defaultShaderId);
   assert(defaultShaderId != -1);
   microShaderApply(defaultShaderId);
@@ -1325,57 +1402,58 @@ void microGraphicsInit()
   const int texCoordLoc = glGetAttribLocation(programId, "texcoord");
   const int colorLoc = glGetAttribLocation(programId, "color");
 
-  //Clear
+  // Clear
   glClear(GL_COLOR_BUFFER_BIT);
   glClearColor(0.0, 0.0, 0.0, 0.0);
 
-  //Enable Alpha
+  // Enable Alpha
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   microGLCheckErrors();
 
-  //create VAO
+  // create VAO
   glGenVertexArrays(1, &vao);
   glBindVertexArray(vao);
   microGLCheckErrors();
 
-  //Create vertex buffer
+  // Create vertex buffer
   glGenBuffers(1, &vbo);
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(float) * MICRO_VERTEX_BUFFER_SIZE * 2, &vertexbuf[0], GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(float) * MICRO_VERTEX_BUFFER_SIZE * 2,
+               &vertexbuf[0], GL_STATIC_DRAW);
   glVertexAttribPointer(positionLoc, 2, GL_FLOAT, GL_FALSE, 0, 0);
   glEnableVertexAttribArray(positionLoc);
   microGLCheckErrors();
 
-  //Create texture coordinates buffer
+  // Create texture coordinates buffer
   glGenBuffers(1, &tbo);
   glBindBuffer(GL_ARRAY_BUFFER, tbo);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(float) * MICRO_VERTEX_BUFFER_SIZE * 2, &texsourcebuf[0], GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(float) * MICRO_VERTEX_BUFFER_SIZE * 2,
+               &texsourcebuf[0], GL_STATIC_DRAW);
   glVertexAttribPointer(texCoordLoc, 2, GL_FLOAT, GL_FALSE, 0, 0);
   glEnableVertexAttribArray(texCoordLoc);
   microGLCheckErrors();
 
-  //Create color buffer
+  // Create color buffer
   glGenBuffers(1, &cbo);
   glBindBuffer(GL_ARRAY_BUFFER, cbo);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(float) * MICRO_VERTEX_BUFFER_SIZE * 4, &colorbuf[0], GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(float) * MICRO_VERTEX_BUFFER_SIZE * 4,
+               &colorbuf[0], GL_STATIC_DRAW);
   glVertexAttribPointer(colorLoc, 4, GL_FLOAT, GL_FALSE, 0, 0);
   glEnableVertexAttribArray(colorLoc);
   microGLCheckErrors();
 
-  //Setup renderer
+  // Setup renderer
   countverts = 0;
   wireframe = 0;
 
   printf("microGraphics allocated %d kb\n",
-      (int)((sizeof(microTextures) +
-          sizeof(microCanvases) +
-          sizeof(microShaders) +
-          sizeof(microAnimations) +
-          sizeof(microFonts)
-          ) / (double)(1024)));
+         (int)((sizeof(microTextures) + sizeof(microCanvases) +
+                sizeof(microShaders) + sizeof(microAnimations) +
+                sizeof(microFonts)) /
+               (double)(1024)));
 
-  //Clear debug info
+  // Clear debug info
   debugInfo.drawCalls = 0;
   debugInfo.triangles = 0;
   debugInfo.textureSwitches = 0;
@@ -1385,7 +1463,7 @@ void microGraphicsInit()
 void microGraphicsQuit()
 {
 
-  //Delete VAO
+  // Delete VAO
   glDeleteVertexArrays(1, &vao);
   glDeleteBuffers(1, &vbo);
   glDeleteBuffers(1, &tbo);
@@ -1398,9 +1476,9 @@ void microGraphicsQuit()
   vector_free(&microParticleEmitters);
   vector_free(&microFreedParticleEmitters);
 
-  //Delete context 
-  SDL_GL_DeleteContext( context );
-  SDL_DestroyWindow( window );
+  // Delete context
+  SDL_GL_DeleteContext(context);
+  SDL_DestroyWindow(window);
   SDL_Quit();
 }
 
@@ -1422,48 +1500,56 @@ void microGraphicsRenderToCanvas(int canvasId)
 {
   assert(canvasId >= 0 && canvasId < MICRO_MAX_CANVASES);
   glBindFramebuffer(GL_FRAMEBUFFER, microCanvases[canvasId].framebufferId);
-  glViewport(0, 0, microCanvases[canvasId].width, microCanvases[canvasId].height);
+  glViewport(0, 0, microCanvases[canvasId].width,
+             microCanvases[canvasId].height);
   microGLCheckErrors();
 }
 
 void microGraphicsDisplay()
 {
-  if (!countverts) return;
+  if (!countverts)
+    return;
 
   debugInfo.drawCalls++;
   debugInfo.triangles += countverts / 3;
 
-  //Create vertex buffer
+  // Create vertex buffer
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(float) * countverts * 2, &vertexbuf[0], GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(float) * countverts * 2, &vertexbuf[0],
+               GL_STATIC_DRAW);
 
   glBindBuffer(GL_ARRAY_BUFFER, tbo);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(float) * countverts * 2, &texsourcebuf[0], GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(float) * countverts * 2,
+               &texsourcebuf[0], GL_STATIC_DRAW);
 
   glBindBuffer(GL_ARRAY_BUFFER, cbo);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(float) * countverts * 4, &colorbuf[0], GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(float) * countverts * 4, &colorbuf[0],
+               GL_STATIC_DRAW);
 
   glBindVertexArray(vao);
-  glDrawArrays(GL_TRIANGLES, 0, countverts); 
+  glDrawArrays(GL_TRIANGLES, 0, countverts);
   microGLCheckErrors();
 
   countverts = 0;
 }
 
 void microGraphicsDraw(int textureId, float x, float y, float x2, float y2,
-    float x3, float y3, float x4, float y4, float tx_x, float tx_y,
-    float tx_w, float tx_h, float r, float g, float b, float a)
+                       float x3, float y3, float x4, float y4, float tx_x,
+                       float tx_y, float tx_w, float tx_h, float r, float g,
+                       float b, float a)
 {
   if (textureId == -1)
   {
-    if (currentTexture != 0) {
+    if (currentTexture != 0)
+    {
       microGraphicsDisplay();
       microGLStateBindTexture(0);
     }
   }
   else
   {
-    if (currentTexture != textureId) {
+    if (currentTexture != textureId)
+    {
       microGraphicsDisplay();
       microGLStateBindTexture(textureId);
       debugInfo.textureSwitches++;
@@ -1475,7 +1561,7 @@ void microGraphicsDraw(int textureId, float x, float y, float x2, float y2,
 
   unsigned int buffersize = countverts;
 
-  //V1
+  // V1
   vertexbuf[buffersize][0] = x;
   vertexbuf[buffersize][1] = y;
 
@@ -1489,7 +1575,7 @@ void microGraphicsDraw(int textureId, float x, float y, float x2, float y2,
 
   buffersize++;
 
-  //V2
+  // V2
   vertexbuf[buffersize][0] = x2;
   vertexbuf[buffersize][1] = y2;
 
@@ -1503,7 +1589,7 @@ void microGraphicsDraw(int textureId, float x, float y, float x2, float y2,
 
   buffersize++;
 
-  //V3
+  // V3
   vertexbuf[buffersize][0] = x4;
   vertexbuf[buffersize][1] = y4;
 
@@ -1517,7 +1603,7 @@ void microGraphicsDraw(int textureId, float x, float y, float x2, float y2,
 
   buffersize++;
 
-  //V4
+  // V4
   vertexbuf[buffersize][0] = x2;
   vertexbuf[buffersize][1] = y2;
 
@@ -1531,7 +1617,7 @@ void microGraphicsDraw(int textureId, float x, float y, float x2, float y2,
 
   buffersize++;
 
-  //V5
+  // V5
   vertexbuf[buffersize][0] = x3;
   vertexbuf[buffersize][1] = y3;
 
@@ -1545,7 +1631,7 @@ void microGraphicsDraw(int textureId, float x, float y, float x2, float y2,
 
   buffersize++;
 
-  //V6
+  // V6
   vertexbuf[buffersize][0] = x4;
   vertexbuf[buffersize][1] = y4;
 
@@ -1562,20 +1648,20 @@ void microGraphicsDraw(int textureId, float x, float y, float x2, float y2,
   countverts += 6;
 }
 
-void microGraphicsDrawRectRot(int textureId, float tx, float ty, float tw, float th,
-    float x, float y, float w, float h, float originX, float originY,
-    float rotation, float r, float g, float b, float a)
+void microGraphicsDrawRectRot(int textureId, float tx, float ty, float tw,
+                              float th, float x, float y, float w, float h,
+                              float originX, float originY, float rotation,
+                              float r, float g, float b, float a)
 {
   static float v1X, v1Y;
   static float v2X, v2Y;
   static float v3X, v3Y;
   static float v4X, v4Y;
 
-
   if (rotation)
   {
-    const float ca = cosf(rotation * M_PI / 180.0);
-    const float sa = sinf(rotation * M_PI / 180.0);
+    const float ca = cosf(rotation);
+    const float sa = sinf(rotation);
 
     const float cx = x + originX;
     const float cy = y + originY;
@@ -1616,54 +1702,53 @@ void microGraphicsDrawRectRot(int textureId, float tx, float ty, float tw, float
   {
     static int tex_w, tex_h;
     static int glTextureId;
-    assert(microTextures[textureId].id != -1);
+    assert(microTextures[textureId].id != (GLuint)-1);
     microTextureGetSize(textureId, &tex_w, &tex_h);
     glTextureId = microTextures[textureId].id;
 
-    microGraphicsDraw(glTextureId,
-        v1X, v1Y, v2X, v2Y, v3X, v3Y, v4X, v4Y,
-        tx / tex_w,
-        ty / tex_h,
-        tw / tex_w,
-        th / tex_h,
-        r, g, b, a);
+    microGraphicsDraw(glTextureId, v1X, v1Y, v2X, v2Y, v3X, v3Y, v4X, v4Y,
+                      tx / tex_w, ty / tex_h, tw / tex_w, th / tex_h, r, g, b,
+                      a);
   }
   else
   {
-    microGraphicsDraw(-1,
-        v1X, v1Y, v2X, v2Y, v3X, v3Y, v4X, v4Y,
-        0, 0, 0, 0, r, g, b, a);
+    microGraphicsDraw(-1, v1X, v1Y, v2X, v2Y, v3X, v3Y, v4X, v4Y, 0, 0, 0, 0, r,
+                      g, b, a);
   }
 }
 
-void microGraphicsDrawRect(int textureId, float tx, float ty, float tw, float th,
-    float x, float y, float w, float h, float r, float g, float b, float a)
+void microGraphicsDrawRect(int textureId, float tx, float ty, float tw,
+                           float th, float x, float y, float w, float h,
+                           float r, float g, float b, float a)
 {
-  if (textureId == -1) 
+  if (textureId == -1)
   {
-    microGraphicsDraw(-1, x, y, x + w, y, x + w, y + h, x, y + h, 0, 0, 0, 0, r, g, b, a);
+    microGraphicsDraw(-1, x, y, x + w, y, x + w, y + h, x, y + h, 0, 0, 0, 0, r,
+                      g, b, a);
   }
   else
   {
     static int tex_w, tex_h;
     static int glTextureId;
-    assert(microTextures[textureId].id != -1);
+    assert(microTextures[textureId].id != (GLuint)-1);
     microTextureGetSize(textureId, &tex_w, &tex_h);
     glTextureId = microTextures[textureId].id;
     microGraphicsDraw(glTextureId, x, y, x + w, y, x + w, y + h, x, y + h,
-        tx / (float)tex_w, ty / (float)tex_h, tw / (float)tex_w,
-        th / (float)tex_h, r, g, b, a);
+                      tx / (float)tex_w, ty / (float)tex_h, tw / (float)tex_w,
+                      th / (float)tex_h, r, g, b, a);
   }
 }
 
-void microGraphicsDrawText(int fontId, const char *text,
-    float x, float y, float lineSpacing, float r, float g, float b, float a)
+void microGraphicsDrawText(int fontId, const char *text, float x, float y,
+                           float lineSpacing, float r, float g, float b,
+                           float a)
 {
   const unsigned int textLen = strlen(text);
-  const stbtt_fontinfo* fontInfo = &microFonts[fontId].fontInfo;
+  const stbtt_fontinfo *fontInfo = &microFonts[fontId].fontInfo;
 
   const float startX = x;
-  const float scale = stbtt_ScaleForPixelHeight(fontInfo, microFonts[fontId].fontSize);
+  const float scale = stbtt_ScaleForPixelHeight(fontInfo,
+                                                microFonts[fontId].fontSize);
   assert(isnan(scale) == 0);
   assert(isinf(scale) == 0);
   int ascent;
@@ -1676,7 +1761,8 @@ void microGraphicsDrawText(int fontId, const char *text,
   for (unsigned int i = 0; i < textLen; i++)
   {
     const char c = text[i];
-    if (c == '\n') {
+    if (c == '\n')
+    {
       y += ascent + lineSpacing;
       x = startX;
       prevChar = c;
@@ -1697,8 +1783,10 @@ void microGraphicsDrawText(int fontId, const char *text,
     const float th = y1 - y0;
 
     // Added kerning adjustment
-    if (prevChar != '\n') {
-      float kerning = stbtt_GetCodepointKernAdvance(fontInfo, prevChar, c) * scale;
+    if (prevChar != '\n')
+    {
+      float kerning = stbtt_GetCodepointKernAdvance(fontInfo, prevChar, c) *
+                      scale;
       assert(isnan(kerning) == 0);
       x += kerning;
     }
@@ -1708,15 +1796,15 @@ void microGraphicsDrawText(int fontId, const char *text,
       x += lsb * scale;
 
     // Draw glyph
-    microGraphicsDrawRect(microFontGetTextureId(fontId), tx, ty, tw, th,
-        x, y + y0, tw, th, r, g, b, a);
+    microGraphicsDrawRect(microFontGetTextureId(fontId), tx, ty, tw, th, x,
+                          y + y0, tw, th, r, g, b, a);
 
     x += (advance - lsb) * scale;
     prevChar = c;
   }
 }
 
-//VIEW
+// VIEW
 void microViewSet(MicroView view)
 {
   viewViewportX = view.viewportX;
@@ -1750,13 +1838,14 @@ MicroView microViewGet()
 
 void microViewApply()
 {
-  if (!viewUpdated) {
+  if (!viewUpdated)
+  {
     float NCenterX, NCenterY;
     NCenterX = floor(viewCenterX);
     NCenterY = floor(viewCenterY);
 
     // Rotation components
-    float angle = viewRotation * M_PI / 180.f;
+    float angle = viewRotation;
     float cosine = cosf(angle);
     float sine = sinf(angle);
     float tx = -NCenterX * cosine - NCenterY * sine + NCenterX;
@@ -1764,7 +1853,9 @@ void microViewApply()
 
     // Projection components
     float a = 2.f / viewWidth;
-    float b = viewFlipY ? 2.f / viewHeight : -2.f / viewHeight; // Change the sign of b based on flipY
+    float b = viewFlipY
+                ? 2.f / viewHeight
+                : -2.f / viewHeight; // Change the sign of b based on flipY
     float c = -a * NCenterX;
     float d = -b * NCenterY;
 
@@ -1773,7 +1864,7 @@ void microViewApply()
     const float e = 2.f / (zFar - zNear);
     const float f = -(zFar + zNear) / (zFar - zNear);
 
-    //Update matrix
+    // Update matrix
     viewMatrix[0] = a * cosine;
     viewMatrix[1] = -b * sine;
     viewMatrix[2] = 0.f;
@@ -1791,13 +1882,13 @@ void microViewApply()
     viewMatrix[14] = f;
     viewMatrix[15] = 1.f;
 
-    //Set viewport
+    // Set viewport
     glViewport(viewViewportX, viewViewportY, viewViewportW, viewViewportH);
 
     viewUpdated = 1;
   }
 
-  //Apply view
+  // Apply view
   if (currentShader != -1)
     microShaderSetMatrix4("u_view", viewMatrix);
 }
@@ -1837,13 +1928,13 @@ void microViewSetRotation(float rotation)
   viewUpdated = 0;
 }
 
-void microViewGetCenter(float* centerX, float* centerY)
+void microViewGetCenter(float *centerX, float *centerY)
 {
   *centerX = viewCenterX;
   *centerY = viewCenterY;
 }
 
-void microViewGetSize(float* width, float* height)
+void microViewGetSize(float *width, float *height)
 {
   *width = viewWidth;
   *height = viewHeight;
@@ -1867,7 +1958,7 @@ RenderingDebugInfo microGetRenderingDebugInfo()
 
 void microRenderingDebugInfoClear()
 {
-  //Clear debug info
+  // Clear debug info
   debugInfo.drawCalls = 0;
   debugInfo.triangles = 0;
   debugInfo.textureSwitches = 0;
@@ -1887,11 +1978,12 @@ void microSwapBuffers()
 Uint32 lastTime = 0;
 float microGraphicsDelayToNextFrame(float target_fps)
 {
-  //If frame finished early
+  // If frame finished early
   int frame_time = SDL_GetTicks() - lastTime;
-  if (1000 / 70 > frame_time) {
-    //Wait the remaining time
-    SDL_Delay(1000 / 70 - frame_time);
+  if (1000 / target_fps > frame_time)
+  {
+    // Wait the remaining time
+    SDL_Delay(1000 / target_fps - frame_time);
   }
 
   // Calculate delta time
@@ -1902,14 +1994,13 @@ float microGraphicsDelayToNextFrame(float target_fps)
   return deltaTime;
 }
 
-
-
 ////////////////////////////
 /// Particle emitter
 ////////////////////////////
-int microParticleEmitterCreateSteady(int x, int y, float emissionRate, MicroParticle (*generationFunc)(int))
+int microParticleEmitterCreateSteady(int x, int y, float emissionRate,
+                                     MicroParticle (*generationFunc)(int))
 {
-  //Create emitter
+  // Create emitter
   microParticleEmitter newEmitter;
   newEmitter.particles = vector_create(sizeof(MicroParticle));
   newEmitter.freeParticles = vector_create(sizeof(int));
@@ -1923,11 +2014,13 @@ int microParticleEmitterCreateSteady(int x, int y, float emissionRate, MicroPart
   newEmitter.y = y;
 
   int spot = -1;
-  if (microFreedParticleEmitters.size > 0) {
-    //Reuse a freed emitter
-    spot = *(int*)vector_back(&microFreedParticleEmitters);
+  if (microFreedParticleEmitters.size > 0)
+  {
+    // Reuse a freed emitter
+    spot = *(int *)vector_back(&microFreedParticleEmitters);
     vector_pop_back(&microFreedParticleEmitters);
-    memcpy(vector_at(&microParticleEmitters, spot), &newEmitter, sizeof(microParticleEmitter));
+    memcpy(vector_at(&microParticleEmitters, spot), &newEmitter,
+           sizeof(microParticleEmitter));
   }
   else
   {
@@ -1938,9 +2031,10 @@ int microParticleEmitterCreateSteady(int x, int y, float emissionRate, MicroPart
   return spot;
 }
 
-int microParticleEmitterCreateExplosion(int x, int y, int particlesCount, MicroParticle (*generationFunc)(int))
+int microParticleEmitterCreateExplosion(int x, int y, int particlesCount,
+                                        MicroParticle (*generationFunc)(int))
 {
-  //Create emitter
+  // Create emitter
   microParticleEmitter newEmitter;
   newEmitter.particles = vector_create(sizeof(MicroParticle));
   newEmitter.freeParticles = vector_create(sizeof(int));
@@ -1954,110 +2048,138 @@ int microParticleEmitterCreateExplosion(int x, int y, int particlesCount, MicroP
   newEmitter.y = y;
 
   int spot = -1;
-  if (microFreedParticleEmitters.size > 0) {
-    //Reuse a freed emitter
-    spot = *(int*)vector_back(&microFreedParticleEmitters);
+  if (microFreedParticleEmitters.size > 0)
+  {
+    // Reuse a freed emitter
+    spot = *(int *)vector_back(&microFreedParticleEmitters);
     vector_pop_back(&microFreedParticleEmitters);
-    memcpy(vector_at(&microParticleEmitters, spot), &newEmitter, sizeof(microParticleEmitter));
+    memcpy(vector_at(&microParticleEmitters, spot), &newEmitter,
+           sizeof(microParticleEmitter));
   }
   else
   {
     vector_push_back(&microParticleEmitters, &newEmitter);
     spot = microParticleEmitters.size - 1;
   }
-  microParticleEmitter* emitter = vector_at(&microParticleEmitters, spot);
+  microParticleEmitter *emitter = vector_at(&microParticleEmitters, spot);
 
-  //Create particles if it is an explosion
-  for (int i = 0; i < particlesCount; i++) {
+  // Create particles if it is an explosion
+  for (int i = 0; i < particlesCount; i++)
+  {
     MicroParticle p = generationFunc(spot);
+    p.x = emitter->x - (float)emitter->width / 2 + rand() % emitter->width;
+    p.y = emitter->y - (float)emitter->height / 2 + rand() % emitter->height;
+    p.life = p.maxLife;
+    p.alpha = p.startAlpha;
+    p.scale = p.startScale;
+    p.alive = 1;
     vector_push_back(&emitter->particles, &p);
+    microTotalParticles++;
   }
 
   return spot;
-} 
+}
 
 void microParticleEmitterSetPosition(int emitterId, int x, int y)
 {
-  microParticleEmitter* emitter = vector_at(&microParticleEmitters, emitterId);
+  microParticleEmitter *emitter = vector_at(&microParticleEmitters, emitterId);
   emitter->x = x;
   emitter->y = y;
-} 
+}
 
 void microParticleEmitterSetSize(int emitterId, int width, int height)
 {
-  microParticleEmitter* emitter = vector_at(&microParticleEmitters, emitterId);
+  microParticleEmitter *emitter = vector_at(&microParticleEmitters, emitterId);
   emitter->width = width;
   emitter->height = height;
-} 
+}
 
 void microParticleEmitterSetEmissionRate(int emitterId, float emissionRate)
 {
-  microParticleEmitter* emitter = vector_at(&microParticleEmitters, emitterId);
+  microParticleEmitter *emitter = vector_at(&microParticleEmitters, emitterId);
   emitter->emissionRate = emissionRate;
-} 
+}
 
-void microParticleEmitterSetGenerationFunc(int emitterId, MicroParticle (*generationFunc)(int))
+void microParticleEmitterSetGenerationFunc(int emitterId,
+                                           MicroParticle (*generationFunc)(int))
 {
-  microParticleEmitter* emitter = vector_at(&microParticleEmitters, emitterId);
+  microParticleEmitter *emitter = vector_at(&microParticleEmitters, emitterId);
   emitter->particleGenerator = generationFunc;
-} 
+}
 void microParticleEmitterGetPosition(int emitterId, int *x, int *y)
 {
-  microParticleEmitter* emitter = vector_at(&microParticleEmitters, emitterId);
+  microParticleEmitter *emitter = vector_at(&microParticleEmitters, emitterId);
   *x = emitter->x;
   *y = emitter->y;
-} 
+}
 
 float microParticleEmitterGetEmissionRate(int emitterId)
 {
-  microParticleEmitter* emitter = vector_at(&microParticleEmitters, emitterId);
+  microParticleEmitter *emitter = vector_at(&microParticleEmitters, emitterId);
   return emitter->emissionRate;
-} 
+}
 
 void microParticleEmittersUpdate(float dt)
 {
-  for (int i = 0; i < microParticleEmitters.size; i++) {
+  for (unsigned int i = 0; i < microParticleEmitters.size; i++)
+  {
 
-    microParticleEmitter* emitter = vector_at(&microParticleEmitters, i);
-    Vector* particles = &emitter->particles;
+    microParticleEmitter *emitter = vector_at(&microParticleEmitters, i);
+    Vector *particles = &emitter->particles;
 
-    //Update particles
-    for (int j = 0; j < particles->size; j++) {
+    // Update particles
+    for (unsigned int j = 0; j < particles->size; j++)
+    {
       MicroParticle *p = vector_at(particles, j);
-      if (p->life <= 0) continue;
+      if (p->life <= 0 || !p->alive)
+        continue;
       p->x += p->vx * dt;
       p->y += p->vy * dt;
       p->life -= dt;
-      p->alpha = p->startAlpha * (p->life / p->maxLife) + p->endAlpha * (1 - p->life / p->maxLife);
+      p->alpha = p->startAlpha * (p->life / p->maxLife) +
+                 p->endAlpha * (1 - p->life / p->maxLife);
       p->rotation += p->rotationSpeed * dt;
-      p->scale = p->startScale * (p->life / p->maxLife) + p->endScale * (1 - p->life / p->maxLife);
+      p->scale = p->startScale * (p->life / p->maxLife) +
+                 p->endScale * (1 - p->life / p->maxLife);
     }
 
-    //Remove dead particles
-    for (int j = 0; j < particles->size; j++) {
+    // Remove dead particles
+    for (unsigned int j = 0; j < particles->size; j++)
+    {
       MicroParticle *p = vector_at(particles, j);
-      if (p->life <= 0) {
+      if (p->life <= 0 && p->alive)
+      {
+        p->alive = 0;
         vector_push_back(&emitter->freeParticles, &j);
+        microTotalParticles--;
       }
     }
 
-    //Emit new particles
-    if (emitter->emitterType == MICRO_EMITTER_STEADY) {
+    // Emit new particles
+    if (emitter->emitterType == MICRO_EMITTER_STEADY)
+    {
       emitter->emissionTimer += dt;
 
-      if (emitter->emissionTimer > 1.0 / emitter->emissionRate) {
+      if (emitter->emissionTimer > 1.0 / emitter->emissionRate)
+      {
         MicroParticle p = emitter->particleGenerator(i);
         p.x = emitter->x - (float)emitter->width / 2 + rand() % emitter->width;
-        p.y = emitter->y - (float)emitter->height / 2 + rand() % emitter->height;
+        p.y = emitter->y - (float)emitter->height / 2 +
+              rand() % emitter->height;
         p.life = p.maxLife;
         p.alpha = p.startAlpha;
         p.scale = p.startScale;
+        p.alive = 1;
+        microTotalParticles++;
 
-        if (emitter->freeParticles.size > 0) {
-          int spot = *(int*)vector_back(&emitter->freeParticles);
+        if (emitter->freeParticles.size > 0)
+        {
+          int spot = *(int *)vector_back(&emitter->freeParticles);
           vector_pop_back(&emitter->freeParticles);
           memcpy(vector_at(particles, spot), &p, sizeof(MicroParticle));
-        } else {
+        }
+        else
+        {
           vector_push_back(particles, &p);
         }
 
@@ -2065,31 +2187,41 @@ void microParticleEmittersUpdate(float dt)
       }
     }
   }
-}  
+}
 
 void microParticleEmitterDraw(int emitterId)
 {
-  microParticleEmitter* emitter = vector_at(&microParticleEmitters, emitterId);
-  Vector* particles = &emitter->particles;
+  microParticleEmitter *emitter = vector_at(&microParticleEmitters, emitterId);
+  Vector *particles = &emitter->particles;
 
-  for (int i = 0; i < particles->size; i++) {
+  for (unsigned int i = 0; i < particles->size; i++)
+  {
     MicroParticle *p = vector_at(particles, i);
-    if (p->life <= 0.0) continue;
-    microGraphicsDrawRectRot(p->textureId, p->tx, p->ty, p->tw, p->th, p->x - p->scale/2,
-        p->y - p->scale/2, p->scale, p->scale, p->scale/2, p->scale/2, p->rotation, 1.0, 1.0, 1.0, p->alpha);
+    if (p->life <= 0.0)
+      continue;
+
+    microGraphicsDrawRectRot(p->textureId, p->tx, p->ty, p->tw, p->th, p->x,
+                             p->y, p->scale, p->scale, p->scale / 2,
+                             p->scale / 2, p->rotation, 1.0, 1.0, 1.0,
+                             p->alpha);
   }
 }
 
 void microParticleEmitterRemove(int emitterId)
 {
-  microParticleEmitter* emitter = vector_at(&microParticleEmitters, emitterId);
+  microParticleEmitter *emitter = vector_at(&microParticleEmitters, emitterId);
   vector_free(&emitter->particles);
   vector_free(&emitter->freeParticles);
   vector_push_back(&microFreedParticleEmitters, &emitterId);
-}  
+}
 
 void microParticleEmitterRemoveAll()
 {
-  for (int i = 0; i < microParticleEmitters.size; i++)
+  for (unsigned int i = 0; i < microParticleEmitters.size; i++)
     microParticleEmitterRemove(i);
+}
+
+int microParticlesCount()
+{
+  return microTotalParticles;
 }

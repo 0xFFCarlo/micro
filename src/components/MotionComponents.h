@@ -2,7 +2,7 @@
 #define MOTION_COMPONENTS_H
 
 // Position
-typedef struct 
+typedef struct
 {
   double x, y;
 } CPosition;
@@ -10,20 +10,20 @@ typedef struct
 extern int cid_position;
 extern void RegisterCPosition();
 
-
 // Transform
-typedef struct {
-    float width, height;
-    float originX, originY;
-    float rotation;
+typedef struct
+{
+  float width, height;
+  float originX, originY;
+  float rotation;
 } CTransform;
 
 extern int cid_transform;
 extern void RegisterCTransform();
 
-
 // Body
-typedef struct {
+typedef struct
+{
   int body_id;
 } CBody;
 

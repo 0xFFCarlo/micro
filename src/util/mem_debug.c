@@ -1,13 +1,13 @@
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define HASHMAP_SIZE 2048
 #define HASH_SEED 0xdeadbeef
 #define GUARD_CONTENT 0xAB
 #define FILENAME_MAX_LENGTH 64
 #define VERBOSE 0
-//#define USE_BACKTRACE
+// #define USE_BACKTRACE
 
 // Colors
 #define COLOR_RED "\033[0;31m"
@@ -28,7 +28,7 @@ typedef struct LOCATION_INFO
   struct LOCATION_INFO *next;
 } LOCATION_INFO;
 
-LOCATION_INFO* location_hashmap[HASHMAP_SIZE] = {NULL};
+LOCATION_INFO *location_hashmap[HASHMAP_SIZE] = {NULL};
 uint16_t location_ids = 0;
 
 typedef struct MEM_INFO
@@ -36,37 +36,41 @@ typedef struct MEM_INFO
   unsigned char guard;
   void *address;
   size_t size;
-  LOCATION_INFO* symbol;
+  LOCATION_INFO *symbol;
   struct MEM_INFO *next;
 } MEM_INFO;
 
-MEM_INFO* allocations_hashmap[HASHMAP_SIZE] = {NULL};
+MEM_INFO *allocations_hashmap[HASHMAP_SIZE] = {NULL};
 
 #ifdef USE_BACKTRACE
 
-char* backtrace_get() {
+char *backtrace_get()
+{
   void *buffer[5];
   char **symbols;
   int nptrs;
 
   nptrs = backtrace(buffer, 5);
   symbols = backtrace_symbols(buffer, nptrs);
-  if (symbols == NULL) {
+  if (symbols == NULL)
+  {
     perror("backtrace_symbols");
     exit(EXIT_FAILURE);
   }
-  
+
   // get function names
-  char** fun_names = malloc(sizeof(char*) * nptrs);
-  for (int j = 0; j < nptrs; j++) {
+  char **fun_names = malloc(sizeof(char *) * nptrs);
+  for (int j = 0; j < nptrs; j++)
+  {
     char *line = strdup(symbols[j]);
-    char *token = strtok(line, " "); // Get the first token 
-    token = strtok(NULL, " "); // Get the second token (library name)
-    token = strtok(NULL, " "); // Get the third token (the address)
-    token = strtok(NULL, " "); // Get the fourth token (the function name)
-    
+    char *token = strtok(line, " "); // Get the first token
+    token = strtok(NULL, " ");       // Get the second token (library name)
+    token = strtok(NULL, " ");       // Get the third token (the address)
+    token = strtok(NULL, " ");       // Get the fourth token (the function name)
+
     fun_names[j] = NULL;
-    if (token == NULL) continue;
+    if (token == NULL)
+      continue;
 
     fun_names[j] = strdup(token);
     free(line);
@@ -74,26 +78,32 @@ char* backtrace_get() {
 
   // compute description size
   int description_size = 3; // '[' + ']' + '\0'
-  for (int j = 0; j < nptrs; j++) {
-    if (fun_names[j] == NULL) continue;
+  for (int j = 0; j < nptrs; j++)
+  {
+    if (fun_names[j] == NULL)
+      continue;
     description_size += strlen(fun_names[j]) + 3;
   }
-  
+
   // build description
-  char* call_description = malloc(sizeof(char) * description_size);
+  char *call_description = malloc(sizeof(char) * description_size);
   call_description[0] = '[';
   call_description[1] = '\0';
   int skip_first = 2;
-  for (int j = 0; j < nptrs; j++) {
-    if (skip_first > 0) {
+  for (int j = 0; j < nptrs; j++)
+  {
+    if (skip_first > 0)
+    {
       skip_first--;
       if (fun_names[j] != NULL)
         free(fun_names[j]);
       continue;
     }
-    if (fun_names[j] == NULL) continue;
+    if (fun_names[j] == NULL)
+      continue;
     strcat(call_description, fun_names[j]);
-    if (j != nptrs-1) strcat(call_description, " < ");
+    if (j != nptrs - 1)
+      strcat(call_description, " < ");
     free(fun_names[j]);
   }
   strcat(call_description, "]\0");
@@ -106,26 +116,27 @@ char* backtrace_get() {
 
 #endif
 
-
 // MurmurHash64A
-uint32_t hash_fun (uint64_t key) {
+uint32_t hash_fun(uint64_t key)
+{
   const uint64_t m = 0xc6a4a7935bd1e995;
   const int r = 47;
 
   uint64_t h = HASH_SEED ^ (8 * m);
 
-  const uint64_t* data = &key;
-  const uint64_t* end = data + 1;
+  const uint64_t *data = &key;
+  const uint64_t *end = data + 1;
 
-  while(data != end) {
+  while (data != end)
+  {
     uint64_t k = *data++;
 
-    k *= m; 
-    k ^= k >> r; 
-    k *= m; 
+    k *= m;
+    k ^= k >> r;
+    k *= m;
 
     h ^= k;
-    h *= m; 
+    h *= m;
   }
 
   h ^= h >> r;
@@ -135,7 +146,8 @@ uint32_t hash_fun (uint64_t key) {
   return h % HASHMAP_SIZE;
 }
 
-uint32_t loc_hash_fun(const char* filename, int line) {
+uint32_t loc_hash_fun(const char *filename, int line)
+{
   uint64_t key = 1;
   const int filename_length = strlen(filename);
   for (int i = 0; i < filename_length; i++)
@@ -144,7 +156,8 @@ uint32_t loc_hash_fun(const char* filename, int line) {
   return hash_fun(key);
 }
 
-void alloc_hashmap_add(void* ptr, MEM_INFO* info) {
+void alloc_hashmap_add(void *ptr, MEM_INFO *info)
+{
   int index = hash_fun((uint64_t)ptr);
   info->next = allocations_hashmap[index];
   // if (allocations_hashmap[index] != NULL)
@@ -152,10 +165,12 @@ void alloc_hashmap_add(void* ptr, MEM_INFO* info) {
   allocations_hashmap[index] = info;
 }
 
-MEM_INFO* alloc_hashmap_get(void* ptr) {
+MEM_INFO *alloc_hashmap_get(void *ptr)
+{
   int index = hash_fun((uint64_t)ptr);
-  MEM_INFO* current = allocations_hashmap[index];
-  while (current != NULL) {
+  MEM_INFO *current = allocations_hashmap[index];
+  while (current != NULL)
+  {
     if (current->address == ptr)
       return current;
     current = current->next;
@@ -163,16 +178,21 @@ MEM_INFO* alloc_hashmap_get(void* ptr) {
   return NULL;
 }
 
-void alloc_hashmap_remove(void* ptr) {
+void alloc_hashmap_remove(void *ptr)
+{
   int index = hash_fun((uint64_t)ptr);
-  MEM_INFO* current = allocations_hashmap[index];
-  if (current == NULL) return;
-  if (current->address == ptr) {
+  MEM_INFO *current = allocations_hashmap[index];
+  if (current == NULL)
+    return;
+  if (current->address == ptr)
+  {
     allocations_hashmap[index] = current->next;
     return;
   }
-  while (current->next != NULL) {
-    if (current->next->address == ptr) {
+  while (current->next != NULL)
+  {
+    if (current->next->address == ptr)
+    {
       current->next = current->next->next;
       return;
     }
@@ -180,10 +200,12 @@ void alloc_hashmap_remove(void* ptr) {
   }
 }
 
-LOCATION_INFO* loc_hashmap_get(const char* filename, int line) {
+LOCATION_INFO *loc_hashmap_get(const char *filename, int line)
+{
   int index = loc_hash_fun(filename, line);
-  LOCATION_INFO* current = location_hashmap[index];
-  while (current != NULL) {
+  LOCATION_INFO *current = location_hashmap[index];
+  while (current != NULL)
+  {
     if (strcmp(current->filename, filename) == 0 && current->line == line)
       return current;
     current = current->next;
@@ -191,12 +213,14 @@ LOCATION_INFO* loc_hashmap_get(const char* filename, int line) {
   return NULL;
 }
 
-LOCATION_INFO* loc_hashmap_add(const char* filename, int line) {
-  LOCATION_INFO* location = loc_hashmap_get(filename, line);
-  if (location != NULL) return location;
+LOCATION_INFO *loc_hashmap_add(const char *filename, int line)
+{
+  LOCATION_INFO *location = loc_hashmap_get(filename, line);
+  if (location != NULL)
+    return location;
 
   int index = loc_hash_fun(filename, line);
-  LOCATION_INFO* new_location = malloc(sizeof(LOCATION_INFO));
+  LOCATION_INFO *new_location = malloc(sizeof(LOCATION_INFO));
   int filename_length = strlen(filename);
   if (filename_length > FILENAME_MAX_LENGTH)
     filename_length = FILENAME_MAX_LENGTH;
@@ -207,24 +231,27 @@ LOCATION_INFO* loc_hashmap_add(const char* filename, int line) {
   return new_location;
 }
 
-void *malloc_debug(size_t size, char *file, int line)
+void *malloc_debug(const size_t size, char *file, const int line)
 {
   void *ptr = malloc(size + sizeof(MEM_INFO));
   if (ptr)
   {
-    MEM_INFO *info = (MEM_INFO *)(ptr + size); // Shift MEM_INFO to the end of the allocated block
+    MEM_INFO *info = (MEM_INFO *)(ptr + size); // Shift MEM_INFO to the end of
+                                               // the allocated block
     info->address = ptr;
     info->size = size;
     info->guard = GUARD_CONTENT; // Set guard byte
 
     // store location info
     char *last_slash = strrchr(file, '/');
-    if (last_slash == NULL) last_slash = file;
-    else last_slash++;
-    char* loc_name = last_slash;
+    if (last_slash == NULL)
+      last_slash = file;
+    else
+      last_slash++;
+    char *loc_name = last_slash;
 
 #ifdef USE_BACKTRACE
-    char* call_description = backtrace_get();
+    char *call_description = backtrace_get();
     loc_name = call_description;
     loc_name = malloc(strlen(call_description) + strlen(last_slash) + 2);
     strcpy(loc_name, last_slash);
@@ -242,7 +269,9 @@ void *malloc_debug(size_t size, char *file, int line)
 
     alloc_hashmap_add(ptr, info);
 
-    if (VERBOSE) printf("Allocated %zu bytes at %p, file %s, line %d\n", size, info->address, file, line);
+    if (VERBOSE)
+      printf("Allocated %zu bytes at %p, file %s, line %d\n", size,
+             info->address, file, line);
     return info->address;
   }
   else
@@ -251,27 +280,35 @@ void *malloc_debug(size_t size, char *file, int line)
   }
 }
 
-void free_debug(void *ptr, char *file, int line)
+void free_debug(void *ptr, const char *file, const int line)
 {
-  MEM_INFO* info = alloc_hashmap_get(ptr);
+  MEM_INFO *info = alloc_hashmap_get(ptr);
 
-  if (info != NULL) {
+  if (info != NULL)
+  {
     // Check the guard byte for corruption
-    if (info->guard != GUARD_CONTENT) {
-      if (VERBOSE) printf("Memory corruption detected at %p, file %s, line %d\n", ptr, file, line);
+    if (info->guard != GUARD_CONTENT)
+    {
+      if (VERBOSE)
+        printf("Memory corruption detected at %p, file %s, line %d\n", ptr,
+               file, line);
       return;
     }
 
-    if (VERBOSE) printf("Freeing memory at %p, file %s, line %d\n", info->address, file, line);
+    if (VERBOSE)
+      printf("Freeing memory at %p, file %s, line %d\n", info->address, file,
+             line);
     alloc_hashmap_remove(ptr);
     free(info->address); // Free at the original address
     return;
   }
 
-  if (VERBOSE) printf("Attempted to free unallocated memory at %p, file %s, line %d\n", ptr, file, line);
+  if (VERBOSE)
+    printf("Attempted to free unallocated memory at %p, file %s, line %d\n",
+           ptr, file, line);
 }
 
-void *realloc_debug(void *ptr, size_t size, char *file, int line)
+void *realloc_debug(void *ptr, const size_t size, char *file, const int line)
 {
   if (ptr == NULL)
   {
@@ -279,19 +316,23 @@ void *realloc_debug(void *ptr, size_t size, char *file, int line)
     void *address = malloc(size + sizeof(MEM_INFO));
     if (address)
     {
-      MEM_INFO *info = (MEM_INFO *)(address + size); // Shift MEM_INFO to the end of the allocated block
+      MEM_INFO *info = (MEM_INFO *)(address +
+                                    size); // Shift MEM_INFO to the end of the
+                                           // allocated block
       info->address = address;
       info->size = size;
       info->guard = GUARD_CONTENT; // Set guard byte
 
       // store location info
       char *last_slash = strrchr(file, '/');
-      if (last_slash == NULL) last_slash = file;
-      else last_slash++;
-      char* loc_name = last_slash;
+      if (last_slash == NULL)
+        last_slash = file;
+      else
+        last_slash++;
+      char *loc_name = last_slash;
 
 #ifdef USE_BACKTRACE
-      char* call_description = backtrace_get();
+      char *call_description = backtrace_get();
       loc_name = call_description;
       loc_name = malloc(strlen(call_description) + strlen(last_slash) + 2);
       strcpy(loc_name, last_slash);
@@ -309,7 +350,9 @@ void *realloc_debug(void *ptr, size_t size, char *file, int line)
 
       alloc_hashmap_add(address, info);
 
-      if (VERBOSE) printf("Allocated %zu bytes at %p, file %s, line %d\n", size, info->address, file, line);
+      if (VERBOSE)
+        printf("Allocated %zu bytes at %p, file %s, line %d\n", size,
+               info->address, file, line);
       return info->address;
     }
     else
@@ -326,12 +369,15 @@ void *realloc_debug(void *ptr, size_t size, char *file, int line)
   }
 
   // Locate the existing memory block
-  MEM_INFO* info = alloc_hashmap_get(ptr);
-  if (info != NULL) {
+  MEM_INFO *info = alloc_hashmap_get(ptr);
+  if (info != NULL)
+  {
     // Check the guard byte for corruption
     if (info->guard != GUARD_CONTENT)
     {
-      if (VERBOSE) printf("Memory corruption detected at %p, file %s, line %d\n", ptr, file, line);
+      if (VERBOSE)
+        printf("Memory corruption detected at %p, file %s, line %d\n", ptr,
+               file, line);
       return NULL;
     }
 
@@ -341,19 +387,23 @@ void *realloc_debug(void *ptr, size_t size, char *file, int line)
     void *address = malloc(size + sizeof(MEM_INFO));
     if (address)
     {
-      MEM_INFO *info = (MEM_INFO *)(address + size); // Shift MEM_INFO to the end of the allocated block
+      MEM_INFO *info = (MEM_INFO *)(address +
+                                    size); // Shift MEM_INFO to the end of the
+                                           // allocated block
       info->address = address;
       info->size = size;
       info->guard = GUARD_CONTENT; // Set guard byte
 
       // store location info
       char *last_slash = strrchr(file, '/');
-      if (last_slash == NULL) last_slash = file;
-      else last_slash++;
-      char* loc_name = last_slash;
+      if (last_slash == NULL)
+        last_slash = file;
+      else
+        last_slash++;
+      char *loc_name = last_slash;
 
 #ifdef USE_BACKTRACE
-      char* call_description = backtrace_get();
+      char *call_description = backtrace_get();
       loc_name = call_description;
       loc_name = malloc(strlen(call_description) + strlen(last_slash) + 2);
       strcpy(loc_name, last_slash);
@@ -371,7 +421,9 @@ void *realloc_debug(void *ptr, size_t size, char *file, int line)
 
       alloc_hashmap_add(address, info);
 
-      if (VERBOSE) printf("Allocated %zu bytes at %p, file %s, line %d\n", size, info->address, file, line);
+      if (VERBOSE)
+        printf("Allocated %zu bytes at %p, file %s, line %d\n", size,
+               info->address, file, line);
       new_ptr = info->address;
     }
     else
@@ -392,7 +444,10 @@ void *realloc_debug(void *ptr, size_t size, char *file, int line)
     return new_ptr;
   }
 
-  if (VERBOSE) printf("Attempted to reallocate unallocated memory at %p, file %s, line %d\n", ptr, file, line);
+  if (VERBOSE)
+    printf("Attempted to reallocate unallocated memory at %p, file %s, line "
+           "%d\n",
+           ptr, file, line);
   return NULL;
 }
 
@@ -400,32 +455,31 @@ void memory_check_leaks()
 {
   printf("Checking for memory leaks...\n");
   int leaks = 0;
-  for (int i = 0; i < HASHMAP_SIZE; i++) {
+  for (int i = 0; i < HASHMAP_SIZE; i++)
+  {
     MEM_INFO *current = allocations_hashmap[i];
     while (current)
     {
       // Check the guard byte for corruption
       if (current->guard != GUARD_CONTENT)
       {
-        printf("-> Memory corruption detected at %14p, from %8s line %d\n", current->address, current->symbol->filename, current->symbol->line);
+        printf("-> Memory corruption detected at %14p, from %8s line %d\n",
+               current->address, current->symbol->filename,
+               current->symbol->line);
         return;
       }
 
       printf("-> Leaked %s%10zu%s bytes at %14p, from %s%8s%s line %d\n",
-          COLOR_YELLOW,
-          current->size,
-          COLOR_DEFAULT,
-          current->address,
-          COLOR_BLUE,
-          current->symbol->filename,
-          COLOR_DEFAULT,
-          current->symbol->line);
+             COLOR_YELLOW, current->size, COLOR_DEFAULT, current->address,
+             COLOR_BLUE, current->symbol->filename, COLOR_DEFAULT,
+             current->symbol->line);
       leaks++;
       current = current->next;
     }
   }
 
-  if (leaks == 0) {
+  if (leaks == 0)
+  {
     printf("%sNo memory leaks detected.%s\n", COLOR_GREEN, COLOR_DEFAULT);
     printf("%sNo memory corruption detected.%s\n", COLOR_GREEN, COLOR_DEFAULT);
   }
@@ -434,18 +488,21 @@ void memory_check_leaks()
 
 void memory_check_corruption()
 {
-  for (int i = 0; i < HASHMAP_SIZE; i++) {
+  for (int i = 0; i < HASHMAP_SIZE; i++)
+  {
     MEM_INFO *current = allocations_hashmap[i];
     while (current)
     {
       // Check the guard byte for corruption
       if (current->guard != GUARD_CONTENT)
       {
-        printf("-> Memory corruption detected at %14p, from %8s line %d\n", current->address, current->symbol->filename, current->symbol->line);
+        printf("-> Memory corruption detected at %14p, from %8s line %d\n",
+               current->address, current->symbol->filename,
+               current->symbol->line);
         return;
       }
       current = current->next;
     }
   }
-  printf("No memory corruption detected.\n");
+  // printf("No memory corruption detected.\n");
 }

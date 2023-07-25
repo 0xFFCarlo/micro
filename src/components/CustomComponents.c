@@ -7,7 +7,8 @@ int cid_health = -1;
 
 void RegisterCPlanetaryAlignment()
 {
-  cid_planetary_alignment = microECSComponentRegister(sizeof(CPlanetaryAlignment));
+  cid_planetary_alignment = microECSComponentRegister(
+    sizeof(CPlanetaryAlignment));
 }
 
 void RegisterCGravity()

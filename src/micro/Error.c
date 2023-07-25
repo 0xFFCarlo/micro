@@ -8,16 +8,16 @@ static char errorMsg[MICRO_ERRORBUFFER_SIZE];
 
 int microGetErrorCode()
 {
-    return errorCode;
+  return errorCode;
 }
 
-const char* microGetErrorMessage()
+const char *microGetErrorMessage()
 {
-    return errorMsg;
+  return errorMsg;
 }
 
-void microSendError(const int code, const char* message)
+void microSendError(const int code, const char *message)
 {
-    errorCode = code;
-    memcpy(errorMsg, message, sizeof(char) * (strlen(message) + 1));
+  errorCode = code;
+  memcpy(errorMsg, message, sizeof(char) * (strlen(message) + 1));
 }

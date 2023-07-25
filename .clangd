@@ -1,2 +1,2 @@
 CompileFlags:
-  Add: -I/opt/homebrew/include/
+  Add: [-xc, -std=c99, -Wall, -Wextra, -I/opt/homebrew/include/]

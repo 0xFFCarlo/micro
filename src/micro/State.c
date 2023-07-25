@@ -28,13 +28,15 @@ void microStateUpdate(float dt)
     stateChangeRequested = 0;
   }
 
-  if (currentState.update == NULL) return;
+  if (currentState.update == NULL)
+    return;
   currentState.update(dt);
 }
 
 void microStateFree()
 {
-  if (currentState.free != NULL) currentState.free();
+  if (currentState.free != NULL)
+    currentState.free();
   currentState.free = NULL;
   currentState.update = NULL;
   currentState.init = NULL;

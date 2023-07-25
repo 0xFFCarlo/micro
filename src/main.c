@@ -1,12 +1,12 @@
-#include <SDL2/SDL.h>
-#include "./micro/Graphics.h"
 #include "./micro/ECS.h"
+#include "./micro/Graphics.h"
 #include "./micro/State.h"
+#include <SDL2/SDL.h>
 
 #include "states/GameState.h"
 #include <string.h>
 
-int main(int argc, char const *argv[])
+int main()
 {
   microGraphicsInit();
   microECSInit();
@@ -18,7 +18,7 @@ int main(int argc, char const *argv[])
     microStateUpdate(deltaTime);
     deltaTime = microGraphicsDelayToNextFrame(70);
   }
-  
+
   microStateFree();
   microECSFree();
   microGraphicsQuit();

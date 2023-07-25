@@ -1,6 +1,6 @@
-#include <stdlib.h>
 #include "MotionComponents.h"
 #include "../micro/ECS.h"
+#include <stdlib.h>
 
 int cid_position = -1;
 int cid_transform = -1;

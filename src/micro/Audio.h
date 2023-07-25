@@ -7,10 +7,11 @@
 /**
  * @brief Loads a sound from a file and stores it in memory.
  * @param filepath The path to the file
- * @param soundType The type of the sound (MICRO_SOUNDTYPE_SOUNDEFFECT or MICRO_SOUNDTYPE_MUSIC)
+ * @param soundType The type of the sound (MICRO_SOUNDTYPE_SOUNDEFFECT or
+ * MICRO_SOUNDTYPE_MUSIC)
  * @return sound id or -1 on error
  */
-extern int microSoundLoadFromFile(const char* filepath, const  int soundType);
+extern int microSoundLoadFromFile(const char *filepath, const int soundType);
 
 /**
  * @brief Plays a sound

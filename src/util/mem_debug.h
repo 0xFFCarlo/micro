@@ -7,9 +7,10 @@
 #include <stdint.h>
 
 #if DEBUG_MODE == 1
-extern void *malloc_debug(size_t size, char *file, int line);
-extern void *realloc_debug(void *ptr, size_t size, char *file, int line);
-extern void free_debug(void *ptr, char *file, int line);
+extern void *malloc_debug(const size_t size, char *file, const int line);
+extern void *realloc_debug(void *ptr, const size_t size, char *file,
+                           const int line);
+extern void free_debug(void *ptr, const char *file, const int line);
 extern void memory_check_leaks();
 extern void memory_check_corruption();
 
@@ -18,6 +19,8 @@ extern void memory_check_corruption();
 #define free(ptr) free_debug(ptr, __FILE__, __LINE__)
 
 #else
+
+#include <stdlib.h>
 
 // Do nothing
 #define memory_check_leaks()

@@ -1,67 +1,76 @@
 #ifndef GRAPHICS_H
 #define GRAPHICS_H
 
-#define MICRO_FILTER_NEAREST 0
-#define MICRO_FILTER_LINEAR 1
-
 /////////////////////////////
 // Texture
 /////////////////////////////
+enum MicroFilter
+{
+  MICRO_FILTER_NEAREST = 0,
+  MICRO_FILTER_LINEAR = 1
+};
+
 extern int microBitmapLoadFromFile(const char *filepath, unsigned char **data,
-    unsigned int *width, unsigned int *height, unsigned int *channels);
+                                   unsigned int *width, unsigned int *height,
+                                   unsigned int *channels);
 extern int microTextureLoadFromFile(const char *filepath);
 extern int microTextureLoadFromMemory(const unsigned char *data,
-    const unsigned int width, const unsigned int height,
-    const unsigned int channels, const unsigned int filter);
-extern void microTextureGetSize(int textureId, int *width, int *height);
-extern void microTextureSetFilter(int textureId, int filter);
-extern void microTextureFree(int textureId);
-
+                                      const unsigned int width,
+                                      const unsigned int height,
+                                      const unsigned int channels,
+                                      const enum MicroFilter filter);
+extern void microTextureGetSize(const int textureId, int *width, int *height);
+extern void microTextureSetFilter(const int textureId,
+                                  const enum MicroFilter filter);
+extern void microTextureFree(const int textureId);
 
 /////////////////////////////
 /// Texture Atlas
 /////////////////////////////
-typedef struct {
+typedef struct
+{
   int x, y, w, h;
 } MicroTextureSource;
 extern int microTextureAtlasLoadFromPath(const char *filepath);
-extern MicroTextureSource microTextureAtlasGetRegion(int textureAtlasId, const char *name);
+extern MicroTextureSource microTextureAtlasGetRegion(int textureAtlasId,
+                                                     const char *name);
 extern int microTextureAtlasGetTextureId(int textureAtlasId);
 extern void microTextureAtlasFree(int textureAtlasId);
-
 
 /////////////////////////////
 /// Animation
 /////////////////////////////
-extern void microAnimationLoadFromFile(const char *csv_filepath);
-extern int microAnimationCreateFromFrames(char* name, int* frames, int framesCount);
-extern int microAnimationGet(char* name);
-extern const char* microAnimationGetName(int animationId);
-extern MicroTextureSource microAnimationGetFrame(int animationId, int frameId, int flipX, int flipY);
+extern int microAnimationCreateFromFrames(char *name, int *frames,
+                                          int framesCount);
+extern int microAnimationGet(char *name);
+extern const char *microAnimationGetName(int animationId);
+extern MicroTextureSource microAnimationGetFrame(int animationId, int frameId,
+                                                 int flipX, int flipY);
 extern int microAnimationGetFramesCount(int animationId);
 extern void microAnimationFree(int animationId);
 extern void microAnimationFreeAll();
 
-
 ////////////////////////////
 /// Font
 ////////////////////////////
-extern int microFontLoadFromFile(const char *filepath, unsigned int fontSize, int filter);
+extern int microFontLoadFromFile(const char *filepath, unsigned int fontSize,
+                                 int filter);
 extern int microFontGetTextureId(int fontId);
 extern int microFontGetSize(int fontId);
 extern void microFontFree(int fontId);
 extern void microFontFreeAll();
 
-
 ////////////////////////////
 /// Particle emitter
 ////////////////////////////
-typedef struct {
+typedef struct
+{
+  unsigned char alive;
   float x, y;
   float life;
   float alpha;
   float scale;
-  
+
   int textureId;
   float tx, ty, tw, th;
   float vx, vy;
@@ -73,24 +82,29 @@ typedef struct {
   float startAlpha;
   float endAlpha;
 } MicroParticle;
-extern int microParticleEmitterCreateSteady(int x, int y, float emissionRate, MicroParticle (*generationFunc)(int));
-extern int microParticleEmitterCreateExplosion(int x, int y, int particlesCount, MicroParticle (*generationFunc)(int));
+extern int microParticleEmitterCreateSteady(
+  int x, int y, float emissionRate, MicroParticle (*generationFunc)(int));
+extern int microParticleEmitterCreateExplosion(
+  int x, int y, int particlesCount, MicroParticle (*generationFunc)(int));
 extern void microParticleEmitterSetPosition(int emitterId, int x, int y);
 extern void microParticleEmitterSetSize(int emitterId, int width, int height);
-extern void microParticleEmitterSetEmissionRate(int emitterId, float emissionRate);
-extern void microParticleEmitterSetGenerationFunc(int emitterId, MicroParticle (*generationFunc)(int));
+extern void microParticleEmitterSetEmissionRate(int emitterId,
+                                                float emissionRate);
+extern void microParticleEmitterSetGenerationFunc(
+  int emitterId, MicroParticle (*generationFunc)(int));
 extern void microParticleEmitterGetPosition(int emitterId, int *x, int *y);
 extern float microParticleEmitterGetEmissionRate(int emitterId);
 extern void microParticleEmitterDraw(int emitterId);
 extern void microParticleEmittersUpdate(float dt);
 extern void microParticleEmitterRemove(int emitterId);
 extern void microParticleEmitterRemoveAll();
-
+extern int microParticlesCount();
 
 /////////////////////////////
 // View
 /////////////////////////////
-typedef struct {
+typedef struct
+{
   float viewportX, viewportY;
   float viewportWidth, viewportHeight;
   float centerX, centerY;
@@ -111,36 +125,68 @@ extern void microViewGetSize(float *width, float *height);
 extern void microViewGetViewport(float *width, float *height);
 extern float microViewGetRotation();
 
-
 /////////////////////////////
 // Shader
 /////////////////////////////
-extern int microShaderLoadFromFile(const char *vertexShaderPath, const char *fragmentShaderPath);
-extern int microShaderLoadFromSource(const char *vertexShaderSrc, const char *fragmentShaderSrc);
-extern int microShaderGetProgramID(int shaderId);
-extern void microShaderFree(int shaderId);
-extern void microShaderApply(int shaderId);
-extern int microShaderGetCurrent();
-extern void microShaderSetUniform(const char *name, ...);
-extern void microShaderSetMatrix4(const char *name, float *matrix);
-extern void microShaderGetUniform1(const char *name, double* v1);
-extern void microShaderGetUniform2(const char *name, double* v1, double* v2);
-extern void microShaderGetUniform3(const char *name, double* v1, double* v2, double* v3);
-extern void microShaderGetUniform4(const char *name, double* v1, double* v2, double* v3, double* v4);
 
+// Load shader from file
+extern int microShaderLoadFromFile(const char *vertexShaderPath,
+                                   const char *fragmentShaderPath);
+
+// Load shader from source code
+extern int microShaderLoadFromSource(const char *vertexShaderSrc,
+                                     const char *fragmentShaderSrc);
+
+// Get shader program id
+extern int microShaderGetProgramID(int shaderId);
+
+// Free shader
+extern void microShaderFree(int shaderId);
+
+// Apply shader
+extern void microShaderApply(int shaderId);
+
+// Get current shader id
+extern int microShaderGetCurrent();
+
+// Set uniform values (variable number of arguments)
+extern void microShaderSetUniform(const char *name, ...);
+
+// Set uniform matrix 4x4
+extern void microShaderSetMatrix4(const char *name, float *matrix);
+
+// Get uniform value
+extern void microShaderGetUniform1(const char *name, double *v1);
+
+// Get uniform 2D vector
+extern void microShaderGetUniform2(const char *name, double *v1, double *v2);
+
+// Get uniform 3D vector
+extern void microShaderGetUniform3(const char *name, double *v1, double *v2,
+                                   double *v3);
+
+// Get uniform 4D vector
+extern void microShaderGetUniform4(const char *name, double *v1, double *v2,
+                                   double *v3, double *v4);
 
 /////////////////////////////
 // Canvas
 /////////////////////////////
-extern int microCanvasCreate(int width, int height);
-extern int microCanvasGetTextureId(int canvasId);
-extern void microCanvasFree(int canvasId);
 
+// Create canvas with specified width and height
+extern int microCanvasCreate(int width, int height);
+
+// Get canvas texture id
+extern int microCanvasGetTextureId(int canvasId);
+
+// Free canvas
+extern void microCanvasFree(int canvasId);
 
 /////////////////////////////
 // Graphics
 /////////////////////////////
-typedef struct RenderingDebugInfo {
+typedef struct RenderingDebugInfo
+{
   int drawCalls;
   int triangles;
   int textureSwitches;
@@ -166,24 +212,21 @@ extern void microGraphicsRenderToScreen();
 extern void microGraphicsRenderToCanvas(int canvasId);
 
 // Draw rectangle
-extern void microGraphicsDrawRect(
-    int textureId, float tx, float ty,
-    float tw, float th, float x, float y,
-    float w, float h, float r, float g, float b, float a);
+extern void microGraphicsDrawRect(int textureId, float tx, float ty, float tw,
+                                  float th, float x, float y, float w, float h,
+                                  float r, float g, float b, float a);
 
 // Draw rectangle with rotation
-extern void microGraphicsDrawRectRot(
-    int textureId, float tx, float ty, 
-    float tw, float th,
-    float x, float y, float w, float h,
-    float originX, float originY,
-    float rotation, float r, float g, float b, float a);
+extern void microGraphicsDrawRectRot(int textureId, float tx, float ty,
+                                     float tw, float th, float x, float y,
+                                     float w, float h, float originX,
+                                     float originY, float rotation, float r,
+                                     float g, float b, float a);
 
 // Draw text with font
-extern void microGraphicsDrawText(
-    int fontId, const char *text,
-    float x, float y, float lineSpacing, 
-    float r, float g, float b, float a);
+extern void microGraphicsDrawText(int fontId, const char *text, float x,
+                                  float y, float lineSpacing, float r, float g,
+                                  float b, float a);
 
 // Get rendering debug info
 extern RenderingDebugInfo microGetRenderingDebugInfo();
@@ -197,7 +240,7 @@ extern void microWindowGetSize(int *width, int *height);
 // Swap buffers (finalizes frame)
 extern void microSwapBuffers();
 
-//CAP framerate and returns delta time in seconds
+// CAP framerate and returns delta time in seconds
 extern float microGraphicsDelayToNextFrame(float target_fps);
 
 #endif
