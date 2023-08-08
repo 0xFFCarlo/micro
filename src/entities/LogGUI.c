@@ -30,21 +30,21 @@ int log_bodies = 0;
 int log_particles_count = 0;
 RenderingDebugInfo debugInfo;
 
-void handle_event(int entity, SDL_Event event)
+void handle_event(int entity, const SDL_Event *event)
 {
   (void)(entity); // Unused parameter
 
-  if (event.type == SDL_QUIT)
+  if (event->type == SDL_QUIT)
   {
     microStateQuit();
   }
 
-  if (event.type == SDL_KEYDOWN)
+  if (event->type == SDL_KEYDOWN)
   {
-    if (event.key.keysym.scancode == SDL_SCANCODE_Q)
+    if (event->key.keysym.scancode == SDL_SCANCODE_Q)
       microStateQuit();
 
-    if (event.key.keysym.scancode == SDL_SCANCODE_L)
+    if (event->key.keysym.scancode == SDL_SCANCODE_L)
     {
       CDrawable *drawable = (CDrawable *)
         microECSEntityGetComponent(log_gui_entity_id, cid_drawable);

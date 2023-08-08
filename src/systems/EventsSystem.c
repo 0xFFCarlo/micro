@@ -19,7 +19,8 @@ void eventsSystem(float dt)
     for (unsigned int i = 0; i < components_count; i++)
     {
       const int entityId = microECSComponentGetEntityId(cid_event_listener, i);
-      components_events[i].on_event(entityId, event);
+      if (components_events[i].on_event)
+        components_events[i].on_event(entityId, &event);
     }
   }
 }

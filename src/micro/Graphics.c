@@ -12,8 +12,8 @@
 #include <dirent.h>
 #include <math.h>
 
+#include "../util/vector.h"
 #include "Graphics.h"
-#include "Vector.h"
 
 #define STB_RECT_PACK_IMPLEMENTATION
 #include "stb_rect_pack.h"
@@ -24,7 +24,7 @@
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb_truetype.h"
 
-#include "../util/mem_debug.h"
+#include "../util/debug.h"
 
 #define MICRO_MAX_TEXTURES 64
 #define MICRO_MAX_CANVASES 64
@@ -732,6 +732,7 @@ int microAnimationGet(char *name)
     if (microAnimations[i].framesCount == 0)
       break;
   }
+  printf("Error: animation %s not found\n", name);
   abort();
   return -1;
 }
@@ -1336,6 +1337,9 @@ void microGraphicsInit()
                             // SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN
   );
 
+  // Set fullscreen
+  SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
+
   if (!window)
   {
     printf("Failed to create the window\n");
@@ -1462,7 +1466,6 @@ void microGraphicsInit()
 
 void microGraphicsQuit()
 {
-
   // Delete VAO
   glDeleteVertexArrays(1, &vao);
   glDeleteBuffers(1, &vbo);
@@ -2121,7 +2124,7 @@ float microParticleEmitterGetEmissionRate(int emitterId)
 
 void microParticleEmittersUpdate(float dt)
 {
-  for (unsigned int i = 0; i < microParticleEmitters.size; i++)
+  for (size_t i = 0; i < microParticleEmitters.size; i++)
   {
 
     microParticleEmitter *emitter = vector_at(&microParticleEmitters, i);

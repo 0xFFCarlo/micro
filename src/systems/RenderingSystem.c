@@ -39,8 +39,9 @@ void renderingSystem(float dt)
 
   for (int i = 0; i < entities.size; i++)
   {
-
     const int entityId = entities.entityIds[i];
+    if (microECSEntityIsAlive(entityId) == 0)
+      continue;
     CPosition *p = (CPosition *)microECSEntityGetComponent(entityId,
                                                            cid_position);
     CDrawable *drawable = (CDrawable *)microECSEntityGetComponent(entityId,

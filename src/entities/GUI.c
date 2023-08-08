@@ -6,7 +6,7 @@
 #include "../micro/Physics.h"
 #include "../micro/Resources.h"
 #include "../micro/State.h"
-#include "../micro/Vector.h"
+#include "../util/vector.h"
 #include "Player.h"
 #include <assert.h>
 #include <math.h>
@@ -24,14 +24,10 @@ int playerMaxHealth = 0;
 int hearthsCount = 0;
 int hearthsMaxCount = 0;
 
-void GUIFree()
+void GUIUpdate(int entity, float dt)
 {
-  vector_free(&lifeSpritesEntityIds);
-}
-
-void GUIInit()
-{
-  lifeSpritesEntityIds = vector_create(sizeof(int));
+  (void)(entity); // Unused parameter
+  (void)(dt);     // Unused parameter
 
   playerHealth = PlayerGetHealth();
   playerMaxHealth = PlayerGetMaxHealth();
@@ -42,11 +38,57 @@ void GUIInit()
   int tmp = playerHealth;
   for (int i = 0; i < hearthsMaxCount; i++)
   {
+    const int hearth_id = *(int *)vector_at(&lifeSpritesEntityIds, i);
+    const int atlasId = microResourceGet("atlas");
+    MicroTextureSource ts;
+    if (tmp >= 4)
+    {
+      ts = microTextureAtlasGetRegion(atlasId, "life-4-4");
+    }
+    else
+    {
+      char buf[32] = "life-4-4\0";
+      buf[5] = '0' + tmp;
+      ts = microTextureAtlasGetRegion(atlasId, buf);
+    }
+    tmp -= 4;
+    if (tmp < 0)
+      tmp = 0;
 
-    void (*freeFunc)(void *) = NULL;
-    if (i == 0)
-      freeFunc = GUIFree;
-    int hearth_id = microECSEntityNew(NULL, freeFunc);
+    CSprite *sprite = microECSEntityGetComponent(hearth_id, cid_sprite);
+    sprite->tx = ts.x;
+    sprite->ty = ts.y;
+    sprite->tw = ts.w;
+    sprite->th = ts.h;
+  }
+}
+
+void GUIFree(int entityId)
+{
+  (void)(entityId); // Unused parameter
+  vector_free(&lifeSpritesEntityIds);
+}
+
+void GUIInit()
+{
+  // Create handler for updating life UI and freeing memory
+  int gui_handler = microECSEntityNew(NULL, GUIFree);
+  microECSEntityAddComponent(gui_handler, cid_update,
+                             &(CUpdate){.update = GUIUpdate});
+
+  // Creating and computing lifes
+  lifeSpritesEntityIds = vector_create(sizeof(int));
+  playerHealth = PlayerGetHealth();
+  playerMaxHealth = PlayerGetMaxHealth();
+  hearthsMaxCount = playerMaxHealth / 4;
+  hearthsCount = playerHealth / 4;
+
+  // Create hearths
+  int tmp = playerHealth;
+  for (int i = 0; i < hearthsMaxCount; i++)
+  {
+
+    int hearth_id = microECSEntityNew(NULL, NULL);
     vector_push_back(&lifeSpritesEntityIds, &hearth_id);
 
     const int atlasId = microResourceGet("atlas");
@@ -98,9 +140,5 @@ void GUIInit()
                                  .visible = 1,
                                });
     microECSEntityAddComponent(hearth_id, cid_hud, NULL);
-
-    // microECSEntityAddComponent(log_gui_entity_id, cid_update, &(CUpdate){
-    //     .update = updateLogGUI
-    //     });
   }
 }

@@ -17,6 +17,7 @@
 #include "../systems/AnimationSystem.h"
 #include "../systems/EventsSystem.h"
 #include "../systems/GravitySystem.h"
+#include "../systems/LifetimeSystem.h"
 #include "../systems/LockOnViewSystem.h"
 #include "../systems/ParticlesSystem.h"
 #include "../systems/PhysicsSystem.h"
@@ -24,7 +25,7 @@
 #include "../systems/RenderingSystem.h"
 #include "../systems/ShadedCanvasSystem.h"
 #include "../systems/UpdateSystem.h"
-#include "../util/mem_debug.h"
+#include "../util/debug.h"
 
 void gameStateInit()
 {
@@ -56,10 +57,11 @@ void gameStateInit()
   microECSSystemAdd(eventsSystem);
   microECSSystemAdd(gravitySystem);
   microECSSystemAdd(updateSystem);
+  microECSSystemAdd(lifetimeSystem);
   microECSSystemAdd(physicsSystem);
   microECSSystemAdd(planetaryAligntmentSystem);
-  microECSSystemAdd(particlesSystem);
   microECSSystemAdd(lockOnViewSystem);
+  microECSSystemAdd(particlesSystem);
   microECSSystemAdd(shadedCanvasSystem);
   microECSSystemAdd(animationSystem);
   microECSSystemAdd(renderingSystem);
@@ -80,6 +82,7 @@ void gameStateInit()
   ProjectileAddEntity(playerX - 32, playerY, 0, 0);
   LogGUIAdd();
   GUIInit();
+  memory_check_corruption();
 }
 
 void gameStateUpdate(float dt)
@@ -94,9 +97,10 @@ void gameStateFree()
 {
   microResourceFreeAll();
   microECSFree();
+  printf("Freeing physics world\n");
   microGraphicsQuit();
+  printf("Freeing graphics\n");
   microPhysicsWorldFreeAll();
-
   memory_check_leaks();
   exit(0);
 }

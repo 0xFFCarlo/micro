@@ -1,20 +1,28 @@
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+// Configurations
 #define HASHMAP_SIZE 2048
 #define HASH_SEED 0xdeadbeef
 #define GUARD_CONTENT 0xAB
+#define GUARD_LENGTH 4
 #define FILENAME_MAX_LENGTH 64
+
+// Settings
 #define VERBOSE 0
-// #define USE_BACKTRACE
+#define USE_BACKTRACE
 
 // Colors
 #define COLOR_RED "\033[0;31m"
 #define COLOR_GREEN "\033[0;32m"
 #define COLOR_YELLOW "\033[0;33m"
 #define COLOR_BLUE "\033[0;34m"
+#define COLOR_LIGHT_BLUE "\033[1;34m"
 #define COLOR_MAGENTA "\033[0;35m"
+#define COLOR_CYAN "\033[0;36m"
+#define COLOR_LIGHT_GRAY "\033[0;37m"
 #define COLOR_DEFAULT "\033[0m"
 
 #ifdef USE_BACKTRACE
@@ -33,7 +41,7 @@ uint16_t location_ids = 0;
 
 typedef struct MEM_INFO
 {
-  unsigned char guard;
+  unsigned char guard[GUARD_LENGTH];
   void *address;
   size_t size;
   LOCATION_INFO *symbol;
@@ -43,6 +51,22 @@ typedef struct MEM_INFO
 MEM_INFO *allocations_hashmap[HASHMAP_SIZE] = {NULL};
 
 #ifdef USE_BACKTRACE
+
+void print_trace()
+{
+  void *array[5];
+  size_t size;
+  char **strings;
+  size_t i;
+
+  size = backtrace(array, 5);
+  strings = backtrace_symbols(array, size);
+
+  for (i = 0; i < size; i++)
+    printf("%s\n", strings[i]);
+
+  free(strings);
+}
 
 char *backtrace_get()
 {
@@ -231,6 +255,14 @@ LOCATION_INFO *loc_hashmap_add(const char *filename, int line)
   return new_location;
 }
 
+int is_guard_valid(MEM_INFO *info)
+{
+  for (int i = 0; i < GUARD_LENGTH; i++)
+    if (info->guard[i] != GUARD_CONTENT)
+      return 0;
+  return 1;
+}
+
 void *malloc_debug(const size_t size, char *file, const int line)
 {
   void *ptr = malloc(size + sizeof(MEM_INFO));
@@ -240,7 +272,7 @@ void *malloc_debug(const size_t size, char *file, const int line)
                                                // the allocated block
     info->address = ptr;
     info->size = size;
-    info->guard = GUARD_CONTENT; // Set guard byte
+    memset(info->guard, GUARD_CONTENT, GUARD_LENGTH); // Set guard bytes
 
     // store location info
     char *last_slash = strrchr(file, '/');
@@ -287,7 +319,7 @@ void free_debug(void *ptr, const char *file, const int line)
   if (info != NULL)
   {
     // Check the guard byte for corruption
-    if (info->guard != GUARD_CONTENT)
+    if (is_guard_valid(info) == 0)
     {
       if (VERBOSE)
         printf("Memory corruption detected at %p, file %s, line %d\n", ptr,
@@ -316,12 +348,12 @@ void *realloc_debug(void *ptr, const size_t size, char *file, const int line)
     void *address = malloc(size + sizeof(MEM_INFO));
     if (address)
     {
-      MEM_INFO *info = (MEM_INFO *)(address +
-                                    size); // Shift MEM_INFO to the end of the
-                                           // allocated block
+      MEM_INFO
+      *info = (MEM_INFO *)(address + size); // Shift MEM_INFO to the end of
+                                            // the allocated block
       info->address = address;
       info->size = size;
-      info->guard = GUARD_CONTENT; // Set guard byte
+      memset(info->guard, GUARD_CONTENT, GUARD_LENGTH); // Set guard bytes
 
       // store location info
       char *last_slash = strrchr(file, '/');
@@ -373,7 +405,7 @@ void *realloc_debug(void *ptr, const size_t size, char *file, const int line)
   if (info != NULL)
   {
     // Check the guard byte for corruption
-    if (info->guard != GUARD_CONTENT)
+    if (is_guard_valid(info) == 0)
     {
       if (VERBOSE)
         printf("Memory corruption detected at %p, file %s, line %d\n", ptr,
@@ -387,12 +419,12 @@ void *realloc_debug(void *ptr, const size_t size, char *file, const int line)
     void *address = malloc(size + sizeof(MEM_INFO));
     if (address)
     {
-      MEM_INFO *info = (MEM_INFO *)(address +
-                                    size); // Shift MEM_INFO to the end of the
-                                           // allocated block
+      MEM_INFO
+      *info = (MEM_INFO *)(address + size); // Shift MEM_INFO to the end of
+                                            // the allocated block
       info->address = address;
       info->size = size;
-      info->guard = GUARD_CONTENT; // Set guard byte
+      memset(info->guard, GUARD_CONTENT, GUARD_LENGTH); // Set guard bytes
 
       // store location info
       char *last_slash = strrchr(file, '/');
@@ -458,10 +490,12 @@ void memory_check_leaks()
   for (int i = 0; i < HASHMAP_SIZE; i++)
   {
     MEM_INFO *current = allocations_hashmap[i];
+    // printf(" current %p\n", current);
+    // printf("-> Checking hashmap bucket %d/%d\n", i + 1, HASHMAP_SIZE);
     while (current)
     {
       // Check the guard byte for corruption
-      if (current->guard != GUARD_CONTENT)
+      if (is_guard_valid(current) == 0)
       {
         printf("-> Memory corruption detected at %14p, from %8s line %d\n",
                current->address, current->symbol->filename,
@@ -469,9 +503,9 @@ void memory_check_leaks()
         return;
       }
 
-      printf("-> Leaked %s%10zu%s bytes at %14p, from %s%8s%s line %d\n",
+      printf("-> Leaked %s%10lu%s bytes at %14p, from %s%8s%s line %d\n",
              COLOR_YELLOW, current->size, COLOR_DEFAULT, current->address,
-             COLOR_BLUE, current->symbol->filename, COLOR_DEFAULT,
+             COLOR_LIGHT_BLUE, current->symbol->filename, COLOR_DEFAULT,
              current->symbol->line);
       leaks++;
       current = current->next;
@@ -494,7 +528,7 @@ void memory_check_corruption()
     while (current)
     {
       // Check the guard byte for corruption
-      if (current->guard != GUARD_CONTENT)
+      if (is_guard_valid(current) == 0)
       {
         printf("-> Memory corruption detected at %14p, from %8s line %d\n",
                current->address, current->symbol->filename,
@@ -505,4 +539,36 @@ void memory_check_corruption()
     }
   }
   // printf("No memory corruption detected.\n");
+}
+
+void assert_debug(int condition, char *condition_str, char *file, int line)
+{
+  if (!condition)
+  {
+    printf("%sAssertion %s%s%s failed at %s%s line %d%s\n", COLOR_RED,
+           COLOR_GREEN, condition_str, COLOR_RED, COLOR_MAGENTA, file, line,
+           COLOR_DEFAULT);
+
+    // Print stack trace
+#ifdef USE_BACKTRACE
+    char *call_description = backtrace_get();
+    printf("%sCall stack: %s%s\n", COLOR_YELLOW, call_description,
+           COLOR_DEFAULT);
+    free(call_description);
+#endif
+
+    exit(1);
+  }
+}
+
+uint32_t print_id = 0;
+
+void _print_debug(const char *file, const int line, const char *format, ...)
+{
+  va_list args;
+  va_start(args, format);
+  printf("%s--> %-7d %-16s line %-5d   ", COLOR_CYAN, print_id, file, line);
+  vprintf(format, args);
+  printf("%s\n", COLOR_DEFAULT);
+  va_end(args);
 }

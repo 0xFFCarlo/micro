@@ -8,16 +8,18 @@ extern int microPhysicsWorldGetBodyCount(int worldId);
 extern void microPhysicsWorldFree(int worldId);
 extern void microPhysicsWorldFreeAll();
 
-extern int microPhysicsBodyNewCircle(int worldId, float cx, float cy,
-                                     float radius, float mass,
+extern int microPhysicsBodyNewCircle(int entityId, int worldId, float cx,
+                                     float cy, float radius, float mass,
                                      unsigned char isStatic,
                                      unsigned char canRotate, float elasticity,
                                      float friction);
-extern int microPhysicsBodyNewRect(int worldId, float cx, float cy, float width,
-                                   float height, float mass,
-                                   unsigned char isStatic,
+extern int microPhysicsBodyNewRect(int entityId, int worldId, float cx,
+                                   float cy, float width, float height,
+                                   float mass, unsigned char isStatic,
                                    unsigned char canRotate, float elasticity,
                                    float friction);
+extern void microPhysicsBodySetCollisionCallback(int bodyId,
+                                                 void (*callback)(int, int));
 extern void microPhysicsBodyFree(int bodyId);
 extern int microPhysicsBodiesCount();
 extern void microPhysicsBodySetMass(int bodyId, float mass);

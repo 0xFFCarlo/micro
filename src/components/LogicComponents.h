@@ -15,11 +15,19 @@ extern void RegisterCUpdate();
 // EventListener
 typedef struct
 {
-  void (*on_event)(int, SDL_Event);
+  void (*on_event)(int, const SDL_Event *);
 } CEventListener;
 
 extern int cid_event_listener;
 extern void RegisterCEventListener();
+
+typedef struct
+{
+  float lifetime;
+} CLifetime;
+
+extern int cid_lifetime;
+extern void RegisterCLifetime();
 
 extern void RegisterLogicComponents();
 

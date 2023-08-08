@@ -21,7 +21,7 @@ int shadow_canvas_id = -1;
 
 float planetX = 0.0;
 float planetY = 0.0;
-float planetRadius = 400;
+float planetRadius = 500;
 float planetScaleFactor = 2.0;
 float planetLightDepth = 120;
 float planetSurfaceDepth = GROUND_HEIGHT / 2.0;
@@ -186,7 +186,7 @@ void setupPlanetEntity(int planetId)
                              });
 
   // Body component
-  planet_body_id = microPhysicsBodyNewCircle(0, planetX, planetY,
+  planet_body_id = microPhysicsBodyNewCircle(planetId, 0, planetX, planetY,
                                              PlanetGetRadius() -
                                                GROUND_HEIGHT * 2.0,
                                              1000.0, 1, 0, 0.0, 1.0);

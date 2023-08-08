@@ -4,6 +4,7 @@
 int cid_planetary_alignment = -1;
 int cid_gravity = -1;
 int cid_health = -1;
+int cid_projectile = -1;
 
 void RegisterCPlanetaryAlignment()
 {
@@ -21,9 +22,15 @@ void RegisterCHealth()
   cid_health = microECSComponentRegister(sizeof(CHealth));
 }
 
+void RegisterCProjectile()
+{
+  cid_projectile = microECSComponentRegister(sizeof(CProjectile));
+}
+
 void RegisterCustomComponents()
 {
   RegisterCPlanetaryAlignment();
   RegisterCGravity();
   RegisterCHealth();
+  RegisterCProjectile();
 }

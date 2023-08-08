@@ -1,6 +1,6 @@
 #include "ECS.h"
-#include "../util/mem_debug.h"
-#include "Vector.h"
+#include "../util/debug.h"
+#include "../util/vector.h"
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -68,13 +68,14 @@ typedef struct
   uint128_t components;
   uint16_t *component_offset;
   void *data;
-  void (*free_entity)(void *);
+  void (*free_entity)(int);
 } entity_desc;
 entity_desc entities[MAX_ENTITIES];
 unsigned int entities_count = 0;
 int freed_entities[MAX_ENTITIES];
 int freed_entities_count = 0;
 int query_buf[MAX_ENTITIES];
+Vector entities_to_remove;
 
 // Component
 typedef struct
@@ -201,7 +202,7 @@ void microECSQueriesEntityChanged(int entityId, uint128_t old_components)
 ////////////////////////////////////
 ////// ENTITY IMPLEMENTATION ///////
 ////////////////////////////////////
-int microECSEntityNew(void *data, void (*free)(void *))
+int microECSEntityNew(void *data, void (*free)(int))
 {
   int id = -1;
   if (freed_entities_count > 0)
@@ -227,6 +228,11 @@ int microECSEntityNew(void *data, void (*free)(void *))
   return id;
 }
 
+void microECSEntityRemove(int entityId)
+{
+  vector_push_back(&entities_to_remove, &entityId);
+}
+
 void microECSEntityFree(int entityId)
 {
   // Remove from queries
@@ -235,7 +241,7 @@ void microECSEntityFree(int entityId)
   // Free
   entities[entityId].alive = 0;
   if (entities[entityId].free_entity != NULL)
-    entities[entityId].free_entity(NULL);
+    entities[entityId].free_entity(entityId);
 
   // Remove all components
   for (unsigned int i = 0; i < components_types_count; i++)
@@ -401,6 +407,7 @@ void microECSInit()
   // Initialize entity system
   for (int i = 0; i < MAX_ENTITIES; i++)
     freed_entities[i] = -1;
+  entities_to_remove = vector_create(sizeof(int));
 }
 
 void microECSAllocateComponents()
@@ -443,7 +450,9 @@ void microECSFree()
   // Free entities
   microECSEntityFreeAll();
   microECSCachedQueryFreeAll();
+  vector_free(&entities_to_remove);
 
+  // Free components
   if (is_components_data_allocated == 1)
   {
     // Free components vectors
@@ -456,14 +465,19 @@ void microECSFree()
 
 void microECSRun(float dt)
 {
+  // Remove entities that were marked for removal
+  while (entities_to_remove.size)
+  {
+    const int eid = *(int *)vector_back(&entities_to_remove);
+    vector_pop_back(&entities_to_remove);
+    if (entities[eid].alive)
+      microECSEntityFree(eid);
+  }
+
   // Update systems
   for (unsigned int i = 0; i < systems_count; i++)
-  {
     if (systems[i].system != NULL)
-    {
       systems[i].system(dt);
-    }
-  }
 }
 
 // ecs_entity_list microECSEntityByComponent(int componentTypeId)

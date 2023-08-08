@@ -26,6 +26,14 @@ typedef struct
 extern int cid_health;
 extern void RegisterCHealth();
 
+typedef struct
+{
+  int damage;
+} CProjectile;
+
+extern int cid_projectile;
+extern void RegisterCProjectile();
+
 extern void RegisterCustomComponents();
 
 #endif /* end of include guard: CUSTOM_COMPONENTS_H */

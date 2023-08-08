@@ -15,12 +15,32 @@
 
 #define PROJECTILE_SIZE 8
 
+void ProjectileFree(int entityId)
+{
+  CBody *body = microECSEntityGetComponent(entityId, cid_body);
+  microPhysicsBodyFree(body->body_id);
+}
+
+void ProjectileCollision(int entityId, int otherEntityId)
+{
+  // Collision with projectile
+  if (microECSEntityHasComponent(otherEntityId, cid_health))
+  {
+    CProjectile *p = microECSEntityGetComponent(entityId, cid_projectile);
+    CHealth *health = microECSEntityGetComponent(otherEntityId, cid_health);
+    health->health -= p->damage;
+    health->health = health->health < 0 ? 0 : health->health;
+  }
+
+  microECSEntityRemove(entityId);
+}
+
 void ProjectileAddEntity(const int x, const int y, const int vx, const int vy)
 {
   (void)(vx); // Unused parameter
   (void)(vy); // Unused parameter
 
-  int projectile_entity_id = microECSEntityNew(NULL, NULL);
+  int projectile_entity_id = microECSEntityNew(NULL, ProjectileFree);
   assert(projectile_entity_id != -1);
 
   // Position component
@@ -73,14 +93,27 @@ void ProjectileAddEntity(const int x, const int y, const int vx, const int vy)
                              });
 
   // Body component
-  int projectile_body_id = microPhysicsBodyNewCircle(0, x, y,
-                                                     PROJECTILE_SIZE / 2.0,
+  int projectile_body_id = microPhysicsBodyNewCircle(projectile_entity_id, 0, x,
+                                                     y, PROJECTILE_SIZE / 2.0,
                                                      0.0001, 0, 1.0, 0.0, 1.0);
+  microPhysicsBodySetCollisionCallback(projectile_body_id, ProjectileCollision);
+
   microECSEntityAddComponent(projectile_entity_id, cid_body,
                              &(CBody){
                                .body_id = projectile_body_id,
                              });
 
-  // TODO:: gravity, collision event, projectile lifetime, etc.
-  // projectile system?
+  // Projectile component
+  microECSEntityAddComponent(projectile_entity_id, cid_projectile,
+                             &(CProjectile){
+                               .damage = 1,
+                             });
+
+  // Lifetime
+  microECSEntityAddComponent(projectile_entity_id, cid_lifetime,
+                             &(CLifetime){
+                               .lifetime = 4.0,
+                             });
+
+  // TODO:: gravity
 }

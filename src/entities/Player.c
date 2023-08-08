@@ -19,8 +19,10 @@
 #define PLAYER_DIRECTION_RIGHT 0
 #define PLAYER_DIRECTION_LEFT 1
 
-#define PLAYER_WIDTH 64
-#define PLAYER_HEIGHT 64
+#define PLAYER_TEXTURE_WIDTH 64
+#define PLAYER_TEXTURE_HEIGHT 64
+#define PLAYER_BODY_WIDTH (PLAYER_TEXTURE_WIDTH / 3.0)
+#define PLAYER_BODY_HEIGHT (PLAYER_TEXTURE_HEIGHT)
 
 int player_entity_id = -1;
 int player_idle = -1;
@@ -38,6 +40,12 @@ float playerRotation = 0.0;
 int playerJump = 0;
 
 int player_body_id = -1;
+
+void PlayerCollide(int entityId, int otherEntityId)
+{
+  (void)entityId;      // unused parameter
+  (void)otherEntityId; // unused parameter
+}
 
 void PlayerMove(int direction)
 {
@@ -60,8 +68,8 @@ void PlayerJump()
 
 void PlayerGetSize(float *width, float *height)
 {
-  *width = PLAYER_WIDTH;
-  *height = PLAYER_HEIGHT;
+  *width = PLAYER_BODY_WIDTH;
+  *height = PLAYER_BODY_HEIGHT;
 }
 
 void playerUpdate(int entityId, float dt)
@@ -92,10 +100,10 @@ void playerUpdate(int entityId, float dt)
   toPlanetNormX = toPlanetX / toPlanetDist;
   toPlanetNormY = toPlanetY / toPlanetDist;
   float playerHeight = PlanetGetRadius() - GROUND_HEIGHT * 2 +
-                       PLAYER_HEIGHT / 2.0;
+                       PLAYER_BODY_HEIGHT / 2.0;
 
-  float forceX = toPlanetNormX * 200.0;
-  float forceY = toPlanetNormY * 200.0;
+  float forceX = toPlanetNormX * 250.0;
+  float forceY = toPlanetNormY * 250.0;
   // float forceX, forceY;
   // microPhysicsBodyGetForce(player_body_id, &forceX, &forceY);
 
@@ -158,7 +166,7 @@ void playerUpdate(int entityId, float dt)
       animation->animationId = anim_player_walk;
       animation->flipX = 1;
     }
-    animation->framesDuration = 0.3;
+    animation->framesDuration = 0.55;
   }
   else
   {
@@ -241,8 +249,11 @@ void PlayerEntityAdd()
   //                                            viewportHeight / 2.0 - 100.0,
   //                                            PLAYER_WIDTH / 2.0, 1.0, 0, 0,
   //                                            0.0, 0.0);
-  player_body_id = microPhysicsBodyNewRect(0, x, y, PLAYER_WIDTH / 3.0,
-                                           PLAYER_HEIGHT, 1.0, 0, 0, 0.0, 0.0);
+  player_body_id = microPhysicsBodyNewRect(player_entity_id, 0, x, y,
+                                           PLAYER_BODY_WIDTH,
+                                           PLAYER_BODY_HEIGHT, 1.0, 0, 0, 0.0,
+                                           0.0);
+  microPhysicsBodySetCollisionCallback(player_body_id, PlayerCollide);
 
   microECSEntityAddComponent(player_entity_id, cid_body,
                              &(CBody){
@@ -267,10 +278,10 @@ void PlayerEntityAdd()
   // Transform component
   microECSEntityAddComponent(player_entity_id, cid_transform,
                              &(CTransform){
-                               .width = PLAYER_WIDTH,
-                               .height = PLAYER_HEIGHT,
-                               .originX = PLAYER_WIDTH / 2.0,
-                               .originY = PLAYER_HEIGHT / 2.0,
+                               .width = PLAYER_TEXTURE_WIDTH,
+                               .height = PLAYER_TEXTURE_HEIGHT,
+                               .originX = PLAYER_TEXTURE_WIDTH / 2.0,
+                               .originY = PLAYER_TEXTURE_HEIGHT / 2.0,
                                .rotation = 0.0,
                              });
 
