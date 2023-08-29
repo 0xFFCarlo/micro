@@ -1,8 +1,15 @@
+// Created by: Carlo meroni
+//
+// README:
+// Does not work with strdup and will crash if you try to free a string
+// allocated with strdup. Use malloc and strcpy instead.
+
 #ifndef DEBUG_H
 #define DEBUG_H
 
 #define DEBUG_MEMORY 1
 #define DEBUG_PRINTS 1
+#define DEBUG_ASSERT 1
 
 #include <stddef.h>
 #include <stdint.h>
@@ -17,6 +24,7 @@ extern void memory_check_leaks();
 extern void memory_check_corruption();
 extern void assert_debug(int condition, char *condition_str, char *file,
                          int line);
+extern uint64_t memory_get_allocated();
 
 // Redefine malloc, realloc, free and assert
 #undef malloc
@@ -31,11 +39,16 @@ extern void assert_debug(int condition, char *condition_str, char *file,
 
 #else
 
+#if (DEBUG_ASSERT == 1)
 #include <assert.h>
+#else
+#define assert(condition) 0
+#endif // DEBUG_ASSERT
 
 // Do nothing
 #define memory_check_leaks()
 #define memory_check_corruption()
+#define memory_get_allocated() 0ULL
 
 #endif // DEBUG_MEMORY
 
@@ -49,7 +62,7 @@ extern void _print_debug(const char *file, const int line, const char *format,
 #else
 
 // Do nothing
-#define debug_printf(format, ...)
+#define debug_print(format, ...) ((void)0)
 
 #endif // DEBUG_PRINTS
 

@@ -4,7 +4,6 @@ project(micro VERSION 1.0)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED True)
-set(CMAKE_BUILD_TYPE Debug)
 
 # Set output directories
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -52,4 +51,8 @@ target_link_libraries(main
   )
 
 # Compiler flags
-target_compile_options(main PRIVATE -Wall -O3)
+# target_compile_options(main PRIVATE -Wall -O3)
+
+# Compiler flags based on the build type
+set(CMAKE_C_FLAGS_DEBUG "-g")
+set(CMAKE_C_FLAGS_RELEASE "-O3")

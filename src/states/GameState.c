@@ -82,7 +82,8 @@ void gameStateInit()
   ProjectileAddEntity(playerX - 32, playerY, 0, 0);
   LogGUIAdd();
   GUIInit();
-  memory_check_corruption();
+
+  printf("Dinamically allocated memory: %llu bytes\n", memory_get_allocated());
 }
 
 void gameStateUpdate(float dt)

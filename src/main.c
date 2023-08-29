@@ -1,6 +1,7 @@
 #include "./micro/ECS.h"
 #include "./micro/Graphics.h"
 #include "./micro/State.h"
+#include "./util/debug.h"
 #include <SDL2/SDL.h>
 
 #include "states/GameState.h"

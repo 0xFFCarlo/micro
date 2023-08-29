@@ -3,8 +3,7 @@
 #if defined(__linux__)
 // #include <GLES3/gl.h>
 // #include <GL/glu.h>
-#include <GL/gl.h>
-#include <GL/glew.h>
+#include <GL/gl.h> #include <GL/glew.h>
 #else
 #define GL_SILENCE_DEPRECATION
 #include <OpenGL/gl3.h>
@@ -376,7 +375,11 @@ void microAtlasGenerateAnimations(int textureAtlasId)
       continue;
 
     // Parse animation name and frame number
-    char *tmp = strdup(frame_name);
+    uint32_t len = strlen(frame_name);
+    char *tmp = malloc(len + 1);
+    strcpy(tmp, frame_name);
+    tmp[len] = '\0';
+
     char *animation_name = strtok(tmp, "_");
     char *frame_number_str = strtok(NULL, "_");
     if (animation_name == NULL)
@@ -400,7 +403,12 @@ void microAtlasGenerateAnimations(int textureAtlasId)
 
     // Store animation frame
     animations[animations_count] = malloc(sizeof(animation_frame));
-    animations[animations_count]->name = strdup(animation_name);
+
+    size_t animation_name_len = strlen(animation_name); // duplicate string
+    animations[animations_count]->name = malloc(animation_name_len + 1);
+    strcpy(animations[animations_count]->name, animation_name);
+    animations[animations_count]->name[animation_name_len] = '\0';
+
     animations[animations_count]->frame_number = frame_number;
     animations[animations_count]->x = x;
     animations[animations_count]->y = y;
@@ -1481,6 +1489,7 @@ void microGraphicsQuit()
 
   // Delete context
   SDL_GL_DeleteContext(context);
+  // Causes crash sometimes
   SDL_DestroyWindow(window);
   SDL_Quit();
 }

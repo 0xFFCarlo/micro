@@ -166,7 +166,7 @@ void playerUpdate(int entityId, float dt)
       animation->animationId = anim_player_walk;
       animation->flipX = 1;
     }
-    animation->framesDuration = 0.55;
+    animation->framesDuration = 0.35;
   }
   else
   {
@@ -223,8 +223,8 @@ int PlayerGetMaxHealth()
 
 void PlayerEntityAdd()
 {
-  anim_player_idle = microAnimationGet("player-idle");
-  anim_player_walk = microAnimationGet("player-walk");
+  anim_player_idle = microAnimationGet("redsauron-small-idle");
+  anim_player_walk = microAnimationGet("redsauron-small-walk");
   anim_player_jump = microAnimationGet("player-jump");
   // anim_player_idle = microAnimationGet("redsauron-small-idle");
   // anim_player_walk = microAnimationGet("redsauron-small-walk");

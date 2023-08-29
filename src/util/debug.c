@@ -9,6 +9,8 @@
 #define GUARD_CONTENT 0xAB
 #define GUARD_LENGTH 4
 #define FILENAME_MAX_LENGTH 64
+// #define MULTITHREAD         // Comment this line to disable multithreading
+// locks
 
 // Settings
 #define VERBOSE 0
@@ -17,16 +19,22 @@
 // Colors
 #define COLOR_RED "\033[0;31m"
 #define COLOR_GREEN "\033[0;32m"
+#define COLOR_LIGHT_GREEN "\033[1;32m"
 #define COLOR_YELLOW "\033[0;33m"
 #define COLOR_BLUE "\033[0;34m"
 #define COLOR_LIGHT_BLUE "\033[1;34m"
 #define COLOR_MAGENTA "\033[0;35m"
 #define COLOR_CYAN "\033[0;36m"
+#define COLOR_LIGHT_CYAN "\033[1:36m"
 #define COLOR_LIGHT_GRAY "\033[0;37m"
 #define COLOR_DEFAULT "\033[0m"
 
 #ifdef USE_BACKTRACE
 #include <execinfo.h>
+#endif
+
+#ifdef MULTITHREAD
+#include <pthread.h>
 #endif
 
 typedef struct LOCATION_INFO
@@ -49,6 +57,13 @@ typedef struct MEM_INFO
 } MEM_INFO;
 
 MEM_INFO *allocations_hashmap[HASHMAP_SIZE] = {NULL};
+
+uint64_t memory_allocated = 0;
+
+#ifdef MULTITHREAD
+pthread_mutex_t memory_mutex;
+uint8_t memory_mutex_initialized = 0;
+#endif
 
 #ifdef USE_BACKTRACE
 
@@ -265,7 +280,18 @@ int is_guard_valid(MEM_INFO *info)
 
 void *malloc_debug(const size_t size, char *file, const int line)
 {
+#ifdef MULTITHREAD
+  if (!memory_mutex_initialized)
+  {
+    pthread_mutex_init(&memory_mutex, NULL);
+    memory_mutex_initialized = 1;
+  }
+  pthread_mutex_lock(&memory_mutex);
+#endif
+
   void *ptr = malloc(size + sizeof(MEM_INFO));
+  memory_allocated += size;
+
   if (ptr)
   {
     MEM_INFO *info = (MEM_INFO *)(ptr + size); // Shift MEM_INFO to the end of
@@ -297,33 +323,55 @@ void *malloc_debug(const size_t size, char *file, const int line)
 
 #ifdef USE_BACKTRACE
     free(loc_name);
+    if (VERBOSE)
+      printf("Allocated %zu bytes at %p, file %s %s, line %d\n", size,
+             info->address, file, info->symbol->filename, line);
+#else
+    if (VERBOSE)
+      printf("Allocated %zu bytes at %p, file %s, line %d\n", size,
+             info->address, file, line);
 #endif
 
     alloc_hashmap_add(ptr, info);
 
-    if (VERBOSE)
-      printf("Allocated %zu bytes at %p, file %s, line %d\n", size,
-             info->address, file, line);
+#ifdef MULTITHREAD
+    pthread_mutex_unlock(&memory_mutex);
+#endif
     return info->address;
   }
   else
   {
+#ifdef MULTITHREAD
+    pthread_mutex_unlock(&memory_mutex);
+#endif
     return NULL;
   }
 }
 
 void free_debug(void *ptr, const char *file, const int line)
 {
+#ifdef MULTITHREAD
+  if (!memory_mutex_initialized)
+  {
+    pthread_mutex_init(&memory_mutex, NULL);
+    memory_mutex_initialized = 1;
+  }
+  pthread_mutex_lock(&memory_mutex);
+#endif
   MEM_INFO *info = alloc_hashmap_get(ptr);
-
   if (info != NULL)
   {
+    memory_allocated -= info->size;
+
     // Check the guard byte for corruption
     if (is_guard_valid(info) == 0)
     {
       if (VERBOSE)
         printf("Memory corruption detected at %p, file %s, line %d\n", ptr,
                file, line);
+#ifdef MULTITHREAD
+      pthread_mutex_unlock(&memory_mutex);
+#endif
       return;
     }
 
@@ -332,16 +380,30 @@ void free_debug(void *ptr, const char *file, const int line)
              line);
     alloc_hashmap_remove(ptr);
     free(info->address); // Free at the original address
+#ifdef MULTITHREAD
+    pthread_mutex_unlock(&memory_mutex);
+#endif
     return;
   }
 
-  if (VERBOSE)
-    printf("Attempted to free unallocated memory at %p, file %s, line %d\n",
-           ptr, file, line);
+  printf("Attempted to free unallocated memory at %p, file %s, line %d\n", ptr,
+         file, line);
+  abort();
+#ifdef MULTITHREAD
+  pthread_mutex_unlock(&memory_mutex);
+#endif
 }
 
 void *realloc_debug(void *ptr, const size_t size, char *file, const int line)
 {
+#ifdef MULTITHREAD
+  if (!memory_mutex_initialized)
+  {
+    pthread_mutex_init(&memory_mutex, NULL);
+    memory_mutex_initialized = 1;
+  }
+  pthread_mutex_lock(&memory_mutex);
+#endif
   if (ptr == NULL)
   {
     // MALLOC COPY (to reduce stack depth)
@@ -351,6 +413,8 @@ void *realloc_debug(void *ptr, const size_t size, char *file, const int line)
       MEM_INFO
       *info = (MEM_INFO *)(address + size); // Shift MEM_INFO to the end of
                                             // the allocated block
+      memory_allocated += size;
+
       info->address = address;
       info->size = size;
       memset(info->guard, GUARD_CONTENT, GUARD_LENGTH); // Set guard bytes
@@ -385,10 +449,16 @@ void *realloc_debug(void *ptr, const size_t size, char *file, const int line)
       if (VERBOSE)
         printf("Allocated %zu bytes at %p, file %s, line %d\n", size,
                info->address, file, line);
+#ifdef MULTITHREAD
+      pthread_mutex_unlock(&memory_mutex);
+#endif
       return info->address;
     }
     else
     {
+#ifdef MULTITHREAD
+      pthread_mutex_unlock(&memory_mutex);
+#endif
       return NULL;
     }
     ////////////////////
@@ -396,6 +466,9 @@ void *realloc_debug(void *ptr, const size_t size, char *file, const int line)
 
   if (size == 0)
   {
+#ifdef MULTITHREAD
+    pthread_mutex_unlock(&memory_mutex);
+#endif
     free_debug(ptr, file, line);
     return NULL;
   }
@@ -404,12 +477,17 @@ void *realloc_debug(void *ptr, const size_t size, char *file, const int line)
   MEM_INFO *info = alloc_hashmap_get(ptr);
   if (info != NULL)
   {
+    memory_allocated += size;
+
     // Check the guard byte for corruption
     if (is_guard_valid(info) == 0)
     {
       if (VERBOSE)
         printf("Memory corruption detected at %p, file %s, line %d\n", ptr,
                file, line);
+#ifdef MULTITHREAD
+      pthread_mutex_unlock(&memory_mutex);
+#endif
       return NULL;
     }
 
@@ -470,16 +548,22 @@ void *realloc_debug(void *ptr, const size_t size, char *file, const int line)
       memcpy(new_ptr, ptr, info->size < size ? info->size : size);
 
       // Free old block
+#ifdef MULTITHREAD
+      pthread_mutex_unlock(&memory_mutex);
+#endif
       free_debug(ptr, file, line);
     }
 
     return new_ptr;
   }
 
-  if (VERBOSE)
-    printf("Attempted to reallocate unallocated memory at %p, file %s, line "
-           "%d\n",
-           ptr, file, line);
+  printf("Attempted to reallocate unallocated memory at %p, file %s, line "
+         "%d\n",
+         ptr, file, line);
+  abort();
+#ifdef MULTITHREAD
+  pthread_mutex_unlock(&memory_mutex);
+#endif
   return NULL;
 }
 
@@ -514,8 +598,9 @@ void memory_check_leaks()
 
   if (leaks == 0)
   {
-    printf("%sNo memory leaks detected.%s\n", COLOR_GREEN, COLOR_DEFAULT);
-    printf("%sNo memory corruption detected.%s\n", COLOR_GREEN, COLOR_DEFAULT);
+    printf("%sNo memory leaks detected.%s\n", COLOR_LIGHT_GREEN, COLOR_DEFAULT);
+    printf("%sNo memory corruptions detected.%s\n", COLOR_LIGHT_GREEN,
+           COLOR_DEFAULT);
   }
   printf("Done\n");
 }
@@ -546,8 +631,8 @@ void assert_debug(int condition, char *condition_str, char *file, int line)
   if (!condition)
   {
     printf("%sAssertion %s%s%s failed at %s%s line %d%s\n", COLOR_RED,
-           COLOR_GREEN, condition_str, COLOR_RED, COLOR_MAGENTA, file, line,
-           COLOR_DEFAULT);
+           COLOR_LIGHT_GREEN, condition_str, COLOR_RED, COLOR_MAGENTA, file,
+           line, COLOR_DEFAULT);
 
     // Print stack trace
 #ifdef USE_BACKTRACE
@@ -561,13 +646,17 @@ void assert_debug(int condition, char *condition_str, char *file, int line)
   }
 }
 
-uint32_t print_id = 0;
+uint64_t memory_get_allocated()
+{
+  return memory_allocated;
+}
 
 void _print_debug(const char *file, const int line, const char *format, ...)
 {
   va_list args;
   va_start(args, format);
-  printf("%s--> %-7d %-16s line %-5d   ", COLOR_CYAN, print_id, file, line);
+  printf("%s--> %-16s line %-5d   %s", COLOR_CYAN, file, line,
+         COLOR_LIGHT_CYAN);
   vprintf(format, args);
   printf("%s\n", COLOR_DEFAULT);
   va_end(args);
