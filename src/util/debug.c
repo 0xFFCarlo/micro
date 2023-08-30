@@ -9,8 +9,7 @@
 #define GUARD_CONTENT 0xAB
 #define GUARD_LENGTH 4
 #define FILENAME_MAX_LENGTH 64
-// #define MULTITHREAD         // Comment this line to disable multithreading
-// locks
+// #define MULTITHREAD // Comment this line to disable multithreading
 
 // Settings
 #define VERBOSE 0

@@ -4,8 +4,6 @@
 #include "../util/debug.h"
 #include <stdlib.h>
 
-SDL_Event event;
-
 void eventsSystem(float dt)
 {
   (void)(dt); // Unused parameter
@@ -16,6 +14,7 @@ void eventsSystem(float dt)
     components_count = microECSComponentsCount(cid_event_listener);
 
   // Get the next event
+  SDL_Event event;
   while (SDL_PollEvent(&event))
   {
     for (unsigned int i = 0; i < components_count; i++)

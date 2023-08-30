@@ -68,8 +68,8 @@ void CaveAddEntity(const int x, const int y)
 
   // Sprite component
   // int textureId = microTextureLoadFromFile("./res/robot.png");
-  int atlasId = microResourceGet("atlas");
-  int textureId = microTextureAtlasGetTextureId(atlasId);
+  const int atlasId = microResourceGet("atlas");
+  const int textureId = microTextureAtlasGetTextureId(atlasId);
   MicroTextureSource ts = microTextureAtlasGetRegion(atlasId, "cave");
   microTextureSetFilter(textureId, MICRO_FILTER_NEAREST);
 

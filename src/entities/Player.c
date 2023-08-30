@@ -19,8 +19,8 @@
 #define PLAYER_DIRECTION_RIGHT 0
 #define PLAYER_DIRECTION_LEFT 1
 
-#define PLAYER_TEXTURE_WIDTH 64
-#define PLAYER_TEXTURE_HEIGHT 64
+#define PLAYER_TEXTURE_WIDTH 48
+#define PLAYER_TEXTURE_HEIGHT 48
 #define PLAYER_BODY_WIDTH (PLAYER_TEXTURE_WIDTH / 3.0)
 #define PLAYER_BODY_HEIGHT (PLAYER_TEXTURE_HEIGHT)
 
@@ -150,7 +150,21 @@ void playerUpdate(int entityId, float dt)
   // Update animation
   CAnimation *animation = (CAnimation *)
     microECSEntityGetComponent(player_entity_id, cid_animation);
-  if (player_state == PLAYER_STATE_WALK)
+  if (playerJump == 1)
+  {
+    // Stop at the last frame
+    if (animation->frameId == 1)
+      animation->timeSinceLastFrame = 0;
+
+    animation->framesDuration = 0.1;
+
+    animation->animationId = anim_player_jump;
+    if (player_direction == PLAYER_DIRECTION_RIGHT)
+      animation->flipX = 0;
+    else
+      animation->flipX = 1;
+  }
+  else if (player_state == PLAYER_STATE_WALK)
   {
     if (player_direction == PLAYER_DIRECTION_RIGHT)
     {
@@ -166,7 +180,7 @@ void playerUpdate(int entityId, float dt)
       animation->animationId = anim_player_walk;
       animation->flipX = 1;
     }
-    animation->framesDuration = 0.35;
+    animation->framesDuration = 0.3;
   }
   else
   {
@@ -223,9 +237,9 @@ int PlayerGetMaxHealth()
 
 void PlayerEntityAdd()
 {
-  anim_player_idle = microAnimationGet("redsauron-small-idle");
-  anim_player_walk = microAnimationGet("redsauron-small-walk");
-  anim_player_jump = microAnimationGet("player-jump");
+  anim_player_idle = microAnimationGet("robot-idle");
+  anim_player_walk = microAnimationGet("robot-walk");
+  anim_player_jump = microAnimationGet("robot-jump");
   // anim_player_idle = microAnimationGet("redsauron-small-idle");
   // anim_player_walk = microAnimationGet("redsauron-small-walk");
 
