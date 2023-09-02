@@ -29,6 +29,10 @@ extern void vector_push_back(Vector *vec, void *value);
 // remove the last element
 extern void vector_pop_back(Vector *vec);
 
+// remove the element at the specified index
+// last element is moved to the position of the removed element
+extern void vector_remove(Vector *vec, unsigned int index);
+
 // return the first element
 extern void *vector_back(Vector *vec);
 

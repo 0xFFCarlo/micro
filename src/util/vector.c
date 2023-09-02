@@ -44,6 +44,20 @@ void vector_pop_back(Vector *vec)
   }
 }
 
+// last element is moved to the index
+void vector_remove(Vector *vec, unsigned int index)
+{
+  assert(index < (unsigned int)vec->size);
+  if (index < (unsigned int)vec->size - 1)
+  {
+    // Move the last element to the index
+    memcpy((char *)vec->data + index * vec->data_size,
+           (char *)vec->data + (vec->size - 1) * vec->data_size,
+           vec->data_size);
+  }
+  vec->size--;
+}
+
 void *vector_back(Vector *vec)
 {
   if (vec->size > 0)

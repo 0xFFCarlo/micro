@@ -23,7 +23,7 @@ float planetX = 0.0;
 float planetY = 0.0;
 float planetRadius = 400;
 float planetScaleFactor = 2.0;
-float planetLightDepth = 120;
+float planetLightDepth = 140;
 float planetSurfaceDepth = GROUND_HEIGHT / 2.0;
 
 int planet_body_id = -1;
@@ -98,15 +98,74 @@ unsigned char *makePlanetTexture(int width, int height)
       // distNorm += noise2((float)x / 100.0, (float)y / 100.0) * 0.04;
 
       // Compute color
-      float f = 20.0;
+      float f = 40.0;
       float r = (noise2((float)x / f, (float)y / f) + 1.0) * 0.5;
       float r2 = ((double)rand() / (double)RAND_MAX - 0.5) * 2.0;
       int r_quant = (0.3 + r * 0.2 + r2 * 0.15) * 255;
-      // int r_q_reduced = floor((float)r_quant / 3) * 3;
       int r_q_reduced = r_quant;
-      texture[(y * width + x) * 4 + 0] = r_q_reduced;
-      texture[(y * width + x) * 4 + 1] = r_q_reduced;
-      texture[(y * width + x) * 4 + 2] = r_q_reduced;
+      if (r < 0.35)
+      {
+        texture[(y * width + x) * 4 + 0] = r_q_reduced;
+        texture[(y * width + x) * 4 + 1] = r_q_reduced * 0.5;
+        texture[(y * width + x) * 4 + 2] = r_q_reduced * 0.5;
+      }
+      else if (r < 0.6)
+      {
+        float n = (r - 0.35) / 0.25;
+        float rf = (double)rand() / (double)RAND_MAX;
+        if (rf < n)
+        {
+          texture[(y * width + x) * 4 + 0] = r_q_reduced;
+          texture[(y * width + x) * 4 + 1] = r_q_reduced;
+          texture[(y * width + x) * 4 + 2] = r_q_reduced;
+        }
+        else
+        {
+          texture[(y * width + x) * 4 + 0] = r_q_reduced;
+          texture[(y * width + x) * 4 + 1] = r_q_reduced * 0.5;
+          texture[(y * width + x) * 4 + 2] = r_q_reduced * 0.5;
+        }
+      }
+      else if (r < 0.85)
+      {
+        float n = (r - 0.6) / 0.2;
+        float rf = (double)rand() / (double)RAND_MAX;
+        if (rf < n)
+        {
+          texture[(y * width + x) * 4 + 0] = r_q_reduced * 0.5;
+          texture[(y * width + x) * 4 + 1] = r_q_reduced * 0.5;
+          texture[(y * width + x) * 4 + 2] = r_q_reduced * 0.5;
+        }
+        else
+        {
+          texture[(y * width + x) * 4 + 0] = r_q_reduced;
+          texture[(y * width + x) * 4 + 1] = r_q_reduced;
+          texture[(y * width + x) * 4 + 2] = r_q_reduced;
+        }
+      }
+      else if (r < 0.95)
+      {
+        float n = (r - 0.85) / 0.1;
+        float rf = (double)rand() / (double)RAND_MAX;
+        if (rf < n)
+        {
+          texture[(y * width + x) * 4 + 0] = r_q_reduced * 0.3;
+          texture[(y * width + x) * 4 + 1] = r_q_reduced * 0.3;
+          texture[(y * width + x) * 4 + 2] = r_q_reduced;
+        }
+        else
+        {
+          texture[(y * width + x) * 4 + 0] = r_q_reduced * 0.5;
+          texture[(y * width + x) * 4 + 1] = r_q_reduced * 0.5;
+          texture[(y * width + x) * 4 + 2] = r_q_reduced * 0.5;
+        }
+      }
+      else
+      {
+        texture[(y * width + x) * 4 + 0] = r_q_reduced;
+        texture[(y * width + x) * 4 + 1] = r_q_reduced;
+        texture[(y * width + x) * 4 + 2] = r_q_reduced * 0.5;
+      }
 
       // Compute alpha
       texture[(y * width + x) * 4 + 3] = 255 * (distNorm < 1.0);
@@ -208,7 +267,7 @@ void setupPlanetEntity(int planetId)
   {
     float angle = (double)rand() / (double)RAND_MAX * 2.0 * M_PI;
     int caveX, caveY;
-    PlanetGetSurfacePosition(angle, 32.0 / 2.0, &caveX, &caveY);
+    PlanetGetSurfacePosition(angle, 32.0 / 2.0 - 16, &caveX, &caveY);
     CaveAddEntity(caveX, caveY);
   }
 

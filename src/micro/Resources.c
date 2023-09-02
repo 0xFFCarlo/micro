@@ -11,6 +11,7 @@
 #define MICRO_TYPE_SOUND 1
 #define MICRO_TYPE_MUSIC 2
 #define MICRO_TYPE_ATLAS 3
+#define MICRO_TYPE_FONT 4
 
 typedef struct Resource
 {
@@ -107,6 +108,31 @@ int microResourceLoad(const char *name, const char *filepath, const char *type)
   }
   resources[i].resourceId = resourceId;
   resources[i].resourceType = resourceType;
+  strcpy(resources[i].name, name);
+  resourcesCount++;
+  assert(resourcesCount < MICRO_RESOURCES_MAX);
+
+  return resourceId;
+}
+
+int microResourceLoadFont(const char *name, const char *filepath,
+                          unsigned int font_size, unsigned int filter)
+{
+  assert(resourcesCount + 1 < MICRO_RESOURCES_MAX);
+
+  int resourceId = microFontLoadFromFile(filepath, font_size, filter);
+  if (resourceId == -1)
+    return -1;
+
+  // store resource sorted by name in resources array
+  int i = resourcesCount;
+  while (i > 0 && strcompare(name, resources[i - 1].name) == -1)
+  {
+    resources[i] = resources[i - 1];
+    i--;
+  }
+  resources[i].resourceId = resourceId;
+  resources[i].resourceType = MICRO_TYPE_FONT;
   strcpy(resources[i].name, name);
   resourcesCount++;
   assert(resourcesCount < MICRO_RESOURCES_MAX);

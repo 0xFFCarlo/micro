@@ -3,6 +3,7 @@
 #include "../components/LogicComponents.h"
 #include "../components/MotionComponents.h"
 #include "../components/RenderingComponents.h"
+#include "../managers/inventory.h"
 #include "../micro/ECS.h"
 #include "../micro/Graphics.h"
 #include "../micro/Physics.h"
@@ -29,7 +30,7 @@ void ResourceAddEntity(const int x, const int y)
   // int textureId = microTextureLoadFromFile("./res/robot.png");
   int atlasId = microResourceGet("atlas");
   int textureId = microTextureAtlasGetTextureId(atlasId);
-  MicroTextureSource ts = microTextureAtlasGetRegion(atlasId, "iron-1");
+  MicroTextureSource ts = microTextureAtlasGetRegion(atlasId, "metal");
   microTextureSetFilter(textureId, MICRO_FILTER_NEAREST);
 
   microECSEntityAddComponent(res_entity_id, cid_sprite,
@@ -44,10 +45,10 @@ void ResourceAddEntity(const int x, const int y)
   // Transform component
   microECSEntityAddComponent(res_entity_id, cid_transform,
                              &(CTransform){
-                               .width = 24,
-                               .height = 24,
-                               .originX = 24 / 2.0,
-                               .originY = 24 / 2.0,
+                               .width = 32,
+                               .height = 32,
+                               .originX = 32 / 2.0,
+                               .originY = 32 / 2.0,
                                .rotation = 0.0,
                              });
 
@@ -74,6 +75,20 @@ void ResourceAddEntity(const int x, const int y)
                              &(CPlanetaryAlignment){
                                .planet_x = planetX,
                                .planet_y = planetY,
+                             });
+
+  // Interactive component
+  microECSEntityAddComponent(res_entity_id, cid_interactive,
+                             &(CInteractive){
+                               .can_interact = 1,
+                               .interact_range = 32 + 2,
+                               .on_interact = inventoryPickupCallback,
+                             });
+
+  microECSEntityAddComponent(res_entity_id, cid_item,
+                             &(CItem){
+                               .type = ITEM_METAL,
+                               .quantity = 1,
                              });
 
   // Body component

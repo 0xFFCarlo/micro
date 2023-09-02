@@ -3,10 +3,12 @@
 #include "../components/LogicComponents.h"
 #include "../components/MotionComponents.h"
 #include "../components/RenderingComponents.h"
+#include "../micro/Audio.h"
 #include "../micro/ECS.h"
 #include "../micro/Graphics.h"
 #include "../micro/Physics.h"
 #include "../micro/Resources.h"
+#include "../systems/InteractionSystem.h"
 #include "Planet.h"
 #include <assert.h>
 #include <math.h>
@@ -40,6 +42,13 @@ float playerRotation = 0.0;
 int playerJump = 0;
 
 int player_body_id = -1;
+
+// Sounds ids
+uint32_t robot_footstep = 0;
+uint32_t robot_say_introduce = 0;
+uint32_t robot_say_yes = 0;
+uint32_t robot_say_no = 0;
+uint32_t robot_jump = 0;
 
 void PlayerCollide(int entityId, int otherEntityId)
 {
@@ -83,6 +92,9 @@ void playerUpdate(int entityId, float dt)
     PlayerMove(1);
   if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_W])
     PlayerJump();
+
+  if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_E])
+    interactionSystemInteract();
 
   float viewX, viewY;
   float viewWidth, viewHeight;
@@ -163,9 +175,16 @@ void playerUpdate(int entityId, float dt)
       animation->flipX = 0;
     else
       animation->flipX = 1;
+
+    // Stop footsteps sound
+    microSoundStop(robot_footstep);
   }
   else if (player_state == PLAYER_STATE_WALK)
   {
+    // Play footsteps sound
+    if (microSoundIsPlaying(robot_footstep) == 0)
+      microSoundPlay(robot_footstep, 1);
+
     if (player_direction == PLAYER_DIRECTION_RIGHT)
     {
       if (animation->animationId != anim_player_walk)
@@ -180,10 +199,13 @@ void playerUpdate(int entityId, float dt)
       animation->animationId = anim_player_walk;
       animation->flipX = 1;
     }
-    animation->framesDuration = 0.3;
+    animation->framesDuration = 0.25;
   }
   else
   {
+    // Stop footsteps sound
+    microSoundStop(robot_footstep);
+
     if (player_direction == PLAYER_DIRECTION_RIGHT)
     {
       if (animation->animationId != anim_player_idle)
@@ -350,7 +372,7 @@ void PlayerEntityAdd()
   // Health
   microECSEntityAddComponent(player_entity_id, cid_health,
                              &(CHealth){
-                               .health = 11,
+                               .health = 16,
                                .maxHealth = 16,
                              });
 
@@ -359,4 +381,21 @@ void PlayerEntityAdd()
   //   .x = planetX,
   //   .y = planetY,
   // });
+
+  interactionSystemSetActorId(player_entity_id);
+
+  // Load sounds for robot
+  robot_say_introduce = microResourceLoad(
+    "robot_introduce", "./res/sounds/robot_say_introduce.wav", "sound");
+  robot_say_no = microResourceLoad("robot_say_no",
+                                   "./res/sounds/robot_say_no.wav", "sound");
+  robot_say_yes = microResourceLoad("robot_say_yes",
+                                    "./res/sounds/robot_say_yes.wav", "sound");
+  robot_jump = microResourceLoad("robot_jump", "./res/sounds/jump.wav",
+                                 "sound");
+
+  robot_footstep = microResourceLoad("robot_footstep",
+                                     "./res/sounds/footstep05.ogg", "sound");
+
+  microSoundPlay(robot_say_introduce, 0);
 }

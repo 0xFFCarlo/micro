@@ -1,4 +1,5 @@
 #include "Audio.h"
+#include "../util/debug.h"
 #include "Error.h"
 #include <SDL2/SDL_mixer.h>
 
@@ -9,10 +10,23 @@
 
 static Mix_Chunk *loadedSounds[MICRO_MAX_SOUNDS];
 static Mix_Music *loadedMusics[MICRO_MAX_MUSICS];
-static unsigned char cleanedBuffer = SDL_FALSE;
+static uint8_t cleanedBuffer = SDL_FALSE;
+static uint8_t mix_initialized = SDL_FALSE;
 
 int microSoundLoadFromFile(const char *filepath, const int soundType)
 {
+  if (mix_initialized == SDL_FALSE)
+  {
+    assert(Mix_Init(MIX_INIT_OGG | MIX_INIT_MP3));
+    if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0)
+    {
+      microSendError(MICRO_ERROR_FAIL, "Can't initialize audio");
+      debug_print("Mix_GetError: %s\n", Mix_GetError());
+      return -1;
+    }
+    mix_initialized = SDL_TRUE;
+  }
+
   // initialize
   if (cleanedBuffer == SDL_FALSE)
   {
@@ -29,6 +43,7 @@ int microSoundLoadFromFile(const char *filepath, const int soundType)
     if (chunk == NULL)
     {
       microSendError(MICRO_ERROR_FAIL, "Can't load soundeffect");
+      debug_print("Mix_GetError: %s\n", Mix_GetError());
       return -1;
     }
 

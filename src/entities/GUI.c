@@ -1,6 +1,7 @@
 #include "../components/LogicComponents.h"
 #include "../components/MotionComponents.h"
 #include "../components/RenderingComponents.h"
+#include "../managers/inventory.h"
 #include "../micro/ECS.h"
 #include "../micro/Graphics.h"
 #include "../micro/Physics.h"
@@ -13,16 +14,37 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define HEARTH_WIDTH 40
-#define HEARTH_HEIGHT 40
-#define HEARTH_SPACING 10
-#define HEARTH_MARGIN 32
+#define ENERGY_BAR_FRAME_START_X 32
+#define ENERGY_BAR_FRAME_START_Y 32
+#define ENERGY_BAR_FRAME_WIDTH (96 * 3)
+#define ENERGY_BAR_FRAME_HEIGHT (20 * 3)
 
-Vector lifeSpritesEntityIds;
+#define ENERGY_BAR_START_X (ENERGY_BAR_FRAME_START_X + 22 * 3)
+#define ENERGY_BAR_START_Y (ENERGY_BAR_FRAME_START_Y + 6 * 3)
+#define ENERGY_BAR_WIDTH (70 * 3)
+#define ENERGY_BAR_HEIGHT (8 * 3)
+
+#define RESOURCES_SPACING 8
+#define RESOURCES_START_X (32)
+#define RESOURCES_START_Y (32 + 20 * 3 + RESOURCES_SPACING)
+#define RESOURCES_ICON_SIZE 48
+#define RESOURCES_ICON_OFFSET (2 * 3)
+#define RESOURCES_TEXT_VOFFSET (32 + 2 * 3 - 2)
+#define RESOURCES_TEXT_HOFFSET (64 + 16)
+#define RESOURCES_FRAME_WIDTH (64 * 3)
+#define RESOURCES_FRAME_HEIGHT (20 * 3)
+
 int playerHealth = 0;
 int playerMaxHealth = 0;
 int hearthsCount = 0;
 int hearthsMaxCount = 0;
+char metal_count_text[16] = "0";
+char crystal_count_text[16] = "0";
+char deuterium_count_text[16] = "0";
+
+uint32_t bar_frame_id = 0;
+uint32_t bar_background_id = 0;
+uint32_t bar_content_id = 0;
 
 void GUIUpdate(int entity, float dt)
 {
@@ -33,40 +55,89 @@ void GUIUpdate(int entity, float dt)
   playerMaxHealth = PlayerGetMaxHealth();
   hearthsMaxCount = playerMaxHealth / 4;
   hearthsCount = playerHealth / 4;
+  float normalized_energy = (float)playerHealth / (float)playerMaxHealth;
 
-  // Create hearths
-  int tmp = playerHealth;
-  for (int i = 0; i < hearthsMaxCount; i++)
-  {
-    const int hearth_id = *(int *)vector_at(&lifeSpritesEntityIds, i);
-    const int atlasId = microResourceGet("atlas");
-    MicroTextureSource ts;
-    if (tmp >= 4)
-    {
-      ts = microTextureAtlasGetRegion(atlasId, "life-4-4");
-    }
-    else
-    {
-      char buf[32] = "life-4-4\0";
-      buf[5] = '0' + tmp;
-      ts = microTextureAtlasGetRegion(atlasId, buf);
-    }
-    tmp -= 4;
-    if (tmp < 0)
-      tmp = 0;
+  // Update energy bar
+  CTransform *bar_transform = (CTransform *)
+    microECSEntityGetComponent(bar_content_id, cid_transform);
+  bar_transform->width = (int)(normalized_energy * ENERGY_BAR_WIDTH);
 
-    CSprite *sprite = microECSEntityGetComponent(hearth_id, cid_sprite);
-    sprite->tx = ts.x;
-    sprite->ty = ts.y;
-    sprite->tw = ts.w;
-    sprite->th = ts.h;
-  }
+  // Update inventory counters
+  const int metal_count = inventoryGetCount(ITEM_METAL);
+  const int crystal_count = inventoryGetCount(ITEM_CRYSTAL);
+  const int deuterium_count = inventoryGetCount(ITEM_DEUTERIUM);
+  sprintf(metal_count_text, "%d", metal_count);
+  sprintf(crystal_count_text, "%d", crystal_count);
+  sprintf(deuterium_count_text, "%d", deuterium_count);
+}
+
+uint32_t GUI_add_image(uint32_t atlasId, uint32_t x, uint32_t y,
+                       char *image_name, uint32_t width, uint32_t height,
+                       uint32_t origin_x, uint32_t origin_y)
+{
+  const int textureId = microTextureAtlasGetTextureId(atlasId);
+  const MicroTextureSource txs = microTextureAtlasGetRegion(atlasId,
+                                                            image_name);
+  int entity_id = microECSEntityNew(NULL, NULL);
+  microECSEntityAddComponent(entity_id, cid_position,
+                             &(CPosition){.x = x, .y = y});
+
+  microECSEntityAddComponent(entity_id, cid_sprite,
+                             &(CSprite){
+                               .textureId = textureId,
+                               .tx = txs.x,
+                               .ty = txs.y,
+                               .tw = txs.w,
+                               .th = txs.h,
+                             });
+
+  // Transform component
+  microECSEntityAddComponent(entity_id, cid_transform,
+                             &(CTransform){
+                               .width = width,
+                               .height = height,
+                               .originX = origin_x,
+                               .originY = origin_y,
+                               .rotation = 0.0,
+                             });
+
+  microECSEntityAddComponent(entity_id, cid_drawable,
+                             &(CDrawable){
+                               .layerId = 5,
+                               .visible = 1,
+                             });
+  microECSEntityAddComponent(entity_id, cid_hud, NULL);
+
+  return entity_id;
+}
+uint32_t GUI_add_text(uint32_t x, uint32_t y, char *text)
+{
+  int entity_id = microECSEntityNew(NULL, NULL);
+  microECSEntityAddComponent(entity_id, cid_position,
+                             &(CPosition){.x = x, .y = y});
+
+  microECSEntityAddComponent(entity_id, cid_drawable,
+                             &(CDrawable){
+                               .layerId = 6,
+                               .visible = 1,
+                             });
+  microECSEntityAddComponent(entity_id, cid_hud, NULL);
+
+  uint32_t font_id = microResourceGet("ui_font");
+
+  microECSEntityAddComponent(entity_id, cid_text,
+                             &(CText){
+                               .text = text,
+                               .lineSpacing = 3,
+                               .fontId = font_id,
+                             });
+
+  return entity_id;
 }
 
 void GUIFree(int entityId)
 {
   (void)(entityId); // Unused parameter
-  vector_free(&lifeSpritesEntityIds);
 }
 
 void GUIInit()
@@ -77,68 +148,68 @@ void GUIInit()
                              &(CUpdate){.update = GUIUpdate});
 
   // Creating and computing lifes
-  lifeSpritesEntityIds = vector_create(sizeof(int));
   playerHealth = PlayerGetHealth();
   playerMaxHealth = PlayerGetMaxHealth();
   hearthsMaxCount = playerMaxHealth / 4;
   hearthsCount = playerHealth / 4;
 
-  // Create hearths
-  int tmp = playerHealth;
-  for (int i = 0; i < hearthsMaxCount; i++)
-  {
+  const int atlasId = microResourceGet("atlas");
 
-    int hearth_id = microECSEntityNew(NULL, NULL);
-    vector_push_back(&lifeSpritesEntityIds, &hearth_id);
+  // Add energy bar
+  bar_background_id = GUI_add_image(atlasId, ENERGY_BAR_START_X,
+                                    ENERGY_BAR_START_Y, "energy_bar_background",
+                                    ENERGY_BAR_WIDTH, ENERGY_BAR_HEIGHT, 0, 0);
 
-    const int atlasId = microResourceGet("atlas");
-    const int textureId = microTextureAtlasGetTextureId(atlasId);
-    MicroTextureSource ts;
-    if (tmp >= 4)
-    {
-      ts = microTextureAtlasGetRegion(atlasId, "life-4-4");
-    }
-    else
-    {
-      char buf[32] = "life-4-4\0";
-      buf[5] = '0' + tmp;
-      ts = microTextureAtlasGetRegion(atlasId, buf);
-    }
-    tmp -= 4;
-    if (tmp < 0)
-      tmp = 0;
+  bar_content_id = GUI_add_image(atlasId, ENERGY_BAR_START_X,
+                                 ENERGY_BAR_START_Y, "energy_bar_content",
+                                 ENERGY_BAR_WIDTH, ENERGY_BAR_HEIGHT, 0, 0);
 
-    microECSEntityAddComponent(hearth_id, cid_position,
-                               &(CPosition){
-                                 .x = HEARTH_WIDTH * i + HEARTH_WIDTH / 2.0 +
-                                      HEARTH_MARGIN + HEARTH_SPACING * i,
-                                 .y = HEARTH_HEIGHT / 2.0 + HEARTH_MARGIN,
-                               });
+  bar_frame_id = GUI_add_image(atlasId, ENERGY_BAR_FRAME_START_X,
+                               ENERGY_BAR_FRAME_START_Y, "energy_bar_frame",
+                               ENERGY_BAR_FRAME_WIDTH, ENERGY_BAR_FRAME_HEIGHT,
+                               0, 0);
 
-    microECSEntityAddComponent(hearth_id, cid_sprite,
-                               &(CSprite){
-                                 .textureId = textureId,
-                                 .tx = ts.x,
-                                 .ty = ts.y,
-                                 .tw = ts.w,
-                                 .th = ts.h,
-                               });
+  // Add metal counter
+  GUI_add_image(atlasId, RESOURCES_START_X, RESOURCES_START_Y, "UI_counter",
+                RESOURCES_FRAME_WIDTH, RESOURCES_FRAME_HEIGHT, 0, 0);
 
-    // Transform component
-    microECSEntityAddComponent(hearth_id, cid_transform,
-                               &(CTransform){
-                                 .width = HEARTH_WIDTH,
-                                 .height = HEARTH_HEIGHT,
-                                 .originX = HEARTH_WIDTH / 2.0,
-                                 .originY = HEARTH_HEIGHT / 2.0,
-                                 .rotation = 0.0,
-                               });
+  GUI_add_image(atlasId, RESOURCES_START_X + RESOURCES_ICON_OFFSET,
+                RESOURCES_START_Y + RESOURCES_ICON_OFFSET, "metal",
+                RESOURCES_ICON_SIZE, RESOURCES_ICON_SIZE, 0, 0);
 
-    microECSEntityAddComponent(hearth_id, cid_drawable,
-                               &(CDrawable){
-                                 .layerId = 5,
-                                 .visible = 1,
-                               });
-    microECSEntityAddComponent(hearth_id, cid_hud, NULL);
-  }
+  GUI_add_text(RESOURCES_START_X + RESOURCES_TEXT_HOFFSET,
+               RESOURCES_START_Y + RESOURCES_TEXT_VOFFSET, metal_count_text);
+
+  // Add crystal counter
+  GUI_add_image(atlasId, RESOURCES_START_X,
+                RESOURCES_START_Y + RESOURCES_FRAME_HEIGHT + RESOURCES_SPACING,
+                "UI_counter", RESOURCES_FRAME_WIDTH, RESOURCES_FRAME_HEIGHT, 0,
+                0);
+
+  GUI_add_image(atlasId, RESOURCES_START_X + RESOURCES_ICON_OFFSET,
+                RESOURCES_START_Y + RESOURCES_FRAME_HEIGHT * 1 +
+                  RESOURCES_SPACING + RESOURCES_ICON_OFFSET,
+                "crystal", RESOURCES_ICON_SIZE, RESOURCES_ICON_SIZE, 0, 0);
+
+  GUI_add_text(RESOURCES_START_X + RESOURCES_TEXT_HOFFSET,
+               RESOURCES_START_Y + RESOURCES_SPACING +
+                 RESOURCES_FRAME_HEIGHT * 1 + RESOURCES_TEXT_VOFFSET,
+               crystal_count_text);
+
+  // Add deuterium counter
+  GUI_add_image(atlasId, RESOURCES_START_X,
+                RESOURCES_START_Y + RESOURCES_FRAME_HEIGHT * 2 +
+                  RESOURCES_SPACING * 2,
+                "UI_counter", RESOURCES_FRAME_WIDTH, RESOURCES_FRAME_HEIGHT, 0,
+                0);
+
+  GUI_add_image(atlasId, RESOURCES_START_X + RESOURCES_ICON_OFFSET,
+                RESOURCES_START_Y + RESOURCES_FRAME_HEIGHT * 2 +
+                  RESOURCES_SPACING * 2 + RESOURCES_ICON_OFFSET,
+                "deuterium", RESOURCES_ICON_SIZE, RESOURCES_ICON_SIZE, 0, 0);
+
+  GUI_add_text(RESOURCES_START_X + RESOURCES_TEXT_HOFFSET,
+               RESOURCES_START_Y + RESOURCES_SPACING * 2 +
+                 RESOURCES_FRAME_HEIGHT * 2 + RESOURCES_TEXT_VOFFSET,
+               deuterium_count_text);
 }

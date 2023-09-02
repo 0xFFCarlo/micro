@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-const unsigned int top_pos_offset = 128;
+const unsigned int top_pos_offset = 128 * 4;
 const unsigned int left_pos_offset = 16;
 const float log_gui_update_interval = 0.15;
 
@@ -88,8 +88,7 @@ void updateLogGUI(int entityId, float dt)
 
 void LogGUIAdd()
 {
-  font_id = microFontLoadFromFile("./res/fonts/firacode.ttf", 20,
-                                  MICRO_FILTER_NEAREST);
+  font_id = microResourceGet("ui_font");
 
   log_gui_entity_id = microECSEntityNew(NULL, NULL);
   microECSEntityAddComponent(log_gui_entity_id, cid_position,

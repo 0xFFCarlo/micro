@@ -9,7 +9,8 @@
 #define GUARD_CONTENT 0xAB
 #define GUARD_LENGTH 4
 #define FILENAME_MAX_LENGTH 64
-// #define MULTITHREAD // Comment this line to disable multithreading
+#define MULTITHREAD // Comment this line to disable multithreading
+// locks
 
 // Settings
 #define VERBOSE 0
@@ -657,6 +658,6 @@ void _print_debug(const char *file, const int line, const char *format, ...)
   printf("%s--> %-16s line %-5d   %s", COLOR_CYAN, file, line,
          COLOR_LIGHT_CYAN);
   vprintf(format, args);
-  printf("%s\n", COLOR_DEFAULT);
+  printf("%s", COLOR_DEFAULT);
   va_end(args);
 }

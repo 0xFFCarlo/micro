@@ -85,9 +85,7 @@ void microPhysicsWorldFree(int worldId)
 
   cpSpaceFree(world->space);
   vector_free(&world->shapes);
-  World *lastWorld = vector_back(&worlds);
-  memcpy(world, &lastWorld, sizeof(World));
-  vector_pop_back(&worlds);
+  vector_remove(&worlds, worldId);
 }
 
 void microPhysicsWorldFreeAll()
@@ -124,8 +122,8 @@ int microPhysicsBodyNewCircle(int entityId, int worldId, float cx, float cy,
   data->entityId = entityId;
   data->collisionBegin = NULL;
   cpBodySetUserData(body, data);
-  cpShape *shape = cpSpaceAddShape(world->space,
-                                   cpCircleShapeNew(body, radius, cpv(0, 0)));
+  cpShape *shape = cpCircleShapeNew(body, radius, cpv(0, 0));
+  cpSpaceAddShape(world->space, shape);
   cpShapeSetElasticity(shape, elasticity);
   cpShapeSetFriction(shape, friction);
   cpShapeSetCollisionType(shape, 0);
@@ -162,8 +160,8 @@ int microPhysicsBodyNewRect(int entityId, int worldId, float cx, float cy,
   data->entityId = entityId;
   data->collisionBegin = NULL;
   cpBodySetUserData(body, data);
-  cpShape *shape = cpSpaceAddShape(world->space,
-                                   cpBoxShapeNew(body, width, height, 0));
+  cpShape *shape = cpBoxShapeNew(body, width, height, 0);
+  cpSpaceAddShape(world->space, shape);
   cpShapeSetElasticity(shape, elasticity);
   cpShapeSetFriction(shape, friction);
   cpShapeSetCollisionType(shape, 0);
@@ -180,15 +178,12 @@ void microPhysicsBodyFree(int bodyId)
   World *world = vector_at(&worlds, worldId);
   cpShape *shape = *(cpShape **)vector_at(&world->shapes, shapeId);
   cpBody *body = cpShapeGetBody(shape);
-  cpSpaceRemoveShape(world->space, shape);
-  cpSpaceRemoveBody(world->space, body);
-  cpShapeFree(shape);
   BodyData *data = cpBodyGetUserData(body);
   free(data);
+  cpSpaceRemoveBody(world->space, body);
+  // cpShapeFree(shape); TODO: This causes a crash, why?
   cpBodyFree(body);
-  cpShape *lastShape = vector_back(&world->shapes);
-  memcpy(shape, &lastShape, sizeof(void *));
-  vector_pop_back(&world->shapes);
+  vector_remove(&world->shapes, shapeId);
 }
 
 int microPhysicsBodiesCount()
@@ -312,7 +307,7 @@ void microPhysicsBodySetRotation(int bodyId, float angle)
 
 float microPhysicsBodyGetRotation(int bodyId)
 {
-  const int worldId = bodyId >> 16;
+  const int worldId = bodyId >> 1;
   const int shapeId = bodyId & 0xFFFF;
   World *world = vector_at(&worlds, worldId);
   const cpShape *shape = *(cpShape **)vector_at(&world->shapes, shapeId);

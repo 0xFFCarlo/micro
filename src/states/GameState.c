@@ -1,4 +1,5 @@
 #include "GameState.h"
+#include "../micro/Audio.h"
 #include "../micro/ECS.h"
 #include "../micro/Graphics.h"
 #include "../micro/Physics.h"
@@ -14,9 +15,12 @@
 #include "../entities/Player.h"
 #include "../entities/Projectile.h"
 #include "../entities/Space.h"
+#include "../managers/ambience_music.h"
+#include "../managers/inventory.h"
 #include "../systems/AnimationSystem.h"
 #include "../systems/EventsSystem.h"
 #include "../systems/GravitySystem.h"
+#include "../systems/InteractionSystem.h"
 #include "../systems/LifetimeSystem.h"
 #include "../systems/LockOnViewSystem.h"
 #include "../systems/ParticlesSystem.h"
@@ -56,6 +60,7 @@ void gameStateInit()
   // Register systems
   microECSSystemAdd(eventsSystem);
   microECSSystemAdd(gravitySystem);
+  microECSSystemAdd(interactionSystem);
   microECSSystemAdd(updateSystem);
   microECSSystemAdd(lifetimeSystem);
   microECSSystemAdd(physicsSystem);
@@ -68,22 +73,37 @@ void gameStateInit()
 
   // Physics world
   int world_id = microPhysicsWorldNew();
-  printf("Physics world_id: %d\n", world_id);
+  debug_print("Physics world_id: %d\n", world_id);
 
-  // Texture atlas
+  // Load resources
   microResourceLoad("atlas", "res/textures/", "atlas");
+  microResourceLoadFont("ui_font", "./res/fonts/firacode.ttf", 24,
+                        MICRO_FILTER_NEAREST);
+
+  // Setup ambience
+  ambienceMusicSetup();
+  ambienceMusicSet(AMBIENCE_NORMAL);
+
+  // Setup inventory system
+  uint32_t pickup_sound = microResourceLoad("item_pickup_snd",
+                                            "./res/sounds/robot_pickup.wav",
+                                            "sound");
+  inventorySetPickupSound(pickup_sound);
 
   // Register entities
   SpaceEntityAdd();
   PlanetEntityAdd();
   PlayerEntityAdd();
-  float playerX, playerY;
-  PlayerGetPos(&playerX, &playerY);
-  ProjectileAddEntity(playerX - 32, playerY, 0, 0);
   LogGUIAdd();
   GUIInit();
 
-  printf("Dinamically allocated memory: %llu bytes\n", memory_get_allocated());
+  // Add projectile
+  // float playerX, playerY;
+  // PlayerGetPos(&playerX, &playerY);
+  // ProjectileAddEntity(playerX - 32, playerY, 0, 0);
+
+  debug_print("Dinamically allocated memory: %llu bytes\n",
+              memory_get_allocated());
 }
 
 void gameStateUpdate(float dt)
@@ -98,9 +118,9 @@ void gameStateFree()
 {
   microResourceFreeAll();
   microECSFree();
-  printf("Freeing physics world\n");
+  debug_print("Freeing physics world\n");
   microGraphicsQuit();
-  printf("Freeing graphics\n");
+  debug_print("Freeing graphics\n");
   microPhysicsWorldFreeAll();
   memory_check_leaks();
   exit(0);

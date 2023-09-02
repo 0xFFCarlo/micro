@@ -223,7 +223,7 @@ int microTextureLoadFromFile(const char *filepath)
     return -1;
   int id = microTextureLoadFromMemory(data, width, height, channels,
                                       MICRO_FILTER_LINEAR);
-  free(data);
+  stbi_image_free(data);
   return id;
 }
 
@@ -392,7 +392,10 @@ void microAtlasGenerateAnimations(int textureAtlasId)
     // parse frame number and make sure it is a number
     int frame_number = atoi(frame_number_str);
     if (frame_number == 0 && frame_number_str[0] != '0')
+    {
+      free(tmp);
       continue;
+    }
 
     // Get animation source rect
     int x, y, w, h;
@@ -1326,7 +1329,7 @@ void microCanvasFree(int canvasId)
 ///////////////////////////
 void microGraphicsInit()
 {
-  if (SDL_Init(SDL_INIT_VIDEO) < 0)
+  if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
   {
     printf("Failed to initialize th SDL2 library\n");
     return;
@@ -1393,7 +1396,7 @@ void microGraphicsInit()
   char *glVersion = (char *)glGetString(GL_VERSION);
   if (glVersion)
   {
-    printf("OpenGL version: %s\n", glVersion);
+    debug_print("OpenGL version: %s\n", glVersion);
   }
 
 #if defined(__linux__)
@@ -1459,11 +1462,11 @@ void microGraphicsInit()
   countverts = 0;
   wireframe = 0;
 
-  printf("microGraphics allocated %d kb\n",
-         (int)((sizeof(microTextures) + sizeof(microCanvases) +
-                sizeof(microShaders) + sizeof(microAnimations) +
-                sizeof(microFonts)) /
-               (double)(1024)));
+  debug_print("microGraphics allocated %d kb\n",
+              (int)((sizeof(microTextures) + sizeof(microCanvases) +
+                     sizeof(microShaders) + sizeof(microAnimations) +
+                     sizeof(microFonts)) /
+                    (double)(1024)));
 
   // Clear debug info
   debugInfo.drawCalls = 0;

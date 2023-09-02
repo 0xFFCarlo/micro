@@ -1,7 +1,7 @@
 #ifndef PLANET_H
 #define PLANET_H
 
-#define GROUND_HEIGHT 8
+#define GROUND_HEIGHT 16
 
 extern void PlanetEntityAdd();
 extern float PlanetGetRadius();

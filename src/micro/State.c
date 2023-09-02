@@ -1,5 +1,4 @@
 #include "State.h"
-#include <stdlib.h>
 
 MicroState currentState = {NULL, NULL, NULL};
 int stateChangeRequested = 0;

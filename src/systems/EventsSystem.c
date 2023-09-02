@@ -17,7 +17,7 @@ void eventsSystem(float dt)
   SDL_Event event;
   while (SDL_PollEvent(&event))
   {
-    for (unsigned int i = 0; i < components_count; i++)
+    for (uint32_t i = 0; i < components_count; i++)
     {
       const int entityId = microECSComponentGetEntityId(cid_event_listener, i);
       if (components_events[i].on_event)
