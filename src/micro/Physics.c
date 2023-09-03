@@ -7,6 +7,7 @@ typedef struct
 {
   cpSpace *space;
   Vector shapes;
+  Vector freed_shapes_id;
 } World;
 
 typedef struct BodyData
@@ -27,7 +28,9 @@ cpBool microPhysicsCollisionBegin(cpArbiter *arb, cpSpace *space,
 
   CP_ARBITER_GET_BODIES(arb, body1, body2);
   BodyData *data1 = (BodyData *)cpBodyGetUserData(body1);
+  assert(data1 != NULL);
   BodyData *data2 = (BodyData *)cpBodyGetUserData(body2);
+  assert(data2 != NULL);
 
   if (data1->collisionBegin)
     data1->collisionBegin(data1->entityId, data2->entityId);
@@ -47,7 +50,8 @@ int microPhysicsWorldNew()
   }
 
   World world = {.space = cpSpaceNew(),
-                 .shapes = vector_create(sizeof(cpShape *))};
+                 .shapes = vector_create(sizeof(cpShape *)),
+                 .freed_shapes_id = vector_create(sizeof(int))};
   cpSpaceSetGravity(world.space, cpv(0, 0));
 
   // Set collision handler
@@ -80,18 +84,20 @@ void microPhysicsWorldFree(int worldId)
   World *world = vector_at(&worlds, worldId);
 
   // Free all bodies user data
-  while (world->shapes.size)
-    microPhysicsBodyFree(world->shapes.size - 1);
+  for (uint32_t i = 0; i < world->shapes.size; i++)
+    microPhysicsBodyFree(i);
 
   cpSpaceFree(world->space);
   vector_free(&world->shapes);
-  vector_remove(&worlds, worldId);
+  vector_free(&world->freed_shapes_id);
+  World **ws = (World **)worlds.data;
+  ws[worldId] = NULL;
 }
 
 void microPhysicsWorldFreeAll()
 {
-  while (worlds.size)
-    microPhysicsWorldFree(worlds.size - 1);
+  for (uint32_t i = 0; i < worlds.size; i++)
+    microPhysicsWorldFree(i);
   vector_free(&worlds);
   worlds_initialized = 0;
 }
@@ -130,8 +136,23 @@ int microPhysicsBodyNewCircle(int entityId, int worldId, float cx, float cy,
   cpShapeSetSensor(shape, 0);
   cpShapeSetUserData(shape, NULL);
   cpShapeSetMass(shape, mass);
-  vector_push_back(&world->shapes, &shape);
-  return world->shapes.size - 1;
+
+  // Store shape in shapes vector
+  if (world->freed_shapes_id.size)
+  {
+    // Reuse a freed shape id
+    int shapeId = *(int *)vector_back(&world->freed_shapes_id);
+    vector_pop_back(&world->freed_shapes_id);
+    cpShape **shapes = (cpShape **)world->shapes.data;
+    shapes[shapeId] = shape;
+    return shapeId + (worldId << 16);
+  }
+  else
+  {
+    // Add a new shape id
+    vector_push_back(&world->shapes, &shape);
+    return world->shapes.size - 1 + (worldId << 16);
+  }
 }
 
 int microPhysicsBodyNewRect(int entityId, int worldId, float cx, float cy,
@@ -167,23 +188,45 @@ int microPhysicsBodyNewRect(int entityId, int worldId, float cx, float cy,
   cpShapeSetCollisionType(shape, 0);
   cpShapeSetSensor(shape, 0);
   cpShapeSetUserData(shape, NULL);
-  vector_push_back(&world->shapes, &shape);
-  return world->shapes.size - 1 + (worldId << 16);
+
+  // Store shape in shapes vector
+  if (world->freed_shapes_id.size)
+  {
+    // Reuse a freed shape id
+    int shapeId = *(int *)vector_back(&world->freed_shapes_id);
+    vector_pop_back(&world->freed_shapes_id);
+    cpShape **shapes = (cpShape **)world->shapes.data;
+    shapes[shapeId] = shape;
+    return shapeId + (worldId << 16);
+  }
+  else
+  {
+    // Add a new shape id
+    vector_push_back(&world->shapes, &shape);
+    return world->shapes.size - 1 + (worldId << 16);
+  }
 }
 
 void microPhysicsBodyFree(int bodyId)
 {
   const int worldId = bodyId >> 16;
-  const int shapeId = bodyId & 0xFFFF;
+  int shapeId = bodyId & 0xFFFF;
   World *world = vector_at(&worlds, worldId);
   cpShape *shape = *(cpShape **)vector_at(&world->shapes, shapeId);
+  if (shape == NULL)
+    return;
   cpBody *body = cpShapeGetBody(shape);
   BodyData *data = cpBodyGetUserData(body);
   free(data);
   cpSpaceRemoveBody(world->space, body);
-  // cpShapeFree(shape); TODO: This causes a crash, why?
+  cpSpaceRemoveShape(world->space, shape);
   cpBodyFree(body);
-  vector_remove(&world->shapes, shapeId);
+  cpShapeFree(shape);
+
+  // Remove shape from shapes vector
+  cpShape **shapes = (cpShape **)world->shapes.data;
+  shapes[shapeId] = NULL;
+  vector_push_back(&world->freed_shapes_id, &shapeId);
 }
 
 int microPhysicsBodiesCount()
@@ -192,7 +235,7 @@ int microPhysicsBodiesCount()
   for (unsigned int i = 0; i < worlds.size; i++)
   {
     World *world = vector_at(&worlds, i);
-    count += world->shapes.size;
+    count += world->shapes.size - world->freed_shapes_id.size;
   }
   return count;
 }
@@ -212,6 +255,7 @@ float microPhysicsBodyGetMass(int bodyId)
   const int shapeId = bodyId & 0xFFFF;
   World *world = vector_at(&worlds, worldId);
   cpShape *shape = *(cpShape **)vector_at(&world->shapes, shapeId);
+  assert(shape != NULL);
   return cpShapeGetMass(shape);
 }
 
@@ -221,6 +265,7 @@ void microPhysicsBodySetPosition(int bodyId, float x, float y)
   const int shapeId = bodyId & 0xFFFF;
   World *world = vector_at(&worlds, worldId);
   cpShape *shape = *(cpShape **)vector_at(&world->shapes, shapeId);
+  assert(shape != NULL);
   cpBody *body = cpShapeGetBody(shape);
   cpBodySetPosition(body, cpv(x, y));
 }
@@ -231,6 +276,7 @@ void microPhysicsBodySetVelocity(int bodyId, float x, float y)
   const int shapeId = bodyId & 0xFFFF;
   World *world = vector_at(&worlds, worldId);
   cpShape *shape = *(cpShape **)vector_at(&world->shapes, shapeId);
+  assert(shape != NULL);
   cpBody *body = cpShapeGetBody(shape);
   cpBodySetVelocity(body, cpv(x, y));
 }
@@ -241,6 +287,7 @@ void microPhysicsBodySetForce(int bodyId, float x, float y)
   const int shapeId = bodyId & 0xFFFF;
   World *world = vector_at(&worlds, worldId);
   cpShape *shape = *(cpShape **)vector_at(&world->shapes, shapeId);
+  assert(shape != NULL);
   cpBody *body = cpShapeGetBody(shape);
   cpBodySetForce(body, cpv(x, y));
 }
@@ -252,7 +299,10 @@ void microPhysicsBodySetCollisionCallback(int bodyId,
   const int shapeId = bodyId & 0xFFFF;
   World *world = vector_at(&worlds, worldId);
   cpShape *shape = *(cpShape **)vector_at(&world->shapes, shapeId);
-  BodyData *data = cpBodyGetUserData(cpShapeGetBody(shape));
+  assert(shape != NULL);
+  cpBody *body = cpShapeGetBody(shape);
+  assert(body != NULL);
+  BodyData *data = cpBodyGetUserData(body);
   data->collisionBegin = callback;
 }
 
@@ -262,6 +312,7 @@ void microPhysicsBodyGetPosition(int bodyId, float *x, float *y)
   const int shapeId = bodyId & 0xFFFF;
   World *world = vector_at(&worlds, worldId);
   cpShape *shape = *(cpShape **)vector_at(&world->shapes, shapeId);
+  assert(shape != NULL);
   cpBody *body = cpShapeGetBody(shape);
   cpVect pos = cpBodyGetPosition(body);
   *x = pos.x;
@@ -274,6 +325,7 @@ void microPhysicsBodyGetVelocity(int bodyId, float *x, float *y)
   const int shapeId = bodyId & 0xFFFF;
   World *world = vector_at(&worlds, worldId);
   cpShape *shape = *(cpShape **)vector_at(&world->shapes, shapeId);
+  assert(shape != NULL);
   cpBody *body = cpShapeGetBody(shape);
   cpVect vel = cpBodyGetVelocity(body);
   *x = vel.x;
@@ -286,6 +338,7 @@ void microPhysicsBodyGetForce(int bodyId, float *x, float *y)
   const int shapeId = bodyId & 0xFFFF;
   World *world = vector_at(&worlds, worldId);
   cpShape *shape = *(cpShape **)vector_at(&world->shapes, shapeId);
+  assert(shape != NULL);
   cpBody *body = cpShapeGetBody(shape);
   cpVect force = cpBodyGetForce(body);
   *x = force.x;
@@ -298,6 +351,7 @@ void microPhysicsBodySetRotation(int bodyId, float angle)
   const int shapeId = bodyId & 0xFFFF;
   World *world = vector_at(&worlds, worldId);
   cpShape *shape = *(cpShape **)vector_at(&world->shapes, shapeId);
+  assert(shape != NULL);
   cpBody *body = cpShapeGetBody(shape);
   cpBodySetAngle(body, angle);
   // cpSpaceReindexShapesForBody(world->space, body);
@@ -311,6 +365,7 @@ float microPhysicsBodyGetRotation(int bodyId)
   const int shapeId = bodyId & 0xFFFF;
   World *world = vector_at(&worlds, worldId);
   const cpShape *shape = *(cpShape **)vector_at(&world->shapes, shapeId);
+  assert(shape != NULL);
   const cpBody *body = cpShapeGetBody(shape);
   return cpBodyGetAngle(body);
 }

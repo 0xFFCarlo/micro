@@ -21,6 +21,8 @@ void physicsSystem(float dt)
   for (unsigned int i = 0; i < components_count; i++)
   {
     const int entityId = microECSComponentGetEntityId(cid_body, i);
+    if (!microECSEntityIsAlive(entityId))
+      continue;
     CPosition *pos = (CPosition *)microECSEntityGetComponent(entityId,
                                                              cid_position);
     CBody *body = &components_body[i];

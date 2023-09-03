@@ -23,23 +23,20 @@ void ProjectileFree(int entityId)
 
 void ProjectileCollision(int entityId, int otherEntityId)
 {
-  // Collision with projectile
-  if (microECSEntityHasComponent(otherEntityId, cid_health))
-  {
-    CProjectile *p = microECSEntityGetComponent(entityId, cid_projectile);
-    CHealth *health = microECSEntityGetComponent(otherEntityId, cid_health);
-    health->health -= p->damage;
-    health->health = health->health < 0 ? 0 : health->health;
-  }
-
-  microECSEntityRemove(entityId);
+  // // Collision with projectile
+  // if (microECSEntityHasComponent(otherEntityId, cid_health))
+  // {
+  //   CProjectile *p = microECSEntityGetComponent(entityId, cid_projectile);
+  //   CHealth *health = microECSEntityGetComponent(otherEntityId, cid_health);
+  //   health->health -= p->damage;
+  //   health->health = health->health < 0 ? 0 : health->health;
+  // }
+  //
+  // microECSEntityRemove(entityId);
 }
 
 void ProjectileAddEntity(const int x, const int y, const int vx, const int vy)
 {
-  (void)(vx); // Unused parameter
-  (void)(vy); // Unused parameter
-
   int projectile_entity_id = microECSEntityNew(NULL, ProjectileFree);
   assert(projectile_entity_id != -1);
 
@@ -97,6 +94,7 @@ void ProjectileAddEntity(const int x, const int y, const int vx, const int vy)
                                                      y, PROJECTILE_SIZE / 2.0,
                                                      0.0001, 0, 1.0, 0.0, 1.0);
   microPhysicsBodySetCollisionCallback(projectile_body_id, ProjectileCollision);
+  microPhysicsBodySetVelocity(projectile_body_id, vx, vy);
 
   microECSEntityAddComponent(projectile_entity_id, cid_body,
                              &(CBody){

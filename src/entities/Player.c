@@ -10,6 +10,7 @@
 #include "../micro/Resources.h"
 #include "../systems/InteractionSystem.h"
 #include "Planet.h"
+#include "Projectile.h"
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
@@ -79,6 +80,40 @@ void PlayerGetSize(float *width, float *height)
 {
   *width = PLAYER_BODY_WIDTH;
   *height = PLAYER_BODY_HEIGHT;
+}
+
+void playerEventListener(int entity, const SDL_Event *event)
+{
+  (void)entity; // unused parameter
+
+  // Mouse press
+  if (event->type == SDL_MOUSEBUTTONDOWN)
+  {
+    if (event->button.button == SDL_BUTTON_LEFT)
+    {
+      int mouse_x = 0, mouse_y = 0;
+      SDL_GetMouseState(&mouse_x, &mouse_y);
+      float view_x = 0, view_y = 0;
+      float view_width = 0, view_height = 0;
+      microViewGetCenter(&view_x, &view_y);
+      microViewGetSize(&view_width, &view_height);
+      mouse_x += view_x - view_width / 2.0;
+      mouse_y += view_y - view_height / 2.0;
+
+      float playerX, playerY;
+      PlayerGetPos(&playerX, &playerY);
+
+      float toMouseX = mouse_x - playerX;
+      float toMouseY = mouse_y - playerY;
+      float toMouseDist = sqrt(toMouseX * toMouseX + toMouseY * toMouseY);
+      toMouseX /= toMouseDist;
+      toMouseY /= toMouseDist;
+      float forceX = toMouseX * 400.0;
+      float forceY = toMouseY * 400.0;
+
+      ProjectileAddEntity(playerX, playerY + 32, forceX, forceY);
+    }
+  }
 }
 
 void playerUpdate(int entityId, float dt)
@@ -374,6 +409,12 @@ void PlayerEntityAdd()
                              &(CHealth){
                                .health = 16,
                                .maxHealth = 16,
+                             });
+
+  // Event
+  microECSEntityAddComponent(player_entity_id, cid_event_listener,
+                             &(CEventListener){
+                               .on_event = playerEventListener,
                              });
 
   // Gravity component
