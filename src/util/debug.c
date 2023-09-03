@@ -569,7 +569,7 @@ void *realloc_debug(void *ptr, const size_t size, char *file, const int line)
 
 void memory_check_leaks()
 {
-  printf("Checking for memory leaks...\n");
+  printf("%sChecking for memory leaks...%s\n", COLOR_LIGHT_BLUE, COLOR_DEFAULT);
   int leaks = 0;
   for (int i = 0; i < HASHMAP_SIZE; i++)
   {
@@ -602,7 +602,7 @@ void memory_check_leaks()
     printf("%sNo memory corruptions detected.%s\n", COLOR_LIGHT_GREEN,
            COLOR_DEFAULT);
   }
-  printf("Done\n");
+  printf("%sDone%s\n", COLOR_LIGHT_BLUE, COLOR_DEFAULT);
 }
 
 void memory_check_corruption()
