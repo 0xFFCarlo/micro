@@ -8,6 +8,7 @@
 #include "../micro/Physics.h"
 #include "../micro/Resources.h"
 #include "../micro/State.h"
+#include "../micro/System.h"
 #include "../systems/InteractionSystem.h"
 #include "../util/debug.h"
 #include "../util/vector.h"
@@ -67,6 +68,9 @@ uint32_t interact_button_id = 0;
 uint32_t interact_background_id = 0;
 char interact_text[32] = "E: Interact";
 uint32_t interact_message_id = 0;
+
+// Cursor
+uint32_t cursor_id = 0;
 
 void GUI_show_pop_up(char *text, int x, int y)
 {
@@ -341,6 +345,17 @@ void GUI_free(int entityId)
   (void)(entityId); // Unused parameter
 }
 
+void GUI_update_cursor(int entityId, float dt)
+{
+  (void)(dt); // Unused parameter
+
+  int mouse_x, mouse_y;
+  microSystemGetMousePos(&mouse_x, &mouse_y);
+  CPosition *pos = CmpGetPosition(entityId);
+  pos->x = mouse_x;
+  pos->y = mouse_y;
+}
+
 void GUIInit()
 {
   // Create handler for updating life UI and freeing memory
@@ -425,4 +440,14 @@ void GUIInit()
                RESOURCES_START_Y + RESOURCES_SPACING * 2 +
                  RESOURCES_FRAME_HEIGHT * 2 + RESOURCES_TEXT_VOFFSET,
                deuterium_count_text);
+
+  // Add cursor
+  cursor_id = microECSEntityNew(NULL, NULL);
+  CmpAddPosition(cursor_id, 0, 0);
+  CmpAddDrawable(cursor_id, 5, 1);
+  CmpAddHud(cursor_id);
+  MicroTextureSource txs = microTextureAtlasGetRegion(atlasId, "cursor");
+  CmpAddSprite(cursor_id, atlasId, txs.x, txs.y, txs.w, txs.h);
+  CmpAddTransform(cursor_id, 24, 24, 12, 12, 0);
+  CmpAddUpdate(cursor_id, GUI_update_cursor);
 }

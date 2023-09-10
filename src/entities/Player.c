@@ -8,6 +8,7 @@
 #include "../micro/Graphics.h"
 #include "../micro/Physics.h"
 #include "../micro/Resources.h"
+#include "../micro/System.h"
 #include "../systems/InteractionSystem.h"
 #include "Planet.h"
 #include "Projectile.h"
@@ -88,7 +89,10 @@ void PlayerShootAt(float x, float y)
   CHealth *health = (CHealth *)microECSEntityGetComponent(player_entity_id,
                                                           cid_health);
   if (health->health < 1.0)
+  {
+    microSoundPlay(robot_say_no, 0);
     return;
+  }
 
   health->health -= 1;
 
@@ -313,7 +317,7 @@ void PlayerEntityAdd()
 
   // Position component
   int viewportWidth, viewportHeight;
-  microWindowGetSize(&viewportWidth, &viewportHeight);
+  microSystemGetWindowSize(&viewportWidth, &viewportHeight);
   int x, y;
   x = viewportWidth / 2.0;
   y = viewportHeight / 2.0 - 100.0;

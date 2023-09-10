@@ -3,6 +3,7 @@
 #include "../components/RenderingComponents.h"
 #include "../micro/ECS.h"
 #include "../micro/Graphics.h"
+#include "../micro/System.h"
 #include <stdio.h>
 
 int sprite_system_query = -1;
@@ -30,7 +31,7 @@ void renderingSystem(float dt)
     return;
 
   int winWidth, winHeight;
-  microWindowGetSize(&winWidth, &winHeight);
+  microSystemGetWindowSize(&winWidth, &winHeight);
 
   // Store old view and set default shader
   MicroView old_view = microViewGet();

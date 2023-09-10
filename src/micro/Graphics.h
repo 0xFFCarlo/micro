@@ -240,9 +240,6 @@ extern RenderingDebugInfo microGetRenderingDebugInfo();
 // Reset rendering debug info
 extern void microRenderingDebugInfoClear();
 
-// Get current window size
-extern void microWindowGetSize(int *width, int *height);
-
 // Swap buffers (finalizes frame)
 extern void microSwapBuffers();
 

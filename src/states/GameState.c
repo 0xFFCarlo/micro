@@ -4,6 +4,7 @@
 #include "../micro/Graphics.h"
 #include "../micro/Physics.h"
 #include "../micro/Resources.h"
+#include "../micro/System.h"
 
 #include "../components/CustomComponents.h"
 #include "../components/LogicComponents.h"
@@ -34,7 +35,7 @@
 void gameStateInit()
 {
   int windowWidth, windowHeight;
-  microWindowGetSize(&windowWidth, &windowHeight);
+  microSystemGetWindowSize(&windowWidth, &windowHeight);
 
   int vpheight = 600;
   int vpwidth = vpheight * ((float)windowWidth / (float)windowHeight);
