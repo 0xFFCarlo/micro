@@ -249,6 +249,7 @@ void setupPlanetEntity(int planetId)
                                              PlanetGetRadius() -
                                                GROUND_HEIGHT * 2.0,
                                              1000.0, 1, 0, 0.0, 1.0);
+  microPhysicsBodySetFilter(planet_body_id, 1, 3);
   microECSEntityAddComponent(planetId, cid_body,
                              &(CBody){
                                .body_id = planet_body_id,

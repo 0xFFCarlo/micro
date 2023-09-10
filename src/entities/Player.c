@@ -96,14 +96,14 @@ void PlayerShootAt(float x, float y)
   PlayerGetPos(&playerX, &playerY);
 
   float toMouseX = x - playerX;
-  float toMouseY = y - (playerY + 32);
+  float toMouseY = y - playerY;
   float toMouseDist = sqrt(toMouseX * toMouseX + toMouseY * toMouseY);
   toMouseX /= toMouseDist;
   toMouseY /= toMouseDist;
-  float forceX = toMouseX * 400.0;
-  float forceY = toMouseY * 400.0;
+  float forceX = toMouseX * 600.0;
+  float forceY = toMouseY * 600.0;
 
-  ProjectileAddEntity(playerX, playerY + 32, forceX, forceY);
+  ProjectileAddEntity(playerX, playerY, forceX, forceY);
 
   microSoundPlay(gun_shot, 0);
 }
@@ -329,6 +329,7 @@ void PlayerEntityAdd()
                                            PLAYER_BODY_HEIGHT, 1.0, 0, 0, 0.0,
                                            0.0);
   microPhysicsBodySetCollisionCallback(player_body_id, PlayerCollide);
+  microPhysicsBodySetFilter(player_body_id, 2, 1);
   CmpAddBody(player_entity_id, player_body_id);
 
   // Sprite component

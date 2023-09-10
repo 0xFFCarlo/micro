@@ -306,6 +306,18 @@ void microPhysicsBodySetCollisionCallback(int bodyId,
   data->collisionBegin = callback;
 }
 
+void microPhysicsBodySetFilter(int bodyId, int category, uint32_t mask)
+{
+  const int worldId = bodyId >> 16;
+  const int shapeId = bodyId & 0xFFFF;
+  assert(category >= 0 && category <= 31);
+  World *world = vector_at(&worlds, worldId);
+  cpShape *shape = *(cpShape **)vector_at(&world->shapes, shapeId);
+  assert(shape != NULL);
+  cpShapeFilter filter = cpShapeFilterNew(CP_NO_GROUP, category, mask);
+  cpShapeSetFilter(shape, filter);
+}
+
 void microPhysicsBodyGetPosition(int bodyId, float *x, float *y)
 {
   const int worldId = bodyId >> 16;

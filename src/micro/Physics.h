@@ -1,6 +1,8 @@
 #ifndef PHYSICS_H
 #define PHYSICS_H
 
+#include <stdint.h>
+
 extern int microPhysicsWorldNew();
 extern void microPhysicsWorldStep(int worldId, float dt);
 extern int microPhysicsWorldsCount();
@@ -18,6 +20,7 @@ extern int microPhysicsBodyNewRect(int entityId, int worldId, float cx,
                                    float mass, unsigned char isStatic,
                                    unsigned char canRotate, float elasticity,
                                    float friction);
+extern void microPhysicsBodySetFilter(int bodyId, int category, uint32_t mask);
 extern void microPhysicsBodySetCollisionCallback(int bodyId,
                                                  void (*callback)(int, int));
 extern void microPhysicsBodyFree(int bodyId);

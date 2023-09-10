@@ -26,7 +26,7 @@ void ProjectileCollision(int entityId, int otherEntityId)
   (void)entityId;
   (void)otherEntityId;
 
-  // // Collision with projectile
+  // Collision with projectile
   // if (microECSEntityHasComponent(otherEntityId, cid_health))
   // {
   //   CProjectile *p = microECSEntityGetComponent(entityId, cid_projectile);
@@ -34,8 +34,8 @@ void ProjectileCollision(int entityId, int otherEntityId)
   //   health->health -= p->damage;
   //   health->health = health->health < 0 ? 0 : health->health;
   // }
-  //
-  // microECSEntityRemove(entityId);
+
+  microECSEntityRemove(entityId);
 }
 
 void ProjectileAddEntity(const int x, const int y, const int vx, const int vy)
@@ -63,6 +63,7 @@ void ProjectileAddEntity(const int x, const int y, const int vx, const int vy)
                                                      y, PROJECTILE_SIZE / 2.0,
                                                      0.0001, 0, 1.0, 0.0, 1.0);
   microPhysicsBodySetCollisionCallback(projectile_body_id, ProjectileCollision);
+  microPhysicsBodySetFilter(projectile_body_id, 2, 1);
   microPhysicsBodySetVelocity(projectile_body_id, vx, vy);
   CmpAddBody(projectile_entity_id, projectile_body_id);
 

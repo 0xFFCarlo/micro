@@ -2063,7 +2063,7 @@ void microViewPointScreenToWorld(float x, float y, float *outX, float *outY)
   y *= invScaleY;
 
   // 3. Inverse Rotation
-  const float angle = viewRotation;
+  const float angle = -viewRotation;
   const float cosine = cosf(angle);
   const float sine = sinf(angle);
   float tx = x * cosine +
