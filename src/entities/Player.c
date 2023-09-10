@@ -50,6 +50,7 @@ uint32_t robot_say_introduce = 0;
 uint32_t robot_say_yes = 0;
 uint32_t robot_say_no = 0;
 uint32_t robot_jump = 0;
+uint32_t gun_shot = 0;
 
 void PlayerCollide(int entityId, int otherEntityId)
 {
@@ -82,6 +83,31 @@ void PlayerGetSize(float *width, float *height)
   *height = PLAYER_BODY_HEIGHT;
 }
 
+void PlayerShootAt(float x, float y)
+{
+  CHealth *health = (CHealth *)microECSEntityGetComponent(player_entity_id,
+                                                          cid_health);
+  if (health->health < 1.0)
+    return;
+
+  health->health -= 1;
+
+  float playerX, playerY;
+  PlayerGetPos(&playerX, &playerY);
+
+  float toMouseX = x - playerX;
+  float toMouseY = y - (playerY + 32);
+  float toMouseDist = sqrt(toMouseX * toMouseX + toMouseY * toMouseY);
+  toMouseX /= toMouseDist;
+  toMouseY /= toMouseDist;
+  float forceX = toMouseX * 400.0;
+  float forceY = toMouseY * 400.0;
+
+  ProjectileAddEntity(playerX, playerY + 32, forceX, forceY);
+
+  microSoundPlay(gun_shot, 0);
+}
+
 void playerEventListener(int entity, const SDL_Event *event)
 {
   (void)entity; // unused parameter
@@ -93,25 +119,9 @@ void playerEventListener(int entity, const SDL_Event *event)
     {
       int mouse_x = 0, mouse_y = 0;
       SDL_GetMouseState(&mouse_x, &mouse_y);
-      float view_x = 0, view_y = 0;
-      float view_width = 0, view_height = 0;
-      microViewGetCenter(&view_x, &view_y);
-      microViewGetSize(&view_width, &view_height);
-      mouse_x += view_x - view_width / 2.0;
-      mouse_y += view_y - view_height / 2.0;
-
-      float playerX, playerY;
-      PlayerGetPos(&playerX, &playerY);
-
-      float toMouseX = mouse_x - playerX;
-      float toMouseY = mouse_y - playerY;
-      float toMouseDist = sqrt(toMouseX * toMouseX + toMouseY * toMouseY);
-      toMouseX /= toMouseDist;
-      toMouseY /= toMouseDist;
-      float forceX = toMouseX * 400.0;
-      float forceY = toMouseY * 400.0;
-
-      ProjectileAddEntity(playerX, playerY + 32, forceX, forceY);
+      float px, py;
+      microViewPointScreenToWorld(mouse_x, mouse_y, &px, &py);
+      PlayerShootAt(px, py);
     }
   }
 }
@@ -297,8 +307,6 @@ void PlayerEntityAdd()
   anim_player_idle = microAnimationGet("robot-idle");
   anim_player_walk = microAnimationGet("robot-walk");
   anim_player_jump = microAnimationGet("robot-jump");
-  // anim_player_idle = microAnimationGet("redsauron-small-idle");
-  // anim_player_walk = microAnimationGet("redsauron-small-walk");
 
   player_entity_id = microECSEntityNew(NULL, NULL);
   assert(player_entity_id != -1);
@@ -309,11 +317,7 @@ void PlayerEntityAdd()
   int x, y;
   x = viewportWidth / 2.0;
   y = viewportHeight / 2.0 - 100.0;
-  microECSEntityAddComponent(player_entity_id, cid_position,
-                             &(CPosition){
-                               .x = x,
-                               .y = y,
-                             });
+  CmpAddPosition(player_entity_id, x, y);
 
   // Body component
   // player_body_id = microPhysicsBodyNewCircle(0, viewportWidth / 2.0,
@@ -325,11 +329,7 @@ void PlayerEntityAdd()
                                            PLAYER_BODY_HEIGHT, 1.0, 0, 0, 0.0,
                                            0.0);
   microPhysicsBodySetCollisionCallback(player_body_id, PlayerCollide);
-
-  microECSEntityAddComponent(player_entity_id, cid_body,
-                             &(CBody){
-                               .body_id = player_body_id,
-                             });
+  CmpAddBody(player_entity_id, player_body_id);
 
   // Sprite component
   // int textureId = microTextureLoadFromFile("./res/robot.png");
@@ -337,51 +337,12 @@ void PlayerEntityAdd()
   int textureId = microTextureAtlasGetTextureId(atlasId);
   microTextureSetFilter(textureId, MICRO_FILTER_NEAREST);
 
-  microECSEntityAddComponent(player_entity_id, cid_sprite,
-                             &(CSprite){
-                               .textureId = textureId,
-                               .tx = 0,
-                               .ty = 0,
-                               .tw = 16,
-                               .th = 16,
-                             });
-
-  // Transform component
-  microECSEntityAddComponent(player_entity_id, cid_transform,
-                             &(CTransform){
-                               .width = PLAYER_TEXTURE_WIDTH,
-                               .height = PLAYER_TEXTURE_HEIGHT,
-                               .originX = PLAYER_TEXTURE_WIDTH / 2.0,
-                               .originY = PLAYER_TEXTURE_HEIGHT / 2.0,
-                               .rotation = 0.0,
-                             });
-
-  // Color component
-  microECSEntityAddComponent(player_entity_id, cid_color,
-                             &(CColor){
-                               .r = 1.0,
-                               .g = 1.0,
-                               .b = 1.0,
-                               .a = 1.0,
-                             });
-
-  // Layer component
-  microECSEntityAddComponent(player_entity_id, cid_drawable,
-                             &(CDrawable){
-                               .layerId = 4,
-                               .visible = 1,
-                             });
-
-  // Animation component
-  microECSEntityAddComponent(player_entity_id, cid_animation,
-                             &(CAnimation){
-                               .animationId = anim_player_idle,
-                               .frameId = 0,
-                               .timeSinceLastFrame = 0,
-                               .framesDuration = 1.0,
-                               .flipX = 0,
-                               .flipY = 0,
-                             });
+  CmpAddSprite(player_entity_id, textureId, 0, 0, 16, 16);
+  CmpAddTransform(player_entity_id, PLAYER_TEXTURE_WIDTH, PLAYER_TEXTURE_HEIGHT,
+                  PLAYER_TEXTURE_WIDTH / 2.0, PLAYER_TEXTURE_HEIGHT / 2.0, 0.0);
+  CmpAddColor(player_entity_id, 1.0, 1.0, 1.0, 1.0);
+  CmpAddDrawable(player_entity_id, 4, 1);
+  CmpAddAnimation(player_entity_id, anim_player_idle, 1.0, 0, 0);
 
   // Update component
   microECSEntityAddComponent(player_entity_id, cid_update,
@@ -389,39 +350,20 @@ void PlayerEntityAdd()
                                .update = playerUpdate,
                              });
 
-  // Lock on view component
-  microECSEntityAddComponent(player_entity_id, cid_lock_on_view,
-                             &(CLockOnView){
-                               .followRotation = 1,
-                             });
+  CmpAddLockOnView(player_entity_id, 1);
 
   // Planetary alignment component
   float planetX, planetY;
   PlanetGetPos(&planetX, &planetY);
-  microECSEntityAddComponent(player_entity_id, cid_planetary_alignment,
-                             &(CPlanetaryAlignment){
-                               .planet_x = planetX,
-                               .planet_y = planetY,
-                             });
+  CmpAddPlanetaryAlignment(player_entity_id, planetX, planetY);
 
-  // Health
-  microECSEntityAddComponent(player_entity_id, cid_health,
-                             &(CHealth){
-                               .health = 16,
-                               .maxHealth = 16,
-                             });
+  CmpAddHealth(player_entity_id, 16, 16);
 
   // Event
   microECSEntityAddComponent(player_entity_id, cid_event_listener,
                              &(CEventListener){
                                .on_event = playerEventListener,
                              });
-
-  // Gravity component
-  // microECSEntityAddComponent(player_entity_id, cid_gravity, &(CGravity) {
-  //   .x = planetX,
-  //   .y = planetY,
-  // });
 
   interactionSystemSetActorId(player_entity_id);
 
@@ -437,6 +379,9 @@ void PlayerEntityAdd()
 
   robot_footstep = microResourceLoad("robot_footstep",
                                      "./res/sounds/footstep05.ogg", "sound");
+
+  gun_shot = microResourceLoad("gun_shot", "./res/sounds/shooting_1.mp3",
+                               "sound");
 
   microSoundPlay(robot_say_introduce, 0);
 }

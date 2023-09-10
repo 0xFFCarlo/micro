@@ -17,12 +17,15 @@
 
 void ProjectileFree(int entityId)
 {
-  CBody *body = microECSEntityGetComponent(entityId, cid_body);
+  CBody *body = CmpGetBody(entityId);
   microPhysicsBodyFree(body->body_id);
 }
 
 void ProjectileCollision(int entityId, int otherEntityId)
 {
+  (void)entityId;
+  (void)otherEntityId;
+
   // // Collision with projectile
   // if (microECSEntityHasComponent(otherEntityId, cid_health))
   // {
@@ -41,53 +44,19 @@ void ProjectileAddEntity(const int x, const int y, const int vx, const int vy)
   assert(projectile_entity_id != -1);
 
   // Position component
-  microECSEntityAddComponent(projectile_entity_id, cid_position,
-                             &(CPosition){
-                               .x = x,
-                               .y = y,
-                             });
+  CmpAddPosition(projectile_entity_id, x, y);
 
   // Sprite component
-  // int textureId = microTextureLoadFromFile("./res/robot.png");
   int atlasId = microResourceGet("atlas");
   int textureId = microTextureAtlasGetTextureId(atlasId);
   MicroTextureSource ts = microTextureAtlasGetRegion(atlasId, "projectile-1");
   microTextureSetFilter(textureId, MICRO_FILTER_NEAREST);
+  CmpAddSprite(projectile_entity_id, textureId, ts.x, ts.y, ts.w, ts.h);
 
-  microECSEntityAddComponent(projectile_entity_id, cid_sprite,
-                             &(CSprite){
-                               .textureId = textureId,
-                               .tx = ts.x,
-                               .ty = ts.y,
-                               .tw = ts.w,
-                               .th = ts.h,
-                             });
-
-  // Transform component
-  microECSEntityAddComponent(projectile_entity_id, cid_transform,
-                             &(CTransform){
-                               .width = PROJECTILE_SIZE,
-                               .height = PROJECTILE_SIZE,
-                               .originX = PROJECTILE_SIZE / 2.0,
-                               .originY = PROJECTILE_SIZE / 2.0,
-                               .rotation = 0.0,
-                             });
-
-  // Color component
-  microECSEntityAddComponent(projectile_entity_id, cid_color,
-                             &(CColor){
-                               .r = 1.0,
-                               .g = 1.0,
-                               .b = 1.0,
-                               .a = 1.0,
-                             });
-
-  // Layer component
-  microECSEntityAddComponent(projectile_entity_id, cid_drawable,
-                             &(CDrawable){
-                               .layerId = 4,
-                               .visible = 1,
-                             });
+  CmpAddTransform(projectile_entity_id, PROJECTILE_SIZE, PROJECTILE_SIZE,
+                  PROJECTILE_SIZE / 2.0, PROJECTILE_SIZE / 2.0, 0.0);
+  CmpAddColor(projectile_entity_id, 1.0, 1.0, 1.0, 1.0);
+  CmpAddDrawable(projectile_entity_id, 4, 1);
 
   // Body component
   int projectile_body_id = microPhysicsBodyNewCircle(projectile_entity_id, 0, x,
@@ -95,23 +64,10 @@ void ProjectileAddEntity(const int x, const int y, const int vx, const int vy)
                                                      0.0001, 0, 1.0, 0.0, 1.0);
   microPhysicsBodySetCollisionCallback(projectile_body_id, ProjectileCollision);
   microPhysicsBodySetVelocity(projectile_body_id, vx, vy);
+  CmpAddBody(projectile_entity_id, projectile_body_id);
 
-  microECSEntityAddComponent(projectile_entity_id, cid_body,
-                             &(CBody){
-                               .body_id = projectile_body_id,
-                             });
-
-  // Projectile component
-  microECSEntityAddComponent(projectile_entity_id, cid_projectile,
-                             &(CProjectile){
-                               .damage = 1,
-                             });
-
-  // Lifetime
-  microECSEntityAddComponent(projectile_entity_id, cid_lifetime,
-                             &(CLifetime){
-                               .lifetime = 4.0,
-                             });
+  CmpAddProjectile(projectile_entity_id, 1);
+  CmpAddLifetime(projectile_entity_id, 4.0);
 
   // TODO:: gravity
 }

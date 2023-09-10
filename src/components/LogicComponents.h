@@ -11,6 +11,8 @@ typedef struct
 
 extern int cid_update;
 extern void RegisterCUpdate();
+extern void CmpAddUpdate(int entity_id, void (*update)(int, float));
+extern CUpdate *CmpGetUpdate(int entity_id);
 
 // EventListener
 typedef struct
@@ -20,6 +22,9 @@ typedef struct
 
 extern int cid_event_listener;
 extern void RegisterCEventListener();
+extern void CmpAddEventListener(int entity_id,
+                                void (*on_event)(int, const SDL_Event *));
+extern CEventListener *CmpGetEventListener(int entity_id);
 
 typedef struct
 {
@@ -28,6 +33,8 @@ typedef struct
 
 extern int cid_lifetime;
 extern void RegisterCLifetime();
+extern void CmpAddLifetime(int entity_id, float lifetime);
+extern CLifetime *CmpGetLifetime(int entity_id);
 
 extern void RegisterLogicComponents();
 

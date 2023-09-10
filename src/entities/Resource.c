@@ -20,80 +20,21 @@ void ResourceAddEntity(const int x, const int y)
   assert(res_entity_id != -1);
 
   // Position component
-  microECSEntityAddComponent(res_entity_id, cid_position,
-                             &(CPosition){
-                               .x = x,
-                               .y = y,
-                             });
+  CmpAddPosition(res_entity_id, x, y);
 
   // Sprite component
-  // int textureId = microTextureLoadFromFile("./res/robot.png");
   int atlasId = microResourceGet("atlas");
   int textureId = microTextureAtlasGetTextureId(atlasId);
   MicroTextureSource ts = microTextureAtlasGetRegion(atlasId, "metal");
   microTextureSetFilter(textureId, MICRO_FILTER_NEAREST);
+  CmpAddSprite(res_entity_id, textureId, ts.x, ts.y, ts.w, ts.h);
 
-  microECSEntityAddComponent(res_entity_id, cid_sprite,
-                             &(CSprite){
-                               .textureId = textureId,
-                               .tx = ts.x,
-                               .ty = ts.y,
-                               .tw = ts.w,
-                               .th = ts.h,
-                             });
-
-  // Transform component
-  microECSEntityAddComponent(res_entity_id, cid_transform,
-                             &(CTransform){
-                               .width = 32,
-                               .height = 32,
-                               .originX = 32 / 2.0,
-                               .originY = 32 / 2.0,
-                               .rotation = 0.0,
-                             });
-
-  // Color component
-  microECSEntityAddComponent(res_entity_id, cid_color,
-                             &(CColor){
-                               .r = 1.0,
-                               .g = 1.0,
-                               .b = 1.0,
-                               .a = 1.0,
-                             });
-
-  // Layer component
-  microECSEntityAddComponent(res_entity_id, cid_drawable,
-                             &(CDrawable){
-                               .layerId = 4,
-                               .visible = 1,
-                             });
-
-  // Planetary alignment component
+  CmpAddTransform(res_entity_id, 32, 32, 32 / 2.0, 32 / 2.0, 0.0);
+  CmpAddColor(res_entity_id, 1.0, 1.0, 1.0, 1.0);
+  CmpAddDrawable(res_entity_id, 4, 1);
   float planetX, planetY;
   PlanetGetPos(&planetX, &planetY);
-  microECSEntityAddComponent(res_entity_id, cid_planetary_alignment,
-                             &(CPlanetaryAlignment){
-                               .planet_x = planetX,
-                               .planet_y = planetY,
-                             });
-
-  // Interactive component
-  microECSEntityAddComponent(res_entity_id, cid_interactive,
-                             &(CInteractive){
-                               .can_interact = 1,
-                               .interact_range = 32 + 2,
-                               .on_interact = inventoryPickupCallback,
-                             });
-
-  microECSEntityAddComponent(res_entity_id, cid_item,
-                             &(CItem){
-                               .type = ITEM_METAL,
-                               .quantity = 1,
-                             });
-
-  // Body component
-  // int res_body_id = microPhysicsBodyNewCircle(0, x, y, 24/2.0, 1.0, 0, 1.0,
-  // 0.0, 1.0); microECSEntityAddComponent(res_entity_id, cid_body, &(CBody) {
-  //     .body_id = res_body_id,
-  // });
+  CmpAddPlanetaryAlignment(res_entity_id, planetX, planetY);
+  CmpAddInteractive(res_entity_id, 32 + 2, "Pick up", inventoryPickupCallback);
+  CmpAddItem(res_entity_id, ITEM_METAL, 1);
 }

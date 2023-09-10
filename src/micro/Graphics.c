@@ -930,6 +930,65 @@ int microFontGetTextureId(int fontId)
   return microFonts[fontId].textureId;
 }
 
+int microFontGetLineHeight(int fontId)
+{
+  int ascent;
+  stbtt_GetFontVMetrics(&microFonts[fontId].fontInfo, &ascent, 0, 0);
+  return ascent * microFonts[fontId].fontSize;
+}
+
+int microFontGetTextWidth(int fontId, const char *text)
+{
+  const stbtt_fontinfo *fontInfo = &microFonts[fontId].fontInfo;
+  const float scale = stbtt_ScaleForPixelHeight(fontInfo,
+                                                microFonts[fontId].fontSize);
+
+  float totalWidth = 0.0f;
+  float lineWidth = 0.0f;
+  char prevChar = '\n';
+
+  for (const char *p = text; *p; ++p)
+  {
+    char c = *p;
+
+    if (c == '\n')
+    {
+      // Reset for a new line
+      if (lineWidth > totalWidth)
+        totalWidth = lineWidth;
+      lineWidth = 0.0f;
+      prevChar = c;
+      continue;
+    }
+
+    assert((int)c >= 32 && (int)c <= 126);
+
+    int advance, lsb;
+    stbtt_GetCodepointHMetrics(fontInfo, c, &advance, &lsb);
+
+    // Add kerning if it's not the start of a new line
+    if (prevChar != '\n')
+    {
+      float kerning = stbtt_GetCodepointKernAdvance(fontInfo, prevChar, c) *
+                      scale;
+      lineWidth += kerning;
+    }
+
+    // Apply the left side bearing (lsb) and the advance of the character
+    lineWidth += lsb * scale;
+    lineWidth += (advance - lsb) * scale;
+
+    prevChar = c;
+  }
+
+  // In case the string doesn't end with a newline, make sure we still update
+  // totalWidth
+  if (lineWidth > totalWidth)
+    totalWidth = lineWidth;
+
+  return totalWidth;
+}
+
 void microFontFree(int fontId)
 {
   if (fontId < 0 || fontId >= MICRO_MAX_FONTS)
@@ -1964,6 +2023,57 @@ void microViewGetViewport(float *width, float *height)
 {
   *width = viewViewportW;
   *height = viewViewportH;
+}
+
+void microViewPointWorldToScreen(float x, float y, float *outX, float *outY)
+{
+  // 1. Translate to the view's local coordinate system (center becomes origin)
+  x -= viewCenterX;
+  y -= viewCenterY;
+
+  // 2. Rotate around the (new) origin
+  const float angle = -viewRotation;
+  const float cosine = cosf(angle);
+  const float sine = sinf(angle);
+  float tx = x * cosine - y * sine;
+  float ty = x * sine + y * cosine;
+
+  // 3. Scale (if required)
+  const float scaleX = viewViewportW / viewWidth;
+  const float scaleY = viewViewportH / viewHeight;
+  tx *= scaleX;
+  ty *= scaleY;
+
+  // 4. Translate to screen coordinates (from the origin to the center of the
+  // viewport)
+  *outX = tx + viewViewportW / 2;
+  *outY = ty + viewViewportH / 2;
+}
+
+void microViewPointScreenToWorld(float x, float y, float *outX, float *outY)
+{
+  // 1. Inverse Translation to the origin
+  x -= viewViewportW / 2;
+  y -= viewViewportH / 2;
+
+  // 2. Inverse Scaling
+  const float invScaleX = viewWidth / viewViewportW;
+  const float invScaleY = viewHeight / viewViewportH;
+  x *= invScaleX;
+  y *= invScaleY;
+
+  // 3. Inverse Rotation
+  const float angle = viewRotation;
+  const float cosine = cosf(angle);
+  const float sine = sinf(angle);
+  float tx = x * cosine +
+             y * sine; // Note: inverse rotation uses + for sine in x
+  float ty = -x * sine +
+             y * cosine; // Note: inverse rotation uses - for sine in y
+
+  // 4. Inverse centering translation
+  *outX = tx + viewCenterX;
+  *outY = ty + viewCenterY;
 }
 
 RenderingDebugInfo microGetRenderingDebugInfo()

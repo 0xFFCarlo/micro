@@ -60,7 +60,7 @@ void interactionSystem(float dt)
                                                              cid_position);
     CInteractive *interactive = &components_interactive[i];
 
-    if (interactive->on_interact == NULL || interactive->can_interact == 0)
+    if (interactive->on_interact == NULL)
       continue;
 
     float dist = sqrtf(powf(player_pos->x - pos->x, 2) +

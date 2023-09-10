@@ -57,6 +57,8 @@ extern int microFontLoadFromFile(const char *filepath, unsigned int fontSize,
                                  int filter);
 extern int microFontGetTextureId(int fontId);
 extern int microFontGetSize(int fontId);
+extern int microFontGetLineHeight(int fontId);
+extern int microFontGetTextWidth(int fontId, const char *text);
 extern void microFontFree(int fontId);
 extern void microFontFreeAll();
 
@@ -124,6 +126,10 @@ extern void microViewGetCenter(float *centerX, float *centerY);
 extern void microViewGetSize(float *width, float *height);
 extern void microViewGetViewport(float *width, float *height);
 extern float microViewGetRotation();
+extern void microViewPointWorldToScreen(float x, float y, float *outX,
+                                        float *outY);
+extern void microViewPointScreenToWorld(float x, float y, float *outX,
+                                        float *outY);
 
 /////////////////////////////
 // Shader

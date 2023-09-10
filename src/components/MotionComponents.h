@@ -9,6 +9,8 @@ typedef struct
 
 extern int cid_position;
 extern void RegisterCPosition();
+extern void CmpAddPosition(int entity_id, double x, double y);
+CPosition *CmpGetPosition(int entity_id);
 
 // Transform
 typedef struct
@@ -20,6 +22,9 @@ typedef struct
 
 extern int cid_transform;
 extern void RegisterCTransform();
+extern void CmpAddTransform(int entity_id, float width, float height,
+                            float originX, float originY, float rotation);
+CTransform *CmpGetTransform(int entity_id);
 
 // Body
 typedef struct
@@ -29,6 +34,8 @@ typedef struct
 
 extern int cid_body;
 extern void RegisterCBody();
+extern void CmpAddBody(int entity_id, int body_id);
+CBody *CmpGetBody(int entity_id);
 
 extern void RegisterMotionComponents();
 
