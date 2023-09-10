@@ -139,13 +139,16 @@ void RegisterCShadedCanvas()
   cid_shadedCanvas = microECSComponentRegister(sizeof(CShadedCanvas));
 }
 
-void CmpAddShaderCanvas(int entity_id, int width, int height, int shaderId)
+void CmpAddShaderCanvas(int entity_id, int width, int height, int shaderId,
+                        int canvasId)
 {
   microECSEntityAddComponent(entity_id, cid_shadedCanvas,
                              &(CShadedCanvas){
                                .width = width,
                                .height = height,
                                .shaderId = shaderId,
+                               .canvasId = canvasId,
+                               .needsUpdate = 1,
                              });
 }
 

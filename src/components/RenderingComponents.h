@@ -77,6 +77,7 @@ extern int cid_animation;
 extern void RegisterCAnimation();
 extern void CmpAddAnimation(int entity_id, int animationId,
                             float framesDuration, uint8_t flipX, uint8_t flipY);
+extern CAnimation *CmpGetAnimation(int entity_id);
 
 // ShadedCanvas
 typedef struct
@@ -90,7 +91,8 @@ typedef struct
 extern int cid_shadedCanvas;
 extern void RegisterCShadedCanvas();
 extern void CmpAddShaderCanvas(int entity_id, int width, int height,
-                               int shaderId);
+                               int shaderId, int canvasId);
+extern CShadedCanvas *CmpGetShadedCanvas(int entity_id);
 
 // LockOnView
 typedef struct
@@ -100,6 +102,7 @@ typedef struct
 extern int cid_lock_on_view;
 extern void RegisterCLockOnView();
 extern void CmpAddLockOnView(int entity_id, uint8_t followRotation);
+extern CLockOnView *CmpGetLockOnView(int entity_id);
 
 // ParticleEmitter
 typedef struct
@@ -111,6 +114,7 @@ extern int cid_particle_emitter;
 extern void RegisterCParticleEmitter();
 extern void CmpAddParticleEmitter(int entity_id, uint16_t emitterId,
                                   uint16_t offsetX, uint16_t offsetY);
+extern CParticleEmitter *CmpGetParticleEmitter(int entity_id);
 
 extern void RegisterRenderingComponents();
 

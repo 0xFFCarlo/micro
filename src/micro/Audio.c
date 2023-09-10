@@ -3,6 +3,10 @@
 #include "Error.h"
 #include <SDL2/SDL_mixer.h>
 
+// TODO:
+// 1. determine channel on the fly using -1
+// 2. PlayParallel function that plays sound on a new channel
+
 #define MICRO_MAX_SOUNDS 256
 #define MICRO_MAX_MUSICS 64
 #define MICRO_SOUND_TYPE_BIT 0x8000

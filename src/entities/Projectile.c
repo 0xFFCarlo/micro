@@ -69,6 +69,4 @@ void ProjectileAddEntity(const int x, const int y, const int vx, const int vy)
 
   CmpAddProjectile(projectile_entity_id, 1);
   CmpAddLifetime(projectile_entity_id, 4.0);
-
-  // TODO:: gravity
 }

@@ -86,8 +86,7 @@ void PlayerGetSize(float *width, float *height)
 
 void PlayerShootAt(float x, float y)
 {
-  CHealth *health = (CHealth *)microECSEntityGetComponent(player_entity_id,
-                                                          cid_health);
+  CHealth *health = CmpGetHealth(player_entity_id);
   if (health->health < 1.0)
   {
     microSoundPlay(robot_say_no, 0);
@@ -150,8 +149,7 @@ void playerUpdate(int entityId, float dt)
   microViewGetCenter(&viewX, &viewY);
   microViewGetSize(&viewWidth, &viewHeight);
 
-  CPosition *position = (CPosition *)
-    microECSEntityGetComponent(player_entity_id, cid_position);
+  CPosition *position = CmpGetPosition(player_entity_id);
 
   float planetX, planetY;
   PlanetGetPos(&planetX, &planetY);
@@ -209,8 +207,7 @@ void playerUpdate(int entityId, float dt)
   microPhysicsBodySetForce(player_body_id, forceX, forceY);
 
   // Update animation
-  CAnimation *animation = (CAnimation *)
-    microECSEntityGetComponent(player_entity_id, cid_animation);
+  CAnimation *animation = CmpGetAnimation(player_entity_id);
   if (playerJump == 1)
   {
     // Stop at the last frame
@@ -273,16 +270,14 @@ void playerUpdate(int entityId, float dt)
   }
   player_state = PLAYER_STATE_IDLE;
 
-  CPlanetaryAlignment *pa = (CPlanetaryAlignment *)
-    microECSEntityGetComponent(player_entity_id, cid_planetary_alignment);
+  CPlanetaryAlignment *pa = CmpGetPlanetaryAlignment(player_entity_id);
   pa->planet_x = planetX;
   pa->planet_y = planetY;
 }
 
 void PlayerGetPos(float *x, float *y)
 {
-  CPosition *position = (CPosition *)
-    microECSEntityGetComponent(player_entity_id, cid_position);
+  CPosition *position = CmpGetPosition(player_entity_id);
   *x = position->x;
   *y = position->y;
 }
@@ -294,15 +289,13 @@ float PlayerGetRotation()
 
 int PlayerGetHealth()
 {
-  CHealth *health = (CHealth *)microECSEntityGetComponent(player_entity_id,
-                                                          cid_health);
+  CHealth *health = CmpGetHealth(player_entity_id);
   return health->health;
 }
 
 int PlayerGetMaxHealth()
 {
-  CHealth *health = (CHealth *)microECSEntityGetComponent(player_entity_id,
-                                                          cid_health);
+  CHealth *health = CmpGetHealth(player_entity_id);
   return health->maxHealth;
 }
 
@@ -348,13 +341,7 @@ void PlayerEntityAdd()
   CmpAddColor(player_entity_id, 1.0, 1.0, 1.0, 1.0);
   CmpAddDrawable(player_entity_id, 4, 1);
   CmpAddAnimation(player_entity_id, anim_player_idle, 1.0, 0, 0);
-
-  // Update component
-  microECSEntityAddComponent(player_entity_id, cid_update,
-                             &(CUpdate){
-                               .update = playerUpdate,
-                             });
-
+  CmpAddUpdate(player_entity_id, playerUpdate);
   CmpAddLockOnView(player_entity_id, 1);
 
   // Planetary alignment component
@@ -363,12 +350,7 @@ void PlayerEntityAdd()
   CmpAddPlanetaryAlignment(player_entity_id, planetX, planetY);
 
   CmpAddHealth(player_entity_id, 16, 16);
-
-  // Event
-  microECSEntityAddComponent(player_entity_id, cid_event_listener,
-                             &(CEventListener){
-                               .on_event = playerEventListener,
-                             });
+  CmpAddEventListener(player_entity_id, playerEventListener);
 
   interactionSystemSetActorId(player_entity_id);
 
@@ -385,7 +367,7 @@ void PlayerEntityAdd()
   robot_footstep = microResourceLoad("robot_footstep",
                                      "./res/sounds/footstep05.ogg", "sound");
 
-  gun_shot = microResourceLoad("gun_shot", "./res/sounds/shooting_1.mp3",
+  gun_shot = microResourceLoad("gun_shot", "./res/sounds/laser-beam.mp3",
                                "sound");
 
   microSoundPlay(robot_say_introduce, 0);
