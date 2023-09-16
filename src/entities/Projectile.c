@@ -7,6 +7,7 @@
 #include "../micro/Graphics.h"
 #include "../micro/Physics.h"
 #include "../micro/Resources.h"
+#include "Explosion.h"
 #include "Planet.h"
 #include <assert.h>
 #include <math.h>
@@ -34,6 +35,13 @@ void ProjectileCollision(int entityId, int otherEntityId)
   //   health->health -= p->damage;
   //   health->health = health->health < 0 ? 0 : health->health;
   // }
+
+  CPosition *pos = CmpGetPosition(entityId);
+  CBody *body = CmpGetBody(entityId);
+  float vx, vy;
+  microPhysicsBodyGetVelocity(body->body_id, &vx, &vy);
+  makeExplostionProjectileGroundHit(pos->x, pos->y, vx, vy);
+  PlanetTryMine(pos->x, pos->y);
 
   microECSEntityRemove(entityId);
 }
@@ -66,7 +74,6 @@ void ProjectileAddEntity(const int x, const int y, const int vx, const int vy)
   microPhysicsBodySetFilter(projectile_body_id, 2, 1);
   microPhysicsBodySetVelocity(projectile_body_id, vx, vy);
   CmpAddBody(projectile_entity_id, projectile_body_id);
-
   CmpAddProjectile(projectile_entity_id, 1);
   CmpAddLifetime(projectile_entity_id, 4.0);
 }

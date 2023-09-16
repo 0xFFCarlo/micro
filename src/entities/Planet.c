@@ -49,6 +49,25 @@ void PlanetGetSurfacePosition(float angle, float offset, int *x, int *y)
   *y = sy;
 }
 
+void PlanetTryMine(float x, float y)
+{
+  float p = (double)rand() / (double)RAND_MAX;
+  const float mine_chance = 0.2;
+  if (p < mine_chance)
+  {
+    p = p / mine_chance;
+
+    if (p < 0.8)
+    {
+      ResourceAddEntity(x, y, RES_METAL);
+    }
+    else
+    {
+      ResourceAddEntity(x, y, RES_CRYSTAL);
+    }
+  }
+}
+
 // Updates shader parameters to show the shadows at the planet position
 void planetUpdate(int planetId, float dt)
 {
@@ -230,7 +249,7 @@ void setupPlanetEntity(int planetId)
     float angle = (double)rand() / (double)RAND_MAX * 2.0 * M_PI;
     int rockX, rockY;
     PlanetGetSurfacePosition(angle, 16.0 / 2.0, &rockX, &rockY);
-    ResourceAddEntity(rockX, rockY);
+    ResourceAddEntity(rockX, rockY, RES_METAL);
   }
 }
 

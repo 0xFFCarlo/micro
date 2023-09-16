@@ -19,14 +19,15 @@
 
 #define PLAYER_STATE_IDLE 0
 #define PLAYER_STATE_WALK 1
+#define PLAYER_STATE_SOLAR_CHARGING 2
 
 #define PLAYER_DIRECTION_RIGHT 0
 #define PLAYER_DIRECTION_LEFT 1
 
-#define PLAYER_TEXTURE_WIDTH 48
-#define PLAYER_TEXTURE_HEIGHT 48
-#define PLAYER_BODY_WIDTH (PLAYER_TEXTURE_WIDTH / 3.0)
-#define PLAYER_BODY_HEIGHT (PLAYER_TEXTURE_HEIGHT)
+#define PLAYER_TEXTURE_WIDTH (32 * 3)
+#define PLAYER_TEXTURE_HEIGHT (32 * 3)
+#define PLAYER_BODY_WIDTH (48 / 3.0)
+#define PLAYER_BODY_HEIGHT (48)
 
 int player_entity_id = -1;
 int player_idle = -1;
@@ -35,7 +36,11 @@ int player_direction = 0;
 
 int anim_player_idle = -1;
 int anim_player_walk = -1;
+int anim_player_idle_noenergy = -1;
+int anim_player_walk_noenergy = -1;
 int anim_player_jump = -1;
+int anim_player_solar_charging = -1;
+int anim_shield = -1;
 
 float toPlanetNormX = 0.0;
 float toPlanetNormY = 0.0;
@@ -52,6 +57,9 @@ uint32_t robot_say_yes = 0;
 uint32_t robot_say_no = 0;
 uint32_t robot_jump = 0;
 uint32_t gun_shot = 0;
+uint32_t robot_recharging = 0;
+uint32_t robot_alarm = 0;
+uint32_t robot_shield_hit = 0;
 
 void PlayerCollide(int entityId, int otherEntityId)
 {
@@ -59,23 +67,70 @@ void PlayerCollide(int entityId, int otherEntityId)
   (void)otherEntityId; // unused parameter
 }
 
-void PlayerMove(int direction)
+void PlayerWalk()
 {
-  if (direction == PLAYER_DIRECTION_RIGHT)
-  {
-    player_direction = PLAYER_DIRECTION_RIGHT;
-    player_state = PLAYER_STATE_WALK;
-  }
+  CAnimation *animation = CmpGetAnimation(player_entity_id);
+  // Play footsteps sound
+  if (microSoundIsPlaying(robot_footstep) == 0)
+    microSoundPlay(robot_footstep, 1);
+  microSoundStop(robot_recharging);
+
+  if (animation->animationId != anim_player_walk &&
+      animation->animationId != anim_player_walk_noenergy)
+    animation->frameId = 0;
+
+  CHealth *health = CmpGetHealth(player_entity_id);
+  if (health->health < health->maxHealth * 0.1)
+    animation->animationId = anim_player_walk_noenergy;
   else
-  {
-    player_direction = PLAYER_DIRECTION_LEFT;
-    player_state = PLAYER_STATE_WALK;
-  }
+    animation->animationId = anim_player_walk;
+
+  animation->flipX = (player_direction != PLAYER_DIRECTION_RIGHT);
+  animation->framesDuration = 0.25;
 }
 
 void PlayerJump()
 {
-  playerJump = 1;
+  CAnimation *animation = CmpGetAnimation(player_entity_id);
+
+  // Stop footsteps sound
+  microSoundStop(robot_footstep);
+  microSoundStop(robot_recharging);
+
+  // Stop at the last frame
+  if (animation->frameId == 1)
+    animation->timeSinceLastFrame = 0;
+  animation->animationId = anim_player_jump;
+  animation->flipX = (player_direction != PLAYER_DIRECTION_RIGHT);
+  animation->framesDuration = 0.1;
+}
+
+void PlayerChargeWithSolarPanel(float dt)
+{
+  CAnimation *animation = CmpGetAnimation(player_entity_id);
+
+  // Stop footsteps sound
+  microSoundStop(robot_footstep);
+
+  CHealth *health = CmpGetHealth(player_entity_id);
+  if (health->health < health->maxHealth)
+  {
+    health->health += 1.0 * dt;
+    if (microSoundIsPlaying(robot_recharging) == 0)
+      microSoundPlay(robot_recharging, 0);
+  }
+  else
+  {
+    health->health = health->maxHealth;
+    if (microSoundIsPlaying(robot_recharging) == 1)
+      microSoundStop(robot_recharging);
+  }
+
+  if (animation->animationId != anim_player_solar_charging &&
+      animation->animationId != anim_player_idle)
+    animation->frameId = 0;
+  animation->animationId = anim_player_solar_charging;
+  animation->framesDuration = 1.0;
 }
 
 void PlayerGetSize(float *width, float *height)
@@ -108,7 +163,7 @@ void PlayerShootAt(float x, float y)
 
   ProjectileAddEntity(playerX, playerY, forceX, forceY);
 
-  microSoundPlay(gun_shot, 0);
+  microSoundPlayNewChannel(gun_shot, 0);
 }
 
 void playerEventListener(int entity, const SDL_Event *event)
@@ -127,19 +182,62 @@ void playerEventListener(int entity, const SDL_Event *event)
       PlayerShootAt(px, py);
     }
   }
+  else if (event->type == SDL_KEYDOWN)
+  {
+    if (event->key.keysym.scancode == SDL_SCANCODE_P)
+    {
+      PlayerShieldHit(1.0);
+    }
+  }
+}
+
+void PlayerIdle()
+{
+  CAnimation *animation = CmpGetAnimation(player_entity_id);
+
+  // Stop footsteps sound
+  microSoundStop(robot_footstep);
+
+  if (animation->animationId != anim_player_idle &&
+      animation->animationId != anim_player_idle_noenergy)
+    animation->frameId = 0;
+
+  CHealth *health = CmpGetHealth(player_entity_id);
+  if (health->health < health->maxHealth * 0.1)
+    animation->animationId = anim_player_idle_noenergy;
+  else
+    animation->animationId = anim_player_idle;
+
+  animation->flipX = (player_direction != PLAYER_DIRECTION_RIGHT);
+  animation->framesDuration = 1.0;
 }
 
 void playerUpdate(int entityId, float dt)
 {
   (void)entityId; // unused parameter
 
-  // Controls
+  // Controls and player state
+  player_state = PLAYER_STATE_IDLE;
   if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_D])
-    PlayerMove(0);
+  {
+    player_direction = PLAYER_DIRECTION_RIGHT;
+    player_state = PLAYER_STATE_WALK;
+  }
   else if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_A])
-    PlayerMove(1);
+  {
+    player_direction = PLAYER_DIRECTION_LEFT;
+    player_state = PLAYER_STATE_WALK;
+  }
+
   if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_W])
-    PlayerJump();
+    playerJump = 1;
+
+  if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_C])
+  {
+    CHealth *health = CmpGetHealth(player_entity_id);
+    if (health->health < health->maxHealth)
+      player_state = PLAYER_STATE_SOLAR_CHARGING;
+  }
 
   if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_E])
     interactionSystemInteract();
@@ -206,70 +304,29 @@ void playerUpdate(int entityId, float dt)
 
   microPhysicsBodySetForce(player_body_id, forceX, forceY);
 
-  // Update animation
-  CAnimation *animation = CmpGetAnimation(player_entity_id);
-  if (playerJump == 1)
+  // Energy alarm
+  CHealth *health = CmpGetHealth(player_entity_id);
+  if (health->health < health->maxHealth * 0.1)
   {
-    // Stop at the last frame
-    if (animation->frameId == 1)
-      animation->timeSinceLastFrame = 0;
-
-    animation->framesDuration = 0.1;
-
-    animation->animationId = anim_player_jump;
-    if (player_direction == PLAYER_DIRECTION_RIGHT)
-      animation->flipX = 0;
-    else
-      animation->flipX = 1;
-
-    // Stop footsteps sound
-    microSoundStop(robot_footstep);
-  }
-  else if (player_state == PLAYER_STATE_WALK)
-  {
-    // Play footsteps sound
-    if (microSoundIsPlaying(robot_footstep) == 0)
-      microSoundPlay(robot_footstep, 1);
-
-    if (player_direction == PLAYER_DIRECTION_RIGHT)
-    {
-      if (animation->animationId != anim_player_walk)
-        animation->frameId = 0;
-      animation->animationId = anim_player_walk;
-      animation->flipX = 0;
-    }
-    else
-    {
-      if (animation->animationId != anim_player_walk)
-        animation->frameId = 0;
-      animation->animationId = anim_player_walk;
-      animation->flipX = 1;
-    }
-    animation->framesDuration = 0.25;
+    if (microSoundIsPlaying(robot_alarm) == 0)
+      microSoundPlay(robot_alarm, 1);
   }
   else
   {
-    // Stop footsteps sound
-    microSoundStop(robot_footstep);
-
-    if (player_direction == PLAYER_DIRECTION_RIGHT)
-    {
-      if (animation->animationId != anim_player_idle)
-        animation->frameId = 0;
-      animation->animationId = anim_player_idle;
-      animation->flipX = 0;
-    }
-    else
-    {
-      if (animation->animationId != anim_player_idle)
-        animation->frameId = 0;
-      animation->animationId = anim_player_idle;
-      animation->flipX = 1;
-    }
-    animation->framesDuration = 1.0;
+    microSoundStop(robot_alarm);
   }
-  player_state = PLAYER_STATE_IDLE;
 
+  // Update player based on state
+  if (playerJump == 1)
+    PlayerJump();
+  else if (player_state == PLAYER_STATE_WALK)
+    PlayerWalk();
+  else if (player_state == PLAYER_STATE_SOLAR_CHARGING)
+    PlayerChargeWithSolarPanel(dt);
+  else
+    PlayerIdle();
+
+  // Update Planet alignment component
   CPlanetaryAlignment *pa = CmpGetPlanetaryAlignment(player_entity_id);
   pa->planet_x = planetX;
   pa->planet_y = planetY;
@@ -287,23 +344,60 @@ float PlayerGetRotation()
   return playerRotation;
 }
 
-int PlayerGetHealth()
+float PlayerGetHealth()
 {
-  CHealth *health = CmpGetHealth(player_entity_id);
-  return health->health;
+  return CmpGetHealth(player_entity_id)->health;
 }
 
-int PlayerGetMaxHealth()
+float PlayerGetMaxHealth()
+{
+  return CmpGetHealth(player_entity_id)->maxHealth;
+}
+
+void ShieldUpdate(int shieldId, float dt)
+{
+  (void)dt; // unused parameter
+  CPosition *position = CmpGetPosition(shieldId);
+  CPosition *playerPosition = CmpGetPosition(player_entity_id);
+  position->x = playerPosition->x;
+  position->y = playerPosition->y;
+}
+
+void PlayerShieldHit(float damage)
 {
   CHealth *health = CmpGetHealth(player_entity_id);
-  return health->maxHealth;
+  health->health -= damage;
+  if (health->health < 0.0)
+    health->health = 0.0;
+
+  // Play sound
+  microSoundPlay(robot_shield_hit, 0);
+
+  int shield_id = microECSEntityNew(NULL, NULL);
+  assert(shield_id != -1);
+  CPosition *position = CmpGetPosition(player_entity_id);
+  CmpAddPosition(shield_id, position->x, position->y);
+  CmpAddUpdate(shield_id, ShieldUpdate);
+  CmpAddDrawable(shield_id, 5, 1);
+  CmpAddTransform(shield_id, PLAYER_TEXTURE_WIDTH, PLAYER_TEXTURE_HEIGHT,
+                  PLAYER_TEXTURE_WIDTH / 2.0, PLAYER_TEXTURE_HEIGHT / 2.0, 0.0);
+  CmpAddSprite(shield_id, microResourceGet("atlas"), 0, 0, 16, 16);
+  CmpAddAnimation(shield_id, anim_shield, 0.1, 0, 0);
+  float planetX, planetY;
+  PlanetGetPos(&planetX, &planetY);
+  CmpAddPlanetaryAlignment(shield_id, planetX, planetY);
+  CmpAddLifetime(shield_id, 0.4);
 }
 
 void PlayerEntityAdd()
 {
   anim_player_idle = microAnimationGet("robot-idle");
   anim_player_walk = microAnimationGet("robot-walk");
+  anim_player_idle_noenergy = microAnimationGet("robot-idle-noenergy");
+  anim_player_walk_noenergy = microAnimationGet("robot-walk-noenergy");
   anim_player_jump = microAnimationGet("robot-jump");
+  anim_player_solar_charging = microAnimationGet("robot-solarpanel");
+  anim_shield = microAnimationGet("shield");
 
   player_entity_id = microECSEntityNew(NULL, NULL);
   assert(player_entity_id != -1);
@@ -369,6 +463,15 @@ void PlayerEntityAdd()
 
   gun_shot = microResourceLoad("gun_shot", "./res/sounds/laser-beam.mp3",
                                "sound");
+
+  robot_recharging = microResourceLoad("robot_recharging",
+                                       "./res/sounds/recharging.wav", "sound");
+
+  robot_alarm = microResourceLoad("robot_alarm", "./res/sounds/alarm.wav",
+                                  "sound");
+
+  robot_shield_hit = microResourceLoad("robot_shield_hit",
+                                       "./res/sounds/shield-hit.wav", "sound");
 
   microSoundPlay(robot_say_introduce, 0);
 }

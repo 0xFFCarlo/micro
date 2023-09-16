@@ -2,13 +2,13 @@
 #include "../components/LogicComponents.h"
 #include "../components/MotionComponents.h"
 #include "../components/RenderingComponents.h"
-#include "../managers/inventory.h"
 #include "../micro/ECS.h"
 #include "../micro/Graphics.h"
 #include "../micro/Physics.h"
 #include "../micro/Resources.h"
 #include "../micro/State.h"
 #include "../micro/System.h"
+#include "../misc/inventory.h"
 #include "../systems/InteractionSystem.h"
 #include "../util/debug.h"
 #include "../util/vector.h"
@@ -49,10 +49,8 @@ char crystal_count_text[16] = "0";
 char deuterium_count_text[16] = "0";
 
 // energy bar
-int playerHealth = 0;
-int playerMaxHealth = 0;
-int hearthsCount = 0;
-int hearthsMaxCount = 0;
+float playerHealth = 0;
+float playerMaxHealth = 0;
 uint32_t bar_frame_id = 0;
 uint32_t bar_background_id = 0;
 uint32_t bar_content_id = 0;
@@ -182,14 +180,11 @@ void GUI_update_energy_bar(float dt)
 {
   playerHealth = PlayerGetHealth();
   playerMaxHealth = PlayerGetMaxHealth();
-  hearthsMaxCount = playerMaxHealth / 4;
-  hearthsCount = playerHealth / 4;
   float normalized_energy = (float)playerHealth / (float)playerMaxHealth;
 
   // Update energy bar
   CTransform *bar_transform = CmpGetTransform(bar_content_id);
-
-  bar_transform->width = (int)(normalized_energy * ENERGY_BAR_WIDTH);
+  bar_transform->width = (normalized_energy * ENERGY_BAR_WIDTH);
 
   CTransform *bar_diff_transform = CmpGetTransform(bar_diff_id);
   if (bar_transform->width > bar_diff_transform->width)
@@ -358,6 +353,9 @@ void GUI_update_cursor(int entityId, float dt)
 
 void GUIInit()
 {
+  // Hide cursor
+  microSystemShowCursor(0);
+
   // Create handler for updating life UI and freeing memory
   int gui_handler = microECSEntityNew(NULL, GUI_free);
   microECSEntityAddComponent(gui_handler, cid_update,
@@ -366,8 +364,6 @@ void GUIInit()
   // Creating and computing lifes
   playerHealth = PlayerGetHealth();
   playerMaxHealth = PlayerGetMaxHealth();
-  hearthsMaxCount = playerMaxHealth / 4;
-  hearthsCount = playerHealth / 4;
 
   const int atlasId = microResourceGet("atlas");
 

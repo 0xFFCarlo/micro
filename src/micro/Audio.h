@@ -20,6 +20,14 @@ extern int microSoundLoadFromFile(const char *filepath, const int soundType);
  */
 extern void microSoundPlay(const unsigned int soundId, const int loops);
 
+/**
+ * @brief Plays a sound in a new channel
+ * @param soundId The sound id
+ * @param loops Whether to loop the sound or not
+ */
+extern void microSoundPlayNewChannel(const unsigned int soundId,
+                                     const int loops);
+
 /*
  * @brief Returns 1 if the sound is playing, 0 otherwise
  * @param soundId The sound id
@@ -58,6 +66,11 @@ extern void microSoundSetVolume(const unsigned int soundId, const float volume);
  * @return The volume (0.0f to 1.0f)
  */
 extern float microSoundGetVolume(const unsigned int soundId);
+
+/**
+ * @brief Get number of channels playing a sound
+ */
+extern int microSoundChannelsPlaying();
 
 /**
  * @brief Free a sound from memory

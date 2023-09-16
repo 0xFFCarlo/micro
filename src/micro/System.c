@@ -10,3 +10,8 @@ void microSystemGetWindowSize(int *width, int *height)
 {
   SDL_GetWindowSize(SDL_GL_GetCurrentWindow(), width, height);
 }
+
+void microSystemShowCursor(uint8_t show)
+{
+  SDL_ShowCursor(show);
+}

@@ -1,11 +1,6 @@
 #include "Audio.h"
 #include "../util/debug.h"
-#include "Error.h"
 #include <SDL2/SDL_mixer.h>
-
-// TODO:
-// 1. determine channel on the fly using -1
-// 2. PlayParallel function that plays sound on a new channel
 
 #define MICRO_MAX_SOUNDS 256
 #define MICRO_MAX_MUSICS 64
@@ -14,6 +9,7 @@
 
 static Mix_Chunk *loadedSounds[MICRO_MAX_SOUNDS];
 static Mix_Music *loadedMusics[MICRO_MAX_MUSICS];
+static int32_t channelPlaying[MICRO_MAX_SOUNDS];
 static uint8_t cleanedBuffer = SDL_FALSE;
 static uint8_t mix_initialized = SDL_FALSE;
 
@@ -24,8 +20,7 @@ int microSoundLoadFromFile(const char *filepath, const int soundType)
     assert(Mix_Init(MIX_INIT_OGG | MIX_INIT_MP3));
     if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0)
     {
-      microSendError(MICRO_ERROR_FAIL, "Can't initialize audio");
-      debug_print("Mix_GetError: %s\n", Mix_GetError());
+      debug_print("Can't initialize audio: %s\n", Mix_GetError());
       return -1;
     }
     mix_initialized = SDL_TRUE;
@@ -37,6 +32,7 @@ int microSoundLoadFromFile(const char *filepath, const int soundType)
     Mix_AllocateChannels(MICRO_MAX_SOUNDS);
     memset(loadedSounds, 0, sizeof(Mix_Chunk *) * MICRO_MAX_SOUNDS);
     memset(loadedMusics, 0, sizeof(Mix_Music *) * MICRO_MAX_MUSICS);
+    memset(channelPlaying, -1, sizeof(int32_t) * MICRO_MAX_SOUNDS);
     cleanedBuffer = SDL_TRUE;
   }
 
@@ -46,8 +42,7 @@ int microSoundLoadFromFile(const char *filepath, const int soundType)
     Mix_Chunk *chunk = Mix_LoadWAV(filepath);
     if (chunk == NULL)
     {
-      microSendError(MICRO_ERROR_FAIL, "Can't load soundeffect");
-      debug_print("Mix_GetError: %s\n", Mix_GetError());
+      debug_print("Can't load soundeffect: %s\n", Mix_GetError());
       return -1;
     }
 
@@ -63,7 +58,7 @@ int microSoundLoadFromFile(const char *filepath, const int soundType)
     }
     if (spot == -1)
     {
-      microSendError(MICRO_ERROR_FAIL, "Sound resources are full");
+      debug_print("Sound resources are full\n");
       Mix_FreeChunk(chunk);
       return -1;
     }
@@ -77,8 +72,8 @@ int microSoundLoadFromFile(const char *filepath, const int soundType)
     Mix_Music *music = Mix_LoadMUS(filepath);
     if (music == NULL)
     {
-      microSendError(MICRO_ERROR_FAIL, "Can't load music");
-      return MICRO_FALSE;
+      debug_print("Can't load music: %s\n", Mix_GetError());
+      return 0;
     }
 
     // find spot to place sound in resources buffer
@@ -93,9 +88,9 @@ int microSoundLoadFromFile(const char *filepath, const int soundType)
     }
     if (spot == -1)
     {
-      microSendError(MICRO_ERROR_FAIL, "Sound resources are full");
+      debug_print("Music resources are full\n");
       Mix_FreeMusic(music);
-      return MICRO_FALSE;
+      return 0;
     }
     loadedMusics[spot] = music;
 
@@ -121,15 +116,14 @@ void microSoundPlay(const unsigned int soundId, const int loops)
     Mix_Music *music = loadedMusics[bufferId];
     if (music == NULL)
     {
-      microSendError(MICRO_ERROR_FAIL,
-                     "Cannot play music: the soundId provided is invalid");
+      debug_print("Cannot play music: the soundId provided is invalid\n");
       return;
     }
 
-    const int result = Mix_PlayMusic(music, loops);
+    const int result = Mix_PlayMusic(music, loops == 0 ? 0 : -1);
     if (result == -1)
     {
-      microSendError(MICRO_ERROR_FAIL, "Cannot play music");
+      debug_print("Cannot play music: %s\n", Mix_GetError());
       return;
     }
   }
@@ -138,11 +132,58 @@ void microSoundPlay(const unsigned int soundId, const int loops)
     Mix_Chunk *chunk = loadedSounds[bufferId];
     if (chunk == NULL)
     {
-      microSendError(MICRO_ERROR_FAIL,
-                     "Cannot play sound: the soundId provided is invalid");
+      debug_print("Cannot play sound: the soundId provided is invalid\n");
       return;
     }
-    Mix_PlayChannel(bufferId, chunk, loops);
+    int32_t channel = bufferId;
+    if (channel != -1)
+      channel = Mix_PlayChannel(channel, chunk, loops == 0 ? 0 : -1);
+    else
+      channel = Mix_PlayChannel(-1, chunk, loops == 0 ? 0 : -1);
+    assert(channel != -1);
+
+    // store in which channel the sound is playing
+    channelPlaying[bufferId] = bufferId;
+  }
+}
+
+void microSoundPlayNewChannel(const unsigned int soundId, const int loops)
+{
+  // check if its music or sound effects and clear sound type bit
+  const unsigned char isMusic = (soundId & MICRO_SOUND_TYPE_BIT) > 0;
+  unsigned int bufferId = soundId;
+  if (isMusic)
+    bufferId = bufferId & MICRO_SOUND_TYPE_CLEAR_MASK; // clear type bit
+
+  if (isMusic)
+  {
+    Mix_Music *music = loadedMusics[bufferId];
+    if (music == NULL)
+    {
+      debug_print("Cannot play music: the soundId provided is invalid");
+      return;
+    }
+
+    const int result = Mix_PlayMusic(music, loops == 0 ? 0 : -1);
+    if (result == -1)
+    {
+      debug_print("Cannot play music");
+      return;
+    }
+  }
+  else
+  {
+    Mix_Chunk *chunk = loadedSounds[bufferId];
+    if (chunk == NULL)
+    {
+      debug_print("Cannot play sound: the soundId provided is invalid");
+      return;
+    }
+    int32_t channel = Mix_PlayChannel(-1, chunk, loops == 0 ? 0 : -1);
+    assert(channel != -1);
+
+    // store in which channel the sound is playing
+    channelPlaying[bufferId] = channel;
   }
 }
 
@@ -154,10 +195,16 @@ void microSoundStop(const unsigned int soundId)
   if (isMusic)
     bufferId = bufferId & MICRO_SOUND_TYPE_CLEAR_MASK; // clear type bit
 
+  if (channelPlaying[bufferId] == -1)
+    return;
+
   if (isMusic)
     Mix_HaltMusic();
   else
-    Mix_HaltChannel(bufferId);
+  {
+    Mix_HaltChannel(channelPlaying[bufferId]);
+    channelPlaying[bufferId] = -1;
+  }
 }
 
 int microSoundIsPlaying(const unsigned int soundId)
@@ -168,10 +215,13 @@ int microSoundIsPlaying(const unsigned int soundId)
   if (isMusic)
     bufferId = bufferId & MICRO_SOUND_TYPE_CLEAR_MASK; // clear type bit
 
+  if (channelPlaying[bufferId] == -1)
+    return 0;
+
   if (isMusic)
     return Mix_PlayingMusic();
   else
-    return Mix_Playing(bufferId);
+    return Mix_Playing(channelPlaying[bufferId]);
 }
 
 void microSoundSetVolume(const unsigned int soundId, const float volume)
@@ -185,7 +235,7 @@ void microSoundSetVolume(const unsigned int soundId, const float volume)
   // check for bad volume parameter
   if (volume < 0.f || volume > 1.f)
   {
-    microSendError(MICRO_ERROR_FAIL, "Cannot play music");
+    debug_print("Cannot play music");
     return;
   }
   const unsigned int volume_7bit = (unsigned int)(128 * volume);
@@ -224,7 +274,7 @@ void microSoundPause(const unsigned int soundId)
   if (isMusic)
     Mix_PauseMusic();
   else
-    Mix_Pause(bufferId);
+    Mix_Pause(channelPlaying[bufferId]);
 }
 
 void microSoundResume(const unsigned int soundId)
@@ -238,7 +288,12 @@ void microSoundResume(const unsigned int soundId)
   if (isMusic)
     Mix_ResumeMusic();
   else
-    Mix_Resume(bufferId);
+    Mix_Resume(channelPlaying[bufferId]);
+}
+
+int microSoundChannelsPlaying()
+{
+  return Mix_Playing(-1);
 }
 
 void microSoundFree(const unsigned int soundId)

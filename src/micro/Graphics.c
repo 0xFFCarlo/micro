@@ -1416,9 +1416,6 @@ void microGraphicsInit()
     return;
   }
 
-  // Hide cursor
-  SDL_ShowCursor(SDL_DISABLE);
-
   // clear memory allocations
   for (int i = 0; i < MICRO_MAX_TEXTURES; i++)
     microTextures[i].id = -1;
