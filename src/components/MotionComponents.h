@@ -1,6 +1,8 @@
 #ifndef MOTION_COMPONENTS_H
 #define MOTION_COMPONENTS_H
 
+#include <stdint.h>
+
 // Position
 typedef struct
 {
@@ -36,6 +38,21 @@ extern int cid_body;
 extern void RegisterCBody();
 extern void CmpAddBody(int entity_id, int body_id);
 CBody *CmpGetBody(int entity_id);
+
+typedef struct
+{
+  uint32_t target_entity_id;
+  uint8_t lock_rot;
+  uint32_t offset_x;
+  uint32_t offset_y;
+} CFollow;
+
+extern int cid_follow;
+extern void RegisterCFollow();
+extern void CmpAddFollow(int entity_id, uint32_t target_entity_id,
+                         uint8_t lock_rot, uint32_t offset_x,
+                         uint32_t offset_y);
+CFollow *CmpGetFollow(int entity_id);
 
 extern void RegisterMotionComponents();
 

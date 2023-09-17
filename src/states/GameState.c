@@ -20,6 +20,7 @@
 #include "../misc/inventory.h"
 #include "../systems/AnimationSystem.h"
 #include "../systems/EventsSystem.h"
+#include "../systems/FollowSystem.h"
 #include "../systems/GravitySystem.h"
 #include "../systems/InteractionSystem.h"
 #include "../systems/LifetimeSystem.h"
@@ -67,6 +68,7 @@ void gameStateInit()
   microECSSystemAdd(physicsSystem);
   microECSSystemAdd(planetaryAligntmentSystem);
   microECSSystemAdd(lockOnViewSystem);
+  microECSSystemAdd(followSystem);
   microECSSystemAdd(particlesSystem);
   microECSSystemAdd(shadedCanvasSystem);
   microECSSystemAdd(animationSystem);

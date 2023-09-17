@@ -22,13 +22,13 @@
 #define ENERGY_BAR_DIFF_SPEED 3.0
 
 #define ENERGY_BAR_FRAME_START_X 32
-#define ENERGY_BAR_FRAME_START_Y 32
-#define ENERGY_BAR_FRAME_WIDTH (96 * 3)
+#define ENERGY_BAR_FRAME_START_Y -16
+#define ENERGY_BAR_FRAME_WIDTH (192 * 3)
 #define ENERGY_BAR_FRAME_HEIGHT (20 * 3)
 
 #define ENERGY_BAR_START_X (ENERGY_BAR_FRAME_START_X + 22 * 3)
 #define ENERGY_BAR_START_Y (ENERGY_BAR_FRAME_START_Y + 6 * 3)
-#define ENERGY_BAR_WIDTH (70 * 3)
+#define ENERGY_BAR_WIDTH (160 * 3)
 #define ENERGY_BAR_HEIGHT (8 * 3)
 
 #define RESOURCES_SPACING 8
@@ -367,12 +367,24 @@ void GUIInit()
 
   const int atlasId = microResourceGet("atlas");
 
-  // Add energy bar
-  bar_background_id = GUI_add_image(atlasId, ENERGY_BAR_START_X,
-                                    ENERGY_BAR_START_Y, "energy_bar_background",
-                                    ENERGY_BAR_WIDTH, ENERGY_BAR_HEIGHT, 0, 0);
+  int window_width, window_height;
+  microSystemGetWindowSize(&window_width, &window_height);
 
-  bar_diff_id = GUI_add_image(atlasId, ENERGY_BAR_START_X, ENERGY_BAR_START_Y,
+  // Add energy bar
+  bar_background_id = GUI_add_image(atlasId,
+                                    window_width / 2 -
+                                      ENERGY_BAR_FRAME_WIDTH / 2 +
+                                      ENERGY_BAR_START_X,
+                                    ENERGY_BAR_START_Y + window_height -
+                                      ENERGY_BAR_FRAME_HEIGHT,
+                                    "energy_bar_background", ENERGY_BAR_WIDTH,
+                                    ENERGY_BAR_HEIGHT, 0, 0);
+
+  bar_diff_id = GUI_add_image(atlasId,
+                              window_width / 2 - ENERGY_BAR_FRAME_WIDTH / 2 +
+                                ENERGY_BAR_START_X,
+                              ENERGY_BAR_START_Y + window_height -
+                                ENERGY_BAR_FRAME_HEIGHT,
                               "energy_bar_content", ENERGY_BAR_WIDTH,
                               ENERGY_BAR_HEIGHT, 0, 0);
 
@@ -384,14 +396,21 @@ void GUIInit()
                                .a = 1.0,
                              });
 
-  bar_content_id = GUI_add_image(atlasId, ENERGY_BAR_START_X,
-                                 ENERGY_BAR_START_Y, "energy_bar_content",
-                                 ENERGY_BAR_WIDTH, ENERGY_BAR_HEIGHT, 0, 0);
+  bar_content_id = GUI_add_image(atlasId,
+                                 window_width / 2 - ENERGY_BAR_FRAME_WIDTH / 2 +
+                                   ENERGY_BAR_START_X,
+                                 ENERGY_BAR_START_Y + window_height -
+                                   ENERGY_BAR_FRAME_HEIGHT,
+                                 "energy_bar_content", ENERGY_BAR_WIDTH,
+                                 ENERGY_BAR_HEIGHT, 0, 0);
 
-  bar_frame_id = GUI_add_image(atlasId, ENERGY_BAR_FRAME_START_X,
-                               ENERGY_BAR_FRAME_START_Y, "energy_bar_frame",
-                               ENERGY_BAR_FRAME_WIDTH, ENERGY_BAR_FRAME_HEIGHT,
-                               0, 0);
+  bar_frame_id = GUI_add_image(atlasId,
+                               window_width / 2 - ENERGY_BAR_FRAME_WIDTH / 2 +
+                                 ENERGY_BAR_FRAME_START_X,
+                               ENERGY_BAR_FRAME_START_Y + window_height -
+                                 ENERGY_BAR_FRAME_HEIGHT,
+                               "energy_bar_frame", ENERGY_BAR_FRAME_WIDTH,
+                               ENERGY_BAR_FRAME_HEIGHT, 0, 0);
 
   // Add metal counter
   GUI_add_image(atlasId, RESOURCES_START_X, RESOURCES_START_Y, "UI_counter",

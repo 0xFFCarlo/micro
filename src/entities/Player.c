@@ -36,9 +36,10 @@ int player_direction = 0;
 
 int anim_player_idle = -1;
 int anim_player_walk = -1;
+int anim_player_jump = -1;
 int anim_player_idle_noenergy = -1;
 int anim_player_walk_noenergy = -1;
-int anim_player_jump = -1;
+int anim_player_jump_noenergy = -1;
 int anim_player_solar_charging = -1;
 int anim_shield = -1;
 
@@ -100,7 +101,12 @@ void PlayerJump()
   // Stop at the last frame
   if (animation->frameId == 1)
     animation->timeSinceLastFrame = 0;
-  animation->animationId = anim_player_jump;
+
+  CHealth *health = CmpGetHealth(player_entity_id);
+  if (health->health < health->maxHealth * 0.1)
+    animation->animationId = anim_player_jump_noenergy;
+  else
+    animation->animationId = anim_player_jump;
   animation->flipX = (player_direction != PLAYER_DIRECTION_RIGHT);
   animation->framesDuration = 0.1;
 }
@@ -385,17 +391,18 @@ void PlayerShieldHit(float damage)
   CmpAddAnimation(shield_id, anim_shield, 0.1, 0, 0);
   float planetX, planetY;
   PlanetGetPos(&planetX, &planetY);
-  CmpAddPlanetaryAlignment(shield_id, planetX, planetY);
   CmpAddLifetime(shield_id, 0.4);
+  CmpAddFollow(shield_id, player_entity_id, 1, 0, 0);
 }
 
 void PlayerEntityAdd()
 {
   anim_player_idle = microAnimationGet("robot-idle");
   anim_player_walk = microAnimationGet("robot-walk");
+  anim_player_jump = microAnimationGet("robot-jump");
   anim_player_idle_noenergy = microAnimationGet("robot-idle-noenergy");
   anim_player_walk_noenergy = microAnimationGet("robot-walk-noenergy");
-  anim_player_jump = microAnimationGet("robot-jump");
+  anim_player_jump_noenergy = microAnimationGet("robot-jump-noenergy");
   anim_player_solar_charging = microAnimationGet("robot-solarpanel");
   anim_shield = microAnimationGet("shield");
 

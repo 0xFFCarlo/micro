@@ -57,12 +57,13 @@ void ProjectileAddEntity(const int x, const int y, const int vx, const int vy)
   // Sprite component
   int atlasId = microResourceGet("atlas");
   int textureId = microTextureAtlasGetTextureId(atlasId);
-  MicroTextureSource ts = microTextureAtlasGetRegion(atlasId, "projectile-1");
+  MicroTextureSource ts = microTextureAtlasGetRegion(atlasId, "laser");
   microTextureSetFilter(textureId, MICRO_FILTER_NEAREST);
   CmpAddSprite(projectile_entity_id, textureId, ts.x, ts.y, ts.w, ts.h);
 
-  CmpAddTransform(projectile_entity_id, PROJECTILE_SIZE, PROJECTILE_SIZE,
-                  PROJECTILE_SIZE / 2.0, PROJECTILE_SIZE / 2.0, 0.0);
+  const float rotation = atan2(vy, vx);
+  CmpAddTransform(projectile_entity_id, PROJECTILE_SIZE * 2, PROJECTILE_SIZE,
+                  PROJECTILE_SIZE / 2.0, PROJECTILE_SIZE / 2.0, rotation);
   CmpAddColor(projectile_entity_id, 1.0, 1.0, 1.0, 1.0);
   CmpAddDrawable(projectile_entity_id, 4, 1);
 
@@ -75,5 +76,5 @@ void ProjectileAddEntity(const int x, const int y, const int vx, const int vy)
   microPhysicsBodySetVelocity(projectile_body_id, vx, vy);
   CmpAddBody(projectile_entity_id, projectile_body_id);
   CmpAddProjectile(projectile_entity_id, 1);
-  CmpAddLifetime(projectile_entity_id, 4.0);
+  CmpAddLifetime(projectile_entity_id, 3.0);
 }
