@@ -81,3 +81,71 @@ void makeExplostionProjectileGroundHit(int x, int y, float vx, float vy)
   CmpAddParticleEmitter(explosion_entity_id, emitterId, 0, 0);
   CmpAddLifetime(explosion_entity_id, 1.0);
 }
+
+MicroParticle particleDroneExplodes(int emitterId)
+{
+  MicroParticle p;
+  p.rotation = 0;
+  p.rotationSpeed = 0;
+  p.maxLife = 1.0;
+  p.startAlpha = 1.0;
+  p.endAlpha = 0.5;
+  const int scale = 4 + rand() % 8;
+  p.startScale = scale;
+  p.endScale = scale;
+
+  int peX, peY;
+  microParticleEmitterGetPosition(emitterId, &peX, &peY);
+  float planetX, planetY;
+  PlanetGetPos(&planetX, &planetY);
+  Vector2D planetNorm = {planetX - peX, planetY - peY};
+  planetNorm = v2d_normalize(planetNorm);
+
+  Vector2D projectileVec = {projectileVx, projectileVy};
+  projectileVec = v2d_normalize(projectileVec);
+
+  Vector2D dir = v2d_reflect(projectileVec, planetNorm);
+  // float angle = -atan2(dir.y, dir.x);
+  // float angleDev = (M_PI/2) * ((float)rand() / (float)RAND_MAX) - M_PI / 4.0;
+  // angle += angleDev;
+  float angle = ((float)rand() / (float)RAND_MAX) * 2.0 * M_PI;
+  dir.x = cos(angle);
+  dir.y = sin(angle);
+  
+  float randf = ((float)rand() / (float)RAND_MAX);
+  p.vx = dir.x * projectileSpeed * (0.1 + 0.6 * randf);
+  p.vy = dir.y * projectileSpeed * (0.1 + 0.6 * randf);
+
+  int atlasId = microResourceGet("atlas");
+  assert(atlasId != -1);
+  int textureId = microTextureAtlasGetTextureId(atlasId);
+  assert(textureId != -1);
+  assert(textureId < 100);
+  MicroTextureSource ts = microTextureAtlasGetRegion(atlasId,
+                                                     "particle-smoke");
+  p.textureId = textureId;
+  p.tx = ts.x;
+  p.ty = ts.y;
+  p.tw = ts.w;
+  p.th = ts.h;
+
+  return p;
+}
+
+void makeExplosionDroneHit(int x, int y, float vx, float vy, int particleCount)
+{
+  // Store projectile info
+  projectileSpeed = sqrt(vx * vx + vy * vy);
+  projectileVx = vx;
+  projectileVy = vy;
+
+  int explosion_entity_id = microECSEntityNew(NULL, NULL);
+  assert(explosion_entity_id != -1);
+  CmpAddPosition(explosion_entity_id, x, y);
+  CmpAddDrawable(explosion_entity_id, 4, 1);
+  const int emitterId = microParticleEmitterCreateExplosion(x, y, particleCount,
+                                                            particleDroneExplodes);
+  assert(emitterId != -1);
+  CmpAddParticleEmitter(explosion_entity_id, emitterId, 0, 0);
+  CmpAddLifetime(explosion_entity_id, 1.0);
+}

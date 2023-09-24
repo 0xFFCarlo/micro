@@ -122,12 +122,24 @@ extern void microViewSetViewport(float x, float y, float width, float height);
 extern void microViewSetCenter(float x, float y);
 extern void microViewSetSize(float width, float height);
 extern void microViewSetRotation(float rotation);
+
+// Get view center
 extern void microViewGetCenter(float *centerX, float *centerY);
+
+// Get view size
 extern void microViewGetSize(float *width, float *height);
+
+// Get viewport
 extern void microViewGetViewport(float *width, float *height);
+
+// Get view rotation
 extern float microViewGetRotation();
+
+// Transform world coordinates to screen coordinates
 extern void microViewPointWorldToScreen(float x, float y, float *outX,
                                         float *outY);
+
+// Transform screen coordinates to world coordinates
 extern void microViewPointScreenToWorld(float x, float y, float *outX,
                                         float *outY);
 

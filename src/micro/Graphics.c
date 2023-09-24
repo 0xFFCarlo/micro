@@ -496,6 +496,7 @@ int microTextureAtlasLoadFromPath(const char *filepath)
 
   // 1. Store all frames and filepaths of images
   int frameCount = 0;
+  unsigned int spaceUsed = 0;
   while ((entry = readdir(dir)) != NULL)
   {
 
@@ -537,6 +538,8 @@ int microTextureAtlasLoadFromPath(const char *filepath)
     frect->w += padding * 2;
     frect->h += padding * 2;
 
+    spaceUsed += frect->w * frect->h;
+
     if (verbose)
       printf("Loading %s to %s\n", filepaths[frameCount],
              filepaths[frameCount]);
@@ -569,7 +572,7 @@ int microTextureAtlasLoadFromPath(const char *filepath)
 
     return -1;
   }
-
+  
   // 3. Find atlas spot id
   int spot = -1;
   for (int i = 0; i < MICRO_MAX_ATLASES; i++)
@@ -664,6 +667,10 @@ int microTextureAtlasLoadFromPath(const char *filepath)
 
   // 9. Generate animations from atlas frames
   microAtlasGenerateAnimations(spot);
+  
+  // 10. Print debug info
+  float spaceUsedPercent = (float)spaceUsed / (float)(MICRO_ATLAS_MAX_WIDTH * MICRO_ATLAS_MAX_HEIGHT);
+  debug_print("Atlas %d loaded! Space used: %.2f%%\n", spot, spaceUsedPercent * 100.0f);
 
   return spot;
 }

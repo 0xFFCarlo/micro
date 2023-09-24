@@ -17,7 +17,7 @@ void RegisterCSprite()
   cid_sprite = microECSComponentRegister(sizeof(CSprite));
 }
 
-void CmpAddSprite(int entity_id, uint8_t textureId, float tx, float ty,
+void CmpAddSprite(int entity_id, u8 textureId, float tx, float ty,
                   float tw, float th)
 {
   microECSEntityAddComponent(entity_id, cid_sprite,
@@ -40,7 +40,7 @@ void RegisterCText()
   cid_text = microECSComponentRegister(sizeof(CText));
 }
 
-void CmpAddText(int entity_id, uint8_t fontId, float lineSpacing, char *text)
+void CmpAddText(int entity_id, u8 fontId, float lineSpacing, char *text)
 {
   microECSEntityAddComponent(entity_id, cid_text,
                              &(CText){
@@ -81,7 +81,7 @@ void RegisterCDrawable()
   cid_drawable = microECSComponentRegister(sizeof(CDrawable));
 }
 
-void CmpAddDrawable(int entity_id, uint8_t layerId, uint8_t visible)
+void CmpAddDrawable(int entity_id, u8 layerId, bool visible)
 {
   microECSEntityAddComponent(entity_id, cid_drawable,
                              &(CDrawable){
@@ -116,7 +116,7 @@ void RegisterCAnimation()
 }
 
 void CmpAddAnimation(int entity_id, int animationId, float framesDuration,
-                     uint8_t flipX, uint8_t flipY)
+                     bool flipX, bool flipY)
 {
   microECSEntityAddComponent(entity_id, cid_animation,
                              &(CAnimation){
@@ -163,7 +163,7 @@ void RegisterCLockOnView()
   cid_lock_on_view = microECSComponentRegister(sizeof(CLockOnView));
 }
 
-void CmpAddLockOnView(int entity_id, uint8_t followRotation)
+void CmpAddLockOnView(int entity_id, bool followRotation)
 {
   microECSEntityAddComponent(entity_id, cid_lock_on_view,
                              &(CLockOnView){

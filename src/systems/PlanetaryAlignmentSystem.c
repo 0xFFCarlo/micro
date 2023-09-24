@@ -12,17 +12,14 @@ void planetaryAligntmentSystem(float dt)
 
   CPlanetaryAlignment *components_planetary_alignment = (CPlanetaryAlignment *)
     microECSComponentsGet(cid_planetary_alignment);
-  const unsigned int
-    components_count = microECSComponentsCount(cid_planetary_alignment);
+  const u32 components_count = microECSComponentsCount(cid_planetary_alignment);
 
   for (unsigned int i = 0; i < components_count; i++)
   {
     const int entityId = microECSComponentGetEntityId(cid_planetary_alignment,
                                                       i);
-    CPosition *position = (CPosition *)microECSEntityGetComponent(entityId,
-                                                                  cid_position);
-    CTransform *transform = (CTransform *)
-      microECSEntityGetComponent(entityId, cid_transform);
+    CPosition *position = CmpGetPosition(entityId);
+    CTransform *transform = CmpGetTransform(entityId);
 
     // Update rotation based on planet position
     float outVecX = position->x - components_planetary_alignment[i].planet_x;
@@ -36,7 +33,7 @@ void planetaryAligntmentSystem(float dt)
     // Update body rotation if it exists
     if (microECSEntityHasComponent(entityId, cid_body))
     {
-      CBody *body = (CBody *)microECSEntityGetComponent(entityId, cid_body);
+      CBody *body = CmpGetBody(entityId);
       float curr_rotation = microPhysicsBodyGetRotation(body->body_id);
       if (fabs(curr_rotation - rotation_rad) > 0.001)
         microPhysicsBodySetRotation(body->body_id, rotation_rad);

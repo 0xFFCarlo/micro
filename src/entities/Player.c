@@ -10,6 +10,7 @@
 #include "../micro/Resources.h"
 #include "../micro/System.h"
 #include "../systems/InteractionSystem.h"
+#include "../misc/collision.h"
 #include "Planet.h"
 #include "Projectile.h"
 #include <assert.h>
@@ -62,10 +63,14 @@ uint32_t robot_recharging = 0;
 uint32_t robot_alarm = 0;
 uint32_t robot_shield_hit = 0;
 
-void PlayerCollide(int entityId, int otherEntityId)
+void PlayerCollide(int playerId, int otherEntityId)
 {
-  (void)entityId;      // unused parameter
-  (void)otherEntityId; // unused parameter
+  CBody* bodyOther = CmpGetBody(otherEntityId);
+  f32 vx, vy;
+  microPhysicsBodyGetVelocity(bodyOther->body_id, &vx, &vy);
+  f32 speed = sqrt(vx * vx + vy * vy);
+  if (speed > 300)
+    PlayerShieldHit(1.0);
 }
 
 void PlayerWalk()
@@ -154,7 +159,7 @@ void PlayerShootAt(float x, float y)
     return;
   }
 
-  health->health -= 1;
+  health->health -= 0.2;
 
   float playerX, playerY;
   PlayerGetPos(&playerX, &playerY);
@@ -167,7 +172,7 @@ void PlayerShootAt(float x, float y)
   float forceX = toMouseX * 600.0;
   float forceY = toMouseY * 600.0;
 
-  ProjectileAddEntity(playerX, playerY, forceX, forceY);
+  ProjectileAddEntity(PROJECTILE_TYPE_PLAYER, playerX, playerY, forceX, forceY);
 
   microSoundPlayNewChannel(gun_shot, 0);
 }
@@ -186,13 +191,6 @@ void playerEventListener(int entity, const SDL_Event *event)
       float px, py;
       microViewPointScreenToWorld(mouse_x, mouse_y, &px, &py);
       PlayerShootAt(px, py);
-    }
-  }
-  else if (event->type == SDL_KEYDOWN)
-  {
-    if (event->key.keysym.scancode == SDL_SCANCODE_P)
-    {
-      PlayerShieldHit(1.0);
     }
   }
 }
@@ -424,10 +422,10 @@ void PlayerEntityAdd()
   //                                            0.0, 0.0);
   player_body_id = microPhysicsBodyNewRect(player_entity_id, 0, x, y,
                                            PLAYER_BODY_WIDTH,
-                                           PLAYER_BODY_HEIGHT, 1.0, 0, 0, 0.0,
+                                           PLAYER_BODY_HEIGHT, 1.0, FALSE, FALSE, 0.0,
                                            0.0);
   microPhysicsBodySetCollisionCallback(player_body_id, PlayerCollide);
-  microPhysicsBodySetFilter(player_body_id, 2, 1);
+  microPhysicsBodySetFilter(player_body_id, COLLISION_GROUP_PLAYER, COLLISION_MASK_PLAYER);
   CmpAddBody(player_entity_id, player_body_id);
 
   // Sprite component

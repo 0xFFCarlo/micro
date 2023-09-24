@@ -7,6 +7,7 @@
 #include "../micro/Graphics.h"
 #include "../micro/Physics.h"
 #include "../micro/Resources.h"
+#include "../misc/collision.h"
 #include "Explosion.h"
 #include "Planet.h"
 #include <assert.h>
@@ -26,27 +27,13 @@ void ProjectileCollision(int entityId, int otherEntityId)
 {
   (void)entityId;
   (void)otherEntityId;
-
-  // Collision with projectile
-  // if (microECSEntityHasComponent(otherEntityId, cid_health))
-  // {
-  //   CProjectile *p = microECSEntityGetComponent(entityId, cid_projectile);
-  //   CHealth *health = microECSEntityGetComponent(otherEntityId, cid_health);
-  //   health->health -= p->damage;
-  //   health->health = health->health < 0 ? 0 : health->health;
-  // }
-
-  CPosition *pos = CmpGetPosition(entityId);
-  CBody *body = CmpGetBody(entityId);
-  float vx, vy;
-  microPhysicsBodyGetVelocity(body->body_id, &vx, &vy);
-  makeExplostionProjectileGroundHit(pos->x, pos->y, vx, vy);
-  PlanetTryMine(pos->x, pos->y);
-
+  
+  // Remove projectile on collision
   microECSEntityRemove(entityId);
 }
 
-void ProjectileAddEntity(const int x, const int y, const int vx, const int vy)
+void ProjectileAddEntity(ProjectileType type, const int x, const int y, const int vx,
+                                const int vy)
 {
   int projectile_entity_id = microECSEntityNew(NULL, ProjectileFree);
   assert(projectile_entity_id != -1);
@@ -57,7 +44,13 @@ void ProjectileAddEntity(const int x, const int y, const int vx, const int vy)
   // Sprite component
   int atlasId = microResourceGet("atlas");
   int textureId = microTextureAtlasGetTextureId(atlasId);
-  MicroTextureSource ts = microTextureAtlasGetRegion(atlasId, "laser");
+
+  MicroTextureSource ts;
+  if (type == PROJECTILE_TYPE_PLAYER)
+    ts = microTextureAtlasGetRegion(atlasId, "laser-blue");
+  else if (type == PROJECTILE_TYPE_ENEMY)
+   ts = microTextureAtlasGetRegion(atlasId, "laser-red");
+
   microTextureSetFilter(textureId, MICRO_FILTER_NEAREST);
   CmpAddSprite(projectile_entity_id, textureId, ts.x, ts.y, ts.w, ts.h);
 
@@ -70,9 +63,14 @@ void ProjectileAddEntity(const int x, const int y, const int vx, const int vy)
   // Body component
   int projectile_body_id = microPhysicsBodyNewCircle(projectile_entity_id, 0, x,
                                                      y, PROJECTILE_SIZE / 2.0,
-                                                     0.0001, 0, 1.0, 0.0, 1.0);
+                                                     0.0001, FALSE, FALSE, 0.0, 1.0);
   microPhysicsBodySetCollisionCallback(projectile_body_id, ProjectileCollision);
-  microPhysicsBodySetFilter(projectile_body_id, 2, 1);
+
+  if (type == PROJECTILE_TYPE_PLAYER)
+    microPhysicsBodySetFilter(projectile_body_id, COLLISION_GROUP_PLAYER, COLLISION_MASK_PLAYER);
+  else if (type == PROJECTILE_TYPE_ENEMY)
+    microPhysicsBodySetFilter(projectile_body_id, COLLISION_GROUP_ENEMY, COLLISION_MASK_ENEMY);
+
   microPhysicsBodySetVelocity(projectile_body_id, vx, vy);
   CmpAddBody(projectile_entity_id, projectile_body_id);
   CmpAddProjectile(projectile_entity_id, 1);

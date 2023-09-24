@@ -51,24 +51,24 @@ char deuterium_count_text[16] = "0";
 // energy bar
 float playerHealth = 0;
 float playerMaxHealth = 0;
-uint32_t bar_frame_id = 0;
-uint32_t bar_background_id = 0;
-uint32_t bar_content_id = 0;
-uint32_t bar_diff_id = 0;
+u32 bar_frame_id = 0;
+u32 bar_background_id = 0;
+u32 bar_content_id = 0;
+u32 bar_diff_id = 0;
 
 // Pop up text
-uint32_t pop_up_id = 0;
+u32 pop_up_id = 0;
 char *pop_up_text = NULL;
 int pop_up_text_width = 0;
 
 // Interaction message
-uint32_t interact_button_id = 0;
-uint32_t interact_background_id = 0;
+u32 interact_button_id = 0;
+u32 interact_background_id = 0;
 char interact_text[32] = "E: Interact";
-uint32_t interact_message_id = 0;
+u32 interact_message_id = 0;
 
 // Cursor
-uint32_t cursor_id = 0;
+u32 cursor_id = 0;
 
 void GUI_show_pop_up(char *text, int x, int y)
 {
@@ -270,9 +270,9 @@ void GUI_update(int entity, float dt)
   GUI_update_interact_message();
 }
 
-uint32_t GUI_add_image(uint32_t atlasId, uint32_t x, uint32_t y,
-                       char *image_name, uint32_t width, uint32_t height,
-                       uint32_t origin_x, uint32_t origin_y)
+u32 GUI_add_image(u32 atlasId, u32 x, u32 y,
+                       char *image_name, u32 width, u32 height,
+                       u32 origin_x, u32 origin_y, u32 layerId)
 {
   const int textureId = microTextureAtlasGetTextureId(atlasId);
   const MicroTextureSource txs = microTextureAtlasGetRegion(atlasId,
@@ -302,7 +302,7 @@ uint32_t GUI_add_image(uint32_t atlasId, uint32_t x, uint32_t y,
 
   microECSEntityAddComponent(entity_id, cid_drawable,
                              &(CDrawable){
-                               .layerId = 5,
+                               .layerId = layerId,
                                .visible = 1,
                              });
   microECSEntityAddComponent(entity_id, cid_hud, NULL);
@@ -310,7 +310,7 @@ uint32_t GUI_add_image(uint32_t atlasId, uint32_t x, uint32_t y,
   return entity_id;
 }
 
-uint32_t GUI_add_text(uint32_t x, uint32_t y, char *text)
+u32 GUI_add_text(u32 x, u32 y, char *text)
 {
   int entity_id = microECSEntityNew(NULL, NULL);
   microECSEntityAddComponent(entity_id, cid_position,
@@ -323,7 +323,7 @@ uint32_t GUI_add_text(uint32_t x, uint32_t y, char *text)
                              });
   microECSEntityAddComponent(entity_id, cid_hud, NULL);
 
-  uint32_t font_id = microResourceGet("ui_font");
+  u32 font_id = microResourceGet("ui_font");
 
   microECSEntityAddComponent(entity_id, cid_text,
                              &(CText){
@@ -378,7 +378,7 @@ void GUIInit()
                                     ENERGY_BAR_START_Y + window_height -
                                       ENERGY_BAR_FRAME_HEIGHT,
                                     "energy_bar_background", ENERGY_BAR_WIDTH,
-                                    ENERGY_BAR_HEIGHT, 0, 0);
+                                    ENERGY_BAR_HEIGHT, 0, 0, 5);
 
   bar_diff_id = GUI_add_image(atlasId,
                               window_width / 2 - ENERGY_BAR_FRAME_WIDTH / 2 +
@@ -386,7 +386,7 @@ void GUIInit()
                               ENERGY_BAR_START_Y + window_height -
                                 ENERGY_BAR_FRAME_HEIGHT,
                               "energy_bar_content", ENERGY_BAR_WIDTH,
-                              ENERGY_BAR_HEIGHT, 0, 0);
+                              ENERGY_BAR_HEIGHT, 0, 0, 6);
 
   microECSEntityAddComponent(bar_diff_id, cid_color,
                              &(CColor){
@@ -402,7 +402,7 @@ void GUIInit()
                                  ENERGY_BAR_START_Y + window_height -
                                    ENERGY_BAR_FRAME_HEIGHT,
                                  "energy_bar_content", ENERGY_BAR_WIDTH,
-                                 ENERGY_BAR_HEIGHT, 0, 0);
+                                 ENERGY_BAR_HEIGHT, 0, 0, 7);
 
   bar_frame_id = GUI_add_image(atlasId,
                                window_width / 2 - ENERGY_BAR_FRAME_WIDTH / 2 +
@@ -410,51 +410,51 @@ void GUIInit()
                                ENERGY_BAR_FRAME_START_Y + window_height -
                                  ENERGY_BAR_FRAME_HEIGHT,
                                "energy_bar_frame", ENERGY_BAR_FRAME_WIDTH,
-                               ENERGY_BAR_FRAME_HEIGHT, 0, 0);
+                               ENERGY_BAR_FRAME_HEIGHT, 0, 0, 8);
 
-  // Add metal counter
-  GUI_add_image(atlasId, RESOURCES_START_X, RESOURCES_START_Y, "UI_counter",
-                RESOURCES_FRAME_WIDTH, RESOURCES_FRAME_HEIGHT, 0, 0);
-
-  GUI_add_image(atlasId, RESOURCES_START_X + RESOURCES_ICON_OFFSET,
-                RESOURCES_START_Y + RESOURCES_ICON_OFFSET, "metal",
-                RESOURCES_ICON_SIZE, RESOURCES_ICON_SIZE, 0, 0);
-
-  GUI_add_text(RESOURCES_START_X + RESOURCES_TEXT_HOFFSET,
-               RESOURCES_START_Y + RESOURCES_TEXT_VOFFSET, metal_count_text);
-
-  // Add crystal counter
-  GUI_add_image(atlasId, RESOURCES_START_X,
-                RESOURCES_START_Y + RESOURCES_FRAME_HEIGHT + RESOURCES_SPACING,
-                "UI_counter", RESOURCES_FRAME_WIDTH, RESOURCES_FRAME_HEIGHT, 0,
-                0);
-
-  GUI_add_image(atlasId, RESOURCES_START_X + RESOURCES_ICON_OFFSET,
-                RESOURCES_START_Y + RESOURCES_FRAME_HEIGHT * 1 +
-                  RESOURCES_SPACING + RESOURCES_ICON_OFFSET,
-                "crystal", RESOURCES_ICON_SIZE, RESOURCES_ICON_SIZE, 0, 0);
-
-  GUI_add_text(RESOURCES_START_X + RESOURCES_TEXT_HOFFSET,
-               RESOURCES_START_Y + RESOURCES_SPACING +
-                 RESOURCES_FRAME_HEIGHT * 1 + RESOURCES_TEXT_VOFFSET,
-               crystal_count_text);
-
-  // Add deuterium counter
-  GUI_add_image(atlasId, RESOURCES_START_X,
-                RESOURCES_START_Y + RESOURCES_FRAME_HEIGHT * 2 +
-                  RESOURCES_SPACING * 2,
-                "UI_counter", RESOURCES_FRAME_WIDTH, RESOURCES_FRAME_HEIGHT, 0,
-                0);
-
-  GUI_add_image(atlasId, RESOURCES_START_X + RESOURCES_ICON_OFFSET,
-                RESOURCES_START_Y + RESOURCES_FRAME_HEIGHT * 2 +
-                  RESOURCES_SPACING * 2 + RESOURCES_ICON_OFFSET,
-                "deuterium", RESOURCES_ICON_SIZE, RESOURCES_ICON_SIZE, 0, 0);
-
-  GUI_add_text(RESOURCES_START_X + RESOURCES_TEXT_HOFFSET,
-               RESOURCES_START_Y + RESOURCES_SPACING * 2 +
-                 RESOURCES_FRAME_HEIGHT * 2 + RESOURCES_TEXT_VOFFSET,
-               deuterium_count_text);
+  // // Add metal counter
+  // GUI_add_image(atlasId, RESOURCES_START_X, RESOURCES_START_Y, "UI_counter",
+  //               RESOURCES_FRAME_WIDTH, RESOURCES_FRAME_HEIGHT, 0, 0);
+  //
+  // GUI_add_image(atlasId, RESOURCES_START_X + RESOURCES_ICON_OFFSET,
+  //               RESOURCES_START_Y + RESOURCES_ICON_OFFSET, "metal",
+  //               RESOURCES_ICON_SIZE, RESOURCES_ICON_SIZE, 0, 0);
+  //
+  // GUI_add_text(RESOURCES_START_X + RESOURCES_TEXT_HOFFSET,
+  //              RESOURCES_START_Y + RESOURCES_TEXT_VOFFSET, metal_count_text);
+  //
+  // // Add crystal counter
+  // GUI_add_image(atlasId, RESOURCES_START_X,
+  //               RESOURCES_START_Y + RESOURCES_FRAME_HEIGHT + RESOURCES_SPACING,
+  //               "UI_counter", RESOURCES_FRAME_WIDTH, RESOURCES_FRAME_HEIGHT, 0,
+  //               0);
+  //
+  // GUI_add_image(atlasId, RESOURCES_START_X + RESOURCES_ICON_OFFSET,
+  //               RESOURCES_START_Y + RESOURCES_FRAME_HEIGHT * 1 +
+  //                 RESOURCES_SPACING + RESOURCES_ICON_OFFSET,
+  //               "crystal", RESOURCES_ICON_SIZE, RESOURCES_ICON_SIZE, 0, 0);
+  //
+  // GUI_add_text(RESOURCES_START_X + RESOURCES_TEXT_HOFFSET,
+  //              RESOURCES_START_Y + RESOURCES_SPACING +
+  //                RESOURCES_FRAME_HEIGHT * 1 + RESOURCES_TEXT_VOFFSET,
+  //              crystal_count_text);
+  //
+  // // Add deuterium counter
+  // GUI_add_image(atlasId, RESOURCES_START_X,
+  //               RESOURCES_START_Y + RESOURCES_FRAME_HEIGHT * 2 +
+  //                 RESOURCES_SPACING * 2,
+  //               "UI_counter", RESOURCES_FRAME_WIDTH, RESOURCES_FRAME_HEIGHT, 0,
+  //               0);
+  //
+  // GUI_add_image(atlasId, RESOURCES_START_X + RESOURCES_ICON_OFFSET,
+  //               RESOURCES_START_Y + RESOURCES_FRAME_HEIGHT * 2 +
+  //                 RESOURCES_SPACING * 2 + RESOURCES_ICON_OFFSET,
+  //               "deuterium", RESOURCES_ICON_SIZE, RESOURCES_ICON_SIZE, 0, 0);
+  //
+  // GUI_add_text(RESOURCES_START_X + RESOURCES_TEXT_HOFFSET,
+  //              RESOURCES_START_Y + RESOURCES_SPACING * 2 +
+  //                RESOURCES_FRAME_HEIGHT * 2 + RESOURCES_TEXT_VOFFSET,
+  //              deuterium_count_text);
 
   // Add cursor
   cursor_id = microECSEntityNew(NULL, NULL);

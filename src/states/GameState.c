@@ -10,12 +10,14 @@
 #include "../components/LogicComponents.h"
 #include "../components/MotionComponents.h"
 #include "../components/RenderingComponents.h"
+#include "../entities/Spawner.h"
 #include "../entities/GUI.h"
 #include "../entities/LogGUI.h"
 #include "../entities/Planet.h"
 #include "../entities/Player.h"
 #include "../entities/Projectile.h"
 #include "../entities/Space.h"
+#include "../entities/Drone.h"
 #include "../misc/ambience_music.h"
 #include "../misc/inventory.h"
 #include "../systems/AnimationSystem.h"
@@ -79,7 +81,9 @@ void gameStateInit()
   debug_print("Physics world_id: %d\n", world_id);
 
   // Load resources
-  microResourceLoad("atlas", "res/textures/", "atlas");
+  u32 atlasId = microResourceLoad("atlas", "res/textures/", "atlas");
+  const u32 textureId = microTextureAtlasGetTextureId(atlasId);
+  microTextureSetFilter(textureId, MICRO_FILTER_NEAREST);
   microResourceLoadFont("ui_font", "./res/fonts/firacode.ttf", 24,
                         MICRO_FILTER_NEAREST);
 
@@ -99,6 +103,7 @@ void gameStateInit()
   PlayerEntityAdd();
   LogGUIAdd();
   GUIInit();
+  SpawnerEntityAdd();
 
   // Add projectile
   // float playerX, playerY;
@@ -115,6 +120,7 @@ void gameStateUpdate(float dt)
   microECSRun(dt);
   microGraphicsDisplay();
   microSwapBuffers();
+  
 }
 
 void gameStateFree()

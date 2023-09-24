@@ -9,9 +9,9 @@
 
 static Mix_Chunk *loadedSounds[MICRO_MAX_SOUNDS];
 static Mix_Music *loadedMusics[MICRO_MAX_MUSICS];
-static int32_t channelPlaying[MICRO_MAX_SOUNDS];
-static uint8_t cleanedBuffer = SDL_FALSE;
-static uint8_t mix_initialized = SDL_FALSE;
+static int channelPlaying[MICRO_MAX_SOUNDS];
+static u8 cleanedBuffer = SDL_FALSE;
+static u8 mix_initialized = SDL_FALSE;
 
 int microSoundLoadFromFile(const char *filepath, const int soundType)
 {
@@ -32,7 +32,7 @@ int microSoundLoadFromFile(const char *filepath, const int soundType)
     Mix_AllocateChannels(MICRO_MAX_SOUNDS);
     memset(loadedSounds, 0, sizeof(Mix_Chunk *) * MICRO_MAX_SOUNDS);
     memset(loadedMusics, 0, sizeof(Mix_Music *) * MICRO_MAX_MUSICS);
-    memset(channelPlaying, -1, sizeof(int32_t) * MICRO_MAX_SOUNDS);
+    memset(channelPlaying, -1, sizeof(u32) * MICRO_MAX_SOUNDS);
     cleanedBuffer = SDL_TRUE;
   }
 
@@ -103,11 +103,11 @@ int microSoundLoadFromFile(const char *filepath, const int soundType)
   return -1;
 }
 
-void microSoundPlay(const unsigned int soundId, const int loops)
+void microSoundPlay(const u32 soundId, const int loops)
 {
   // check if its music or sound effects and clear sound type bit
-  const unsigned char isMusic = (soundId & MICRO_SOUND_TYPE_BIT) > 0;
-  unsigned int bufferId = soundId;
+  const bool isMusic = (soundId & MICRO_SOUND_TYPE_BIT) > 0;
+  u32 bufferId = soundId;
   if (isMusic)
     bufferId = bufferId & MICRO_SOUND_TYPE_CLEAR_MASK; // clear type bit
 
@@ -135,7 +135,7 @@ void microSoundPlay(const unsigned int soundId, const int loops)
       debug_print("Cannot play sound: the soundId provided is invalid\n");
       return;
     }
-    int32_t channel = bufferId;
+    int channel = bufferId;
     if (channel != -1)
       channel = Mix_PlayChannel(channel, chunk, loops == 0 ? 0 : -1);
     else
@@ -147,11 +147,11 @@ void microSoundPlay(const unsigned int soundId, const int loops)
   }
 }
 
-void microSoundPlayNewChannel(const unsigned int soundId, const int loops)
+void microSoundPlayNewChannel(const u32 soundId, const int loops)
 {
   // check if its music or sound effects and clear sound type bit
-  const unsigned char isMusic = (soundId & MICRO_SOUND_TYPE_BIT) > 0;
-  unsigned int bufferId = soundId;
+  const bool isMusic = (soundId & MICRO_SOUND_TYPE_BIT) > 0;
+  u32 bufferId = soundId;
   if (isMusic)
     bufferId = bufferId & MICRO_SOUND_TYPE_CLEAR_MASK; // clear type bit
 
@@ -179,7 +179,7 @@ void microSoundPlayNewChannel(const unsigned int soundId, const int loops)
       debug_print("Cannot play sound: the soundId provided is invalid");
       return;
     }
-    int32_t channel = Mix_PlayChannel(-1, chunk, loops == 0 ? 0 : -1);
+    int channel = Mix_PlayChannel(-1, chunk, loops == 0 ? 0 : -1);
     assert(channel != -1);
 
     // store in which channel the sound is playing
@@ -187,11 +187,11 @@ void microSoundPlayNewChannel(const unsigned int soundId, const int loops)
   }
 }
 
-void microSoundStop(const unsigned int soundId)
+void microSoundStop(const u32 soundId)
 {
   // check if its music or sound effects and clear sound type bit
-  const unsigned char isMusic = (soundId & MICRO_SOUND_TYPE_BIT) > 0;
-  unsigned int bufferId = soundId;
+  const bool isMusic = (soundId & MICRO_SOUND_TYPE_BIT) > 0;
+  u32 bufferId = soundId;
   if (isMusic)
     bufferId = bufferId & MICRO_SOUND_TYPE_CLEAR_MASK; // clear type bit
 
@@ -207,11 +207,11 @@ void microSoundStop(const unsigned int soundId)
   }
 }
 
-int microSoundIsPlaying(const unsigned int soundId)
+int microSoundIsPlaying(const u32 soundId)
 {
   // check if its music or sound effects and clear sound type bit
-  const unsigned char isMusic = (soundId & MICRO_SOUND_TYPE_BIT) > 0;
-  unsigned int bufferId = soundId;
+  const bool isMusic = (soundId & MICRO_SOUND_TYPE_BIT) > 0;
+  u32 bufferId = soundId;
   if (isMusic)
     bufferId = bufferId & MICRO_SOUND_TYPE_CLEAR_MASK; // clear type bit
 
@@ -224,11 +224,11 @@ int microSoundIsPlaying(const unsigned int soundId)
     return Mix_Playing(channelPlaying[bufferId]);
 }
 
-void microSoundSetVolume(const unsigned int soundId, const float volume)
+void microSoundSetVolume(const u32 soundId, const float volume)
 {
   // check if its music or sound effects and clear sound type bit
-  const unsigned char isMusic = (soundId & MICRO_SOUND_TYPE_BIT) > 0;
-  unsigned int bufferId = soundId;
+  const bool isMusic = (soundId & MICRO_SOUND_TYPE_BIT) > 0;
+  u32 bufferId = soundId;
   if (isMusic)
     bufferId = bufferId & MICRO_SOUND_TYPE_CLEAR_MASK; // clear type bit
 
@@ -238,7 +238,7 @@ void microSoundSetVolume(const unsigned int soundId, const float volume)
     debug_print("Cannot play music");
     return;
   }
-  const unsigned int volume_7bit = (unsigned int)(128 * volume);
+  const u32 volume_7bit = (u32)(128 * volume);
 
   if (isMusic)
     Mix_VolumeMusic(volume_7bit);
@@ -246,15 +246,15 @@ void microSoundSetVolume(const unsigned int soundId, const float volume)
     Mix_VolumeChunk(loadedSounds[bufferId], volume_7bit);
 }
 
-float microSoundGetVolume(const unsigned int soundId)
+float microSoundGetVolume(const u32 soundId)
 {
   // check if its music or sound effects and clear sound type bit
-  const unsigned char isMusic = (soundId & MICRO_SOUND_TYPE_BIT) > 0;
-  unsigned int bufferId = soundId;
+  const bool isMusic = (soundId & MICRO_SOUND_TYPE_BIT) > 0;
+  u32 bufferId = soundId;
   if (isMusic)
     bufferId = bufferId & MICRO_SOUND_TYPE_CLEAR_MASK; // clear type bit
 
-  unsigned int volume_7bit;
+  u32 volume_7bit;
   if (isMusic)
     volume_7bit = Mix_VolumeMusic(-1);
   else
@@ -263,11 +263,11 @@ float microSoundGetVolume(const unsigned int soundId)
   return ((float)volume_7bit) / 128.f;
 }
 
-void microSoundPause(const unsigned int soundId)
+void microSoundPause(const u32 soundId)
 {
   // check if its music or sound effects and clear sound type bit
-  const unsigned char isMusic = (soundId & MICRO_SOUND_TYPE_BIT) > 0;
-  unsigned int bufferId = soundId;
+  const bool isMusic = (soundId & MICRO_SOUND_TYPE_BIT) > 0;
+  u32 bufferId = soundId;
   if (isMusic)
     bufferId = bufferId & MICRO_SOUND_TYPE_CLEAR_MASK; // clear type bit
 
@@ -277,11 +277,11 @@ void microSoundPause(const unsigned int soundId)
     Mix_Pause(channelPlaying[bufferId]);
 }
 
-void microSoundResume(const unsigned int soundId)
+void microSoundResume(const u32 soundId)
 {
   // check if its music or sound effects and clear sound type bit
-  const unsigned char isMusic = (soundId & MICRO_SOUND_TYPE_BIT) > 0;
-  unsigned int bufferId = soundId;
+  const bool isMusic = (soundId & MICRO_SOUND_TYPE_BIT) > 0;
+  u32 bufferId = soundId;
   if (isMusic)
     bufferId = bufferId & MICRO_SOUND_TYPE_CLEAR_MASK; // clear type bit
 
@@ -296,11 +296,11 @@ int microSoundChannelsPlaying()
   return Mix_Playing(-1);
 }
 
-void microSoundFree(const unsigned int soundId)
+void microSoundFree(const u32 soundId)
 {
   // check if its music or sound effects and clear sound type bit
-  const unsigned char isMusic = (soundId & MICRO_SOUND_TYPE_BIT) > 0;
-  unsigned int bufferId = soundId;
+  const bool isMusic = (soundId & MICRO_SOUND_TYPE_BIT) > 0;
+  u32 bufferId = soundId;
   if (isMusic)
     bufferId = bufferId & MICRO_SOUND_TYPE_CLEAR_MASK; // clear type bit
 

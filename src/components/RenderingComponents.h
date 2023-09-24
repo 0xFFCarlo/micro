@@ -1,39 +1,39 @@
 #ifndef RENDERING_COMPONENTS_H
 #define RENDERING_COMPONENTS_H
 
-#include <stdint.h>
+#include "../micro/Types.h"
 
 // Sprite
 typedef struct
 {
-  uint8_t textureId;
-  float tx, ty, tw, th;
+  u8 textureId;
+  f32 tx, ty, tw, th;
 } CSprite;
 
 extern int cid_sprite;
 extern void RegisterCSprite();
-extern void CmpAddSprite(int entity_id, uint8_t textureId, float tx, float ty,
+extern void CmpAddSprite(int entity_id, u8 textureId, float tx, float ty,
                          float tw, float th);
 extern CSprite *CmpGetSprite(int entity_id);
 
 // Text
 typedef struct
 {
-  uint8_t fontId;
-  float lineSpacing;
+  u8 fontId;
+  f32 lineSpacing;
   char *text;
 } CText;
 
 extern int cid_text;
 extern void RegisterCText();
-extern void CmpAddText(int entity_id, uint8_t fontId, float lineSpacing,
+extern void CmpAddText(int entity_id, u8 fontId, f32 lineSpacing,
                        char *text);
 extern CText *CmpGetText(int entity_id);
 
 // Color
 typedef struct
 {
-  float r, g, b, a;
+  f32 r, g, b, a;
 } CColor;
 
 extern int cid_color;
@@ -44,13 +44,13 @@ extern CColor *CmpGetColor(int entity_id);
 // Layer
 typedef struct
 {
-  uint8_t layerId;
-  uint8_t visible;
+  u8 layerId;
+  bool visible;
 } CDrawable;
 
 extern int cid_drawable;
 extern void RegisterCDrawable();
-extern void CmpAddDrawable(int entity_id, uint8_t layerId, uint8_t visible);
+extern void CmpAddDrawable(int entity_id, u8 layerId, bool visible);
 extern CDrawable *CmpGetDrawable(int entity_id);
 
 // Hud
@@ -67,16 +67,16 @@ extern CHud *CmpGetHud(int entity_id);
 typedef struct
 {
   int animationId;
-  uint16_t frameId;
-  float framesDuration;
-  uint8_t flipX;
-  uint8_t flipY;
+  u16 frameId;
+  f32 framesDuration;
+  bool flipX;
+  bool flipY;
   float timeSinceLastFrame;
 } CAnimation;
 extern int cid_animation;
 extern void RegisterCAnimation();
 extern void CmpAddAnimation(int entity_id, int animationId,
-                            float framesDuration, uint8_t flipX, uint8_t flipY);
+                            float framesDuration, bool flipX, bool flipY);
 extern CAnimation *CmpGetAnimation(int entity_id);
 
 // ShadedCanvas
@@ -97,23 +97,23 @@ extern CShadedCanvas *CmpGetShadedCanvas(int entity_id);
 // LockOnView
 typedef struct
 {
-  uint8_t followRotation;
+  bool followRotation;
 } CLockOnView;
 extern int cid_lock_on_view;
 extern void RegisterCLockOnView();
-extern void CmpAddLockOnView(int entity_id, uint8_t followRotation);
+extern void CmpAddLockOnView(int entity_id, bool followRotation);
 extern CLockOnView *CmpGetLockOnView(int entity_id);
 
 // ParticleEmitter
 typedef struct
 {
-  uint16_t emitterId;
-  uint16_t offsetX, offsetY;
+  u16 emitterId;
+  u16 offsetX, offsetY;
 } CParticleEmitter;
 extern int cid_particle_emitter;
 extern void RegisterCParticleEmitter();
-extern void CmpAddParticleEmitter(int entity_id, uint16_t emitterId,
-                                  uint16_t offsetX, uint16_t offsetY);
+extern void CmpAddParticleEmitter(int entity_id, u16 emitterId,
+                                  u16 offsetX, u16 offsetY);
 extern CParticleEmitter *CmpGetParticleEmitter(int entity_id);
 
 extern void RegisterRenderingComponents();

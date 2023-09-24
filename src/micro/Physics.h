@@ -1,7 +1,7 @@
 #ifndef PHYSICS_H
 #define PHYSICS_H
 
-#include <stdint.h>
+#include "Types.h"
 
 extern int microPhysicsWorldNew();
 extern void microPhysicsWorldStep(int worldId, float dt);
@@ -12,17 +12,15 @@ extern void microPhysicsWorldFreeAll();
 
 extern int microPhysicsBodyNewCircle(int entityId, int worldId, float cx,
                                      float cy, float radius, float mass,
-                                     unsigned char isStatic,
-                                     unsigned char canRotate, float elasticity,
-                                     float friction);
+                                     u8 isStatic, u8 canRotate,
+                                     float elasticity, float friction);
 extern int microPhysicsBodyNewRect(int entityId, int worldId, float cx,
                                    float cy, float width, float height,
-                                   float mass, unsigned char isStatic,
-                                   unsigned char canRotate, float elasticity,
-                                   float friction);
-extern void microPhysicsBodySetFilter(int bodyId, int category, uint32_t mask);
+                                   float mass, u8 isStatic, u8 canRotate,
+                                   float elasticity, float friction);
+extern void microPhysicsBodySetFilter(int bodyId, int category, u32 mask);
 extern void microPhysicsBodySetCollisionCallback(int bodyId,
-                                                 void (*callback)(int, int));
+                                                 void (*callback)(int, int)); 
 extern void microPhysicsBodyFree(int bodyId);
 extern int microPhysicsBodiesCount();
 extern void microPhysicsBodySetMass(int bodyId, float mass);
@@ -35,5 +33,6 @@ extern void microPhysicsBodyGetVelocity(int bodyId, float *x, float *y);
 extern void microPhysicsBodyGetForce(int bodyId, float *x, float *y);
 extern void microPhysicsBodySetRotation(int bodyId, float angle);
 extern float microPhysicsBodyGetRotation(int bodyId);
+extern int microPhysicsBodyGetWorldId(int bodyId);
 
 #endif /* end of include guard: PHYSICS_H */

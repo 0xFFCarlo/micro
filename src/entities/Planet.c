@@ -6,8 +6,10 @@
 #include "../micro/Graphics.h"
 #include "../micro/Physics.h"
 #include "../micro/Resources.h"
+#include "../misc/collision.h"
 #include "../util/perlin_noise.h"
 #include "Cave.h"
+#include "Explosion.h"
 #include "Resource.h"
 #include <assert.h>
 #include <stdio.h>
@@ -27,6 +29,19 @@ float planetLightDepth = 140;
 float planetSurfaceDepth = GROUND_HEIGHT / 2.0;
 
 int planet_body_id = -1;
+
+void PlanetCollision(int entityId, int otherEntityId)
+{
+  CBody *body = CmpGetBody(otherEntityId);
+  float vx, vy;
+  microPhysicsBodyGetVelocity(body->body_id, &vx, &vy);
+  f32 speed = sqrt(vx * vx + vy * vy);
+  if (speed > 300.0)
+  {
+    CPosition *pos = CmpGetPosition(otherEntityId);
+    makeExplostionProjectileGroundHit(pos->x, pos->y, vx, vy);
+  }
+}
 
 float PlanetGetRadius()
 {
@@ -227,7 +242,8 @@ void setupPlanetEntity(int planetId)
                                              PlanetGetRadius() -
                                                GROUND_HEIGHT * 2.0,
                                              1000.0, 1, 0, 0.0, 1.0);
-  microPhysicsBodySetFilter(planet_body_id, 1, 3);
+  microPhysicsBodySetCollisionCallback(planet_body_id, PlanetCollision);
+  microPhysicsBodySetFilter(planet_body_id, COLLISION_GROUP_WORLD, COLLISION_MASK_ALL);
   CmpAddBody(planetId, planet_body_id);
 
   CmpAddColor(planetId, 1.0, 1.0, 1.0, 1.0);

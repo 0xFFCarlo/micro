@@ -3,6 +3,9 @@
 #include "../util/vector.h"
 #include <chipmunk/chipmunk.h>
 
+#define WORLD_ID_BIT_SHIFT 24
+#define SHAPE_ID_BIT_MASK 0xFFFFFF
+
 typedef struct
 {
   cpSpace *space;
@@ -103,8 +106,8 @@ void microPhysicsWorldFreeAll()
 }
 
 int microPhysicsBodyNewCircle(int entityId, int worldId, float cx, float cy,
-                              float radius, float mass, unsigned char isStatic,
-                              unsigned char canRotate, float elasticity,
+                              float radius, float mass, u8 isStatic,
+                              u8 canRotate, float elasticity,
                               float friction)
 {
   World *world = vector_at(&worlds, worldId);
@@ -145,19 +148,19 @@ int microPhysicsBodyNewCircle(int entityId, int worldId, float cx, float cy,
     vector_pop_back(&world->freed_shapes_id);
     cpShape **shapes = (cpShape **)world->shapes.data;
     shapes[shapeId] = shape;
-    return shapeId + (worldId << 16);
+    return shapeId + (worldId << WORLD_ID_BIT_SHIFT);
   }
   else
   {
     // Add a new shape id
     vector_push_back(&world->shapes, &shape);
-    return world->shapes.size - 1 + (worldId << 16);
+    return world->shapes.size - 1 + (worldId << WORLD_ID_BIT_SHIFT);
   }
 }
 
 int microPhysicsBodyNewRect(int entityId, int worldId, float cx, float cy,
                             float width, float height, float mass,
-                            unsigned char isStatic, unsigned char canRotate,
+                            u8 isStatic, u8 canRotate,
                             float elasticity, float friction)
 {
   World *world = vector_at(&worlds, worldId);
@@ -197,20 +200,20 @@ int microPhysicsBodyNewRect(int entityId, int worldId, float cx, float cy,
     vector_pop_back(&world->freed_shapes_id);
     cpShape **shapes = (cpShape **)world->shapes.data;
     shapes[shapeId] = shape;
-    return shapeId + (worldId << 16);
+    return shapeId + (worldId << WORLD_ID_BIT_SHIFT);
   }
   else
   {
     // Add a new shape id
     vector_push_back(&world->shapes, &shape);
-    return world->shapes.size - 1 + (worldId << 16);
+    return world->shapes.size - 1 + (worldId << WORLD_ID_BIT_SHIFT);
   }
 }
 
 void microPhysicsBodyFree(int bodyId)
 {
-  const int worldId = bodyId >> 16;
-  int shapeId = bodyId & 0xFFFF;
+  const int worldId = bodyId >> WORLD_ID_BIT_SHIFT;
+  int shapeId = bodyId & SHAPE_ID_BIT_MASK;
   World *world = vector_at(&worlds, worldId);
   cpShape *shape = *(cpShape **)vector_at(&world->shapes, shapeId);
   if (shape == NULL)
@@ -242,8 +245,8 @@ int microPhysicsBodiesCount()
 
 void microPhysicsBodySetMass(int bodyId, float mass)
 {
-  const int worldId = bodyId >> 16;
-  const int shapeId = bodyId & 0xFFFF;
+  const int worldId = bodyId >> WORLD_ID_BIT_SHIFT;
+  const int shapeId = bodyId & SHAPE_ID_BIT_MASK;
   World *world = vector_at(&worlds, worldId);
   cpShape *shape = *(cpShape **)vector_at(&world->shapes, shapeId);
   cpShapeSetMass(shape, mass);
@@ -251,8 +254,8 @@ void microPhysicsBodySetMass(int bodyId, float mass)
 
 float microPhysicsBodyGetMass(int bodyId)
 {
-  const int worldId = bodyId >> 16;
-  const int shapeId = bodyId & 0xFFFF;
+  const int worldId = bodyId >> WORLD_ID_BIT_SHIFT;
+  const int shapeId = bodyId & SHAPE_ID_BIT_MASK;
   World *world = vector_at(&worlds, worldId);
   cpShape *shape = *(cpShape **)vector_at(&world->shapes, shapeId);
   assert(shape != NULL);
@@ -261,8 +264,8 @@ float microPhysicsBodyGetMass(int bodyId)
 
 void microPhysicsBodySetPosition(int bodyId, float x, float y)
 {
-  const int worldId = bodyId >> 16;
-  const int shapeId = bodyId & 0xFFFF;
+  const int worldId = bodyId >> WORLD_ID_BIT_SHIFT;
+  const int shapeId = bodyId & SHAPE_ID_BIT_MASK;
   World *world = vector_at(&worlds, worldId);
   cpShape *shape = *(cpShape **)vector_at(&world->shapes, shapeId);
   assert(shape != NULL);
@@ -272,8 +275,8 @@ void microPhysicsBodySetPosition(int bodyId, float x, float y)
 
 void microPhysicsBodySetVelocity(int bodyId, float x, float y)
 {
-  const int worldId = bodyId >> 16;
-  const int shapeId = bodyId & 0xFFFF;
+  const int worldId = bodyId >> WORLD_ID_BIT_SHIFT;
+  const int shapeId = bodyId & SHAPE_ID_BIT_MASK;
   World *world = vector_at(&worlds, worldId);
   cpShape *shape = *(cpShape **)vector_at(&world->shapes, shapeId);
   assert(shape != NULL);
@@ -283,8 +286,8 @@ void microPhysicsBodySetVelocity(int bodyId, float x, float y)
 
 void microPhysicsBodySetForce(int bodyId, float x, float y)
 {
-  const int worldId = bodyId >> 16;
-  const int shapeId = bodyId & 0xFFFF;
+  const int worldId = bodyId >> WORLD_ID_BIT_SHIFT;
+  const int shapeId = bodyId & SHAPE_ID_BIT_MASK;
   World *world = vector_at(&worlds, worldId);
   cpShape *shape = *(cpShape **)vector_at(&world->shapes, shapeId);
   assert(shape != NULL);
@@ -295,8 +298,8 @@ void microPhysicsBodySetForce(int bodyId, float x, float y)
 void microPhysicsBodySetCollisionCallback(int bodyId,
                                           void (*callback)(int, int))
 {
-  const int worldId = bodyId >> 16;
-  const int shapeId = bodyId & 0xFFFF;
+  const int worldId = bodyId >> WORLD_ID_BIT_SHIFT;
+  const int shapeId = bodyId & SHAPE_ID_BIT_MASK;
   World *world = vector_at(&worlds, worldId);
   cpShape *shape = *(cpShape **)vector_at(&world->shapes, shapeId);
   assert(shape != NULL);
@@ -308,8 +311,8 @@ void microPhysicsBodySetCollisionCallback(int bodyId,
 
 void microPhysicsBodySetFilter(int bodyId, int category, uint32_t mask)
 {
-  const int worldId = bodyId >> 16;
-  const int shapeId = bodyId & 0xFFFF;
+  const int worldId = bodyId >> WORLD_ID_BIT_SHIFT;
+  const int shapeId = bodyId & SHAPE_ID_BIT_MASK;
   assert(category >= 0 && category <= 31);
   World *world = vector_at(&worlds, worldId);
   cpShape *shape = *(cpShape **)vector_at(&world->shapes, shapeId);
@@ -320,8 +323,8 @@ void microPhysicsBodySetFilter(int bodyId, int category, uint32_t mask)
 
 void microPhysicsBodyGetPosition(int bodyId, float *x, float *y)
 {
-  const int worldId = bodyId >> 16;
-  const int shapeId = bodyId & 0xFFFF;
+  const int worldId = bodyId >> WORLD_ID_BIT_SHIFT;
+  const int shapeId = bodyId & SHAPE_ID_BIT_MASK;
   World *world = vector_at(&worlds, worldId);
   cpShape *shape = *(cpShape **)vector_at(&world->shapes, shapeId);
   assert(shape != NULL);
@@ -333,8 +336,8 @@ void microPhysicsBodyGetPosition(int bodyId, float *x, float *y)
 
 void microPhysicsBodyGetVelocity(int bodyId, float *x, float *y)
 {
-  const int worldId = bodyId >> 16;
-  const int shapeId = bodyId & 0xFFFF;
+  const int worldId = bodyId >> WORLD_ID_BIT_SHIFT;
+  const int shapeId = bodyId & SHAPE_ID_BIT_MASK;
   World *world = vector_at(&worlds, worldId);
   cpShape *shape = *(cpShape **)vector_at(&world->shapes, shapeId);
   assert(shape != NULL);
@@ -346,8 +349,8 @@ void microPhysicsBodyGetVelocity(int bodyId, float *x, float *y)
 
 void microPhysicsBodyGetForce(int bodyId, float *x, float *y)
 {
-  const int worldId = bodyId >> 16;
-  const int shapeId = bodyId & 0xFFFF;
+  const int worldId = bodyId >> WORLD_ID_BIT_SHIFT;
+  const int shapeId = bodyId & SHAPE_ID_BIT_MASK;
   World *world = vector_at(&worlds, worldId);
   cpShape *shape = *(cpShape **)vector_at(&world->shapes, shapeId);
   assert(shape != NULL);
@@ -359,8 +362,8 @@ void microPhysicsBodyGetForce(int bodyId, float *x, float *y)
 
 void microPhysicsBodySetRotation(int bodyId, float angle)
 {
-  const int worldId = bodyId >> 16;
-  const int shapeId = bodyId & 0xFFFF;
+  const int worldId = bodyId >> WORLD_ID_BIT_SHIFT;
+  const int shapeId = bodyId & SHAPE_ID_BIT_MASK;
   World *world = vector_at(&worlds, worldId);
   cpShape *shape = *(cpShape **)vector_at(&world->shapes, shapeId);
   assert(shape != NULL);
@@ -373,11 +376,16 @@ void microPhysicsBodySetRotation(int bodyId, float angle)
 
 float microPhysicsBodyGetRotation(int bodyId)
 {
-  const int worldId = bodyId >> 1;
-  const int shapeId = bodyId & 0xFFFF;
+  const int worldId = bodyId >> WORLD_ID_BIT_SHIFT;
+  const int shapeId = bodyId & SHAPE_ID_BIT_MASK;
   World *world = vector_at(&worlds, worldId);
   const cpShape *shape = *(cpShape **)vector_at(&world->shapes, shapeId);
   assert(shape != NULL);
   const cpBody *body = cpShapeGetBody(shape);
   return cpBodyGetAngle(body);
+}
+
+int microPhysicsBodyGetWorldId(int bodyId)
+{
+  return bodyId >> WORLD_ID_BIT_SHIFT;
 }
