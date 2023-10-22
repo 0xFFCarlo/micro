@@ -32,6 +32,7 @@ int planet_body_id = -1;
 
 void PlanetCollision(int entityId, int otherEntityId)
 {
+  (void)entityId; // unused parameter
   CBody *body = CmpGetBody(otherEntityId);
   float vx, vy;
   microPhysicsBodyGetVelocity(body->body_id, &vx, &vy);

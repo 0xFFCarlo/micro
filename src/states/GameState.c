@@ -10,14 +10,16 @@
 #include "../components/LogicComponents.h"
 #include "../components/MotionComponents.h"
 #include "../components/RenderingComponents.h"
-#include "../entities/Spawner.h"
+#include "../entities/Drone.h"
+#include "../entities/DroneLander.h"
 #include "../entities/GUI.h"
 #include "../entities/LogGUI.h"
 #include "../entities/Planet.h"
 #include "../entities/Player.h"
+#include "../entities/Portal.h"
 #include "../entities/Projectile.h"
 #include "../entities/Space.h"
-#include "../entities/Drone.h"
+#include "../entities/Spawner.h"
 #include "../misc/ambience_music.h"
 #include "../misc/inventory.h"
 #include "../systems/AnimationSystem.h"
@@ -34,6 +36,43 @@
 #include "../systems/ShadedCanvasSystem.h"
 #include "../systems/UpdateSystem.h"
 #include "../util/debug.h"
+
+void gameStateLoadResources()
+{
+  // Load atlas
+  u32 atlasId = microResourceLoad("atlas", "res/textures/", "atlas");
+  const u32 textureId = microTextureAtlasGetTextureId(atlasId);
+  microTextureSetFilter(textureId, MICRO_FILTER_NEAREST);
+  microResourceLoadFont("ui_font", "./res/fonts/firacode.ttf", 24,
+                        MICRO_FILTER_NEAREST);
+
+  // Load sounds
+  microResourceLoad("explosion", "./res/sounds/explosion.wav", "sound");
+  // Load sounds for robot
+  microResourceLoad("robot_introduce", "./res/sounds/robot_say_introduce.wav",
+                    "sound");
+  microResourceLoad("robot_say_no", "./res/sounds/robot_say_no.wav", "sound");
+  microResourceLoad("robot_say_yes", "./res/sounds/robot_say_yes.wav", "sound");
+  microResourceLoad("robot_jump", "./res/sounds/robot-jump.wav", "sound");
+
+  microResourceLoad("robot_footstep", "./res/sounds/footstep05.ogg", "sound");
+
+  uint32_t gun_shot = microResourceLoad("gun_shot",
+                                        "./res/sounds/laser-beam.mp3", "sound");
+  microSoundSetVolume(gun_shot, 0.2);
+
+  microResourceLoad("robot_recharging", "./res/sounds/recharging.wav", "sound");
+
+  microResourceLoad("robot_alarm", "./res/sounds/alarm.wav", "sound");
+
+  microResourceLoad("robot_shield_hit", "./res/sounds/shield-hit.wav", "sound");
+
+  // Setup inventory system
+  uint32_t pickup_sound = microResourceLoad("item_pickup_snd",
+                                            "./res/sounds/robot_pickup.wav",
+                                            "sound");
+  inventorySetPickupSound(pickup_sound);
+}
 
 void gameStateInit()
 {
@@ -81,21 +120,11 @@ void gameStateInit()
   debug_print("Physics world_id: %d\n", world_id);
 
   // Load resources
-  u32 atlasId = microResourceLoad("atlas", "res/textures/", "atlas");
-  const u32 textureId = microTextureAtlasGetTextureId(atlasId);
-  microTextureSetFilter(textureId, MICRO_FILTER_NEAREST);
-  microResourceLoadFont("ui_font", "./res/fonts/firacode.ttf", 24,
-                        MICRO_FILTER_NEAREST);
+  gameStateLoadResources();
 
   // Setup ambience
   ambienceMusicSetup();
   ambienceMusicSet(AMBIENCE_NORMAL);
-
-  // Setup inventory system
-  uint32_t pickup_sound = microResourceLoad("item_pickup_snd",
-                                            "./res/sounds/robot_pickup.wav",
-                                            "sound");
-  inventorySetPickupSound(pickup_sound);
 
   // Register entities
   SpaceEntityAdd();
@@ -104,6 +133,10 @@ void gameStateInit()
   LogGUIAdd();
   GUIInit();
   SpawnerEntityAdd();
+
+  int x, y;
+  PlanetGetSurfacePosition(0.2, -24, &x, &y);
+  // PortalAddEntity(x, y);
 
   // Add projectile
   // float playerX, playerY;
@@ -120,7 +153,6 @@ void gameStateUpdate(float dt)
   microECSRun(dt);
   microGraphicsDisplay();
   microSwapBuffers();
-  
 }
 
 void gameStateFree()

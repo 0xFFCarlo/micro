@@ -9,6 +9,7 @@
 #include "../micro/Resources.h"
 #include "../misc/collision.h"
 #include "Drone.h"
+#include "DroneLander.h"
 #include "Planet.h"
 #include "Player.h"
 #include <assert.h>
@@ -22,12 +23,21 @@ void SpawnerUpdate(int spawner_eid, float dt)
 {
   (void)spawner_eid;
   timer += dt;
-  if (timer > 5) {
+  if (timer > 5)
+  {
     timer = 0.0;
     float rand_angle = (rand() % 360) * (M_PI / 180.0);
     int spawn_x, spawn_y;
     PlanetGetSurfacePosition(rand_angle, -500.0, &spawn_x, &spawn_y);
-    DroneAddEntity(spawn_x, spawn_y);
+
+    if (rand() % 2 == 0)
+    {
+      DroneAddEntity(spawn_x, spawn_y);
+    }
+    else
+    {
+      DroneLanderAddEntity(spawn_x, spawn_y);
+    }
   }
 }
 

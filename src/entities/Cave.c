@@ -44,7 +44,12 @@ MicroParticle smokeGenerator(int emitterId)
   int textureId = microTextureAtlasGetTextureId(atlasId);
   assert(textureId != -1);
   assert(textureId < 100);
-  MicroTextureSource ts = microTextureAtlasGetRegion(atlasId, "particle-smoke");
+  MicroTextureSource ts;
+  float rval = (float)(rand() % 1000) / 1000.0;
+  if (rval < 0.75)
+    ts = microTextureAtlasGetRegion(atlasId, "particle-smoke");
+  else
+    ts = microTextureAtlasGetRegion(atlasId, "particle-fire");
   p.textureId = textureId;
   p.tx = ts.x;
   p.ty = ts.y;

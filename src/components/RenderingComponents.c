@@ -115,8 +115,9 @@ void RegisterCAnimation()
   cid_animation = microECSComponentRegister(sizeof(CAnimation));
 }
 
-void CmpAddAnimation(int entity_id, int animationId, float framesDuration,
-                     bool flipX, bool flipY)
+void CmpAddAnimation(int entity_id, int animationId,
+                            float framesDuration, bool flipX, bool flipY,
+                            bool reverse)
 {
   microECSEntityAddComponent(entity_id, cid_animation,
                              &(CAnimation){
@@ -124,6 +125,7 @@ void CmpAddAnimation(int entity_id, int animationId, float framesDuration,
                                .framesDuration = framesDuration,
                                .flipX = flipX,
                                .flipY = flipY,
+                               .reverse = reverse,
                                .timeSinceLastFrame = 0,
                                .frameId = 0,
                              });

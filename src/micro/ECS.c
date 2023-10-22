@@ -269,6 +269,11 @@ int microECSEntityIsAlive(int entityId)
   return entities[entityId].alive;
 }
 
+void* microECSEntityGetData(int entityId)
+{
+  return entities[entityId].data;
+}
+
 void microECSEntityAddComponent(int entityId, const int componentTypeId,
                                 void *data)
 {

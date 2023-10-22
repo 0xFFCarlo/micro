@@ -71,12 +71,13 @@ typedef struct
   f32 framesDuration;
   bool flipX;
   bool flipY;
+  bool reverse;
   float timeSinceLastFrame;
 } CAnimation;
 extern int cid_animation;
 extern void RegisterCAnimation();
 extern void CmpAddAnimation(int entity_id, int animationId,
-                            float framesDuration, bool flipX, bool flipY);
+                            float framesDuration, bool flipX, bool flipY, bool reverse);
 extern CAnimation *CmpGetAnimation(int entity_id);
 
 // ShadedCanvas

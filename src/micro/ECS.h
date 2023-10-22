@@ -15,6 +15,9 @@ extern void microECSEntityRemove(int entityId);
 // Check if entity is alive.
 extern int microECSEntityIsAlive(int entityId);
 
+// Get entity private data pointer.
+extern void* microECSEntityGetData(int entityId);
+
 // Add component to entity.
 extern void microECSEntityAddComponent(int entityId, const int componentTypeId,
                                        void *data);

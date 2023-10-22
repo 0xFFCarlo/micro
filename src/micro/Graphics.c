@@ -40,8 +40,8 @@
 #define MICRO_MAX_SHADER_LEN 8000
 #define MICRO_FONT_TEXTURE_SIZE 1024
 
-#define MICRO_ATLAS_MAX_WIDTH 1024
-#define MICRO_ATLAS_MAX_HEIGHT 1024
+#define MICRO_ATLAS_MAX_WIDTH 1524
+#define MICRO_ATLAS_MAX_HEIGHT 1524
 #define MICRO_ATLAS_MAX_TEXTURES 512
 
 #define MICRO_EMITTER_STEADY 0
@@ -358,12 +358,39 @@ int microAnimationFrameCmp(const void *aa, const void *bb)
   return a->frame_number - b->frame_number;
 }
 
+// sort strings with numbers in them
+// int human_str_sort(const char *a, const char *b) {
+//   while (*a && *b) {
+//     if (isdigit(*a) && isdigit(*b)) {
+//       long int num_a = strtol(a, (char **)&a, 10);
+//       long int num_b = strtol(b, (char **)&b, 10);
+//       if (num_a < num_b)
+//         return -1;
+//       if (num_a > num_b)
+//         return 1;
+//     } else {
+//       if (*a < *b)
+//         return -1;
+//       if (*a > *b)
+//         return 1;
+//       a++;
+//       b++;
+//     }
+//   }
+//
+//   if (*a)
+//     return 1; // a is longer than b
+//   if (*b)
+//     return -1; // b is longer than a
+//   return 0;    // a and b are the same length
+// }
+
 void microAtlasGenerateAnimations(int textureAtlasId)
 {
   const int verbose = 0;
   microAtlas *atlas = &microAtlases[textureAtlasId];
-
-  animation_frame *animations[MICRO_MAX_ANIMATIONS];
+  
+  animation_frame *animations[atlas->framesCount];
   int animations_count = 0;
 
   // Parse all animation frames from names
@@ -418,7 +445,8 @@ void microAtlasGenerateAnimations(int textureAtlasId)
     animations[animations_count]->w = w;
     animations[animations_count]->h = h;
     animations_count++;
-    assert(animations_count < MICRO_MAX_ANIMATIONS);
+
+    assert(animations_count < atlas->framesCount);
 
     free(tmp);
   }

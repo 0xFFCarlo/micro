@@ -9,8 +9,8 @@
 #include "../micro/Physics.h"
 #include "../micro/Resources.h"
 #include "../micro/System.h"
-#include "../systems/InteractionSystem.h"
 #include "../misc/collision.h"
+#include "../systems/InteractionSystem.h"
 #include "Planet.h"
 #include "Projectile.h"
 #include <assert.h>
@@ -25,12 +25,13 @@
 #define PLAYER_DIRECTION_RIGHT 0
 #define PLAYER_DIRECTION_LEFT 1
 
-#define PLAYER_TEXTURE_WIDTH (32 * 3)
-#define PLAYER_TEXTURE_HEIGHT (32 * 3)
+#define PLAYER_TEXTURE_WIDTH (48 * 2.25)
+#define PLAYER_TEXTURE_HEIGHT (48 * 2.25)
 #define PLAYER_BODY_WIDTH (48 / 3.0)
 #define PLAYER_BODY_HEIGHT (48)
 
 int player_entity_id = -1;
+bool player_alive = 1;
 int player_idle = -1;
 int player_state = 0;
 int player_direction = 0;
@@ -65,7 +66,8 @@ uint32_t robot_shield_hit = 0;
 
 void PlayerCollide(int playerId, int otherEntityId)
 {
-  CBody* bodyOther = CmpGetBody(otherEntityId);
+  (void)playerId; // unused parameter
+  CBody *bodyOther = CmpGetBody(otherEntityId);
   f32 vx, vy;
   microPhysicsBodyGetVelocity(bodyOther->body_id, &vx, &vy);
   f32 speed = sqrt(vx * vx + vy * vy);
@@ -91,7 +93,6 @@ void PlayerWalk()
   else
     animation->animationId = anim_player_walk;
 
-  animation->flipX = (player_direction != PLAYER_DIRECTION_RIGHT);
   animation->framesDuration = 0.25;
 }
 
@@ -104,15 +105,14 @@ void PlayerJump()
   microSoundStop(robot_recharging);
 
   // Stop at the last frame
-  if (animation->frameId == 1)
-    animation->timeSinceLastFrame = 0;
+  // if (animation->frameId == 4)
+  //   animation->timeSinceLastFrame = 0;
 
   CHealth *health = CmpGetHealth(player_entity_id);
   if (health->health < health->maxHealth * 0.1)
     animation->animationId = anim_player_jump_noenergy;
   else
     animation->animationId = anim_player_jump;
-  animation->flipX = (player_direction != PLAYER_DIRECTION_RIGHT);
   animation->framesDuration = 0.1;
 }
 
@@ -164,15 +164,20 @@ void PlayerShootAt(float x, float y)
   float playerX, playerY;
   PlayerGetPos(&playerX, &playerY);
 
-  float toMouseX = x - playerX;
-  float toMouseY = y - playerY;
-  float toMouseDist = sqrt(toMouseX * toMouseX + toMouseY * toMouseY);
+  const CTransform *transform = CmpGetTransform(player_entity_id);
+  const f32 eyeOffsetX = cos(transform->rotation - M_PI / 2) * 8.0;
+  const f32 eyeOffsetY = sin(transform->rotation - M_PI / 2) * 8.0;
+
+  f32 toMouseX = x - (playerX + eyeOffsetX);
+  f32 toMouseY = y - (playerY + eyeOffsetY);
+  const f32 toMouseDist = sqrt(toMouseX * toMouseX + toMouseY * toMouseY);
   toMouseX /= toMouseDist;
   toMouseY /= toMouseDist;
   float forceX = toMouseX * 600.0;
   float forceY = toMouseY * 600.0;
 
-  ProjectileAddEntity(PROJECTILE_TYPE_PLAYER, playerX, playerY, forceX, forceY);
+  ProjectileAddEntity(PROJECTILE_TYPE_PLAYER, playerX + eyeOffsetX,
+                      playerY + eyeOffsetY, forceX, forceY);
 
   microSoundPlayNewChannel(gun_shot, 0);
 }
@@ -212,7 +217,6 @@ void PlayerIdle()
   else
     animation->animationId = anim_player_idle;
 
-  animation->flipX = (player_direction != PLAYER_DIRECTION_RIGHT);
   animation->framesDuration = 1.0;
 }
 
@@ -234,7 +238,13 @@ void playerUpdate(int entityId, float dt)
   }
 
   if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_W])
-    playerJump = 1;
+  {
+    if (playerJump == 0)
+    {
+      microSoundPlay(robot_jump, 0);
+      playerJump = 1;
+    }
+  }
 
   if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_C])
   {
@@ -338,6 +348,7 @@ void playerUpdate(int entityId, float dt)
 
 void PlayerGetPos(float *x, float *y)
 {
+  if (!player_alive) return;
   CPosition *position = CmpGetPosition(player_entity_id);
   *x = position->x;
   *y = position->y;
@@ -367,6 +378,17 @@ void ShieldUpdate(int shieldId, float dt)
   position->y = playerPosition->y;
 }
 
+void PlayerFree(int entityId)
+{
+  PlayerData* data = microECSEntityGetData(entityId); 
+  free(data);
+}
+
+bool PlayerIsAlive()
+{
+  return player_alive;
+}
+
 void PlayerShieldHit(float damage)
 {
   CHealth *health = CmpGetHealth(player_entity_id);
@@ -377,7 +399,8 @@ void PlayerShieldHit(float damage)
   // Play sound
   microSoundPlay(robot_shield_hit, 0);
 
-  int shield_id = microECSEntityNew(NULL, NULL);
+  PlayerData *playerData = malloc(sizeof(PlayerData));
+  int shield_id = microECSEntityNew(playerData, PlayerFree);
   assert(shield_id != -1);
   CPosition *position = CmpGetPosition(player_entity_id);
   CmpAddPosition(shield_id, position->x, position->y);
@@ -386,7 +409,7 @@ void PlayerShieldHit(float damage)
   CmpAddTransform(shield_id, PLAYER_TEXTURE_WIDTH, PLAYER_TEXTURE_HEIGHT,
                   PLAYER_TEXTURE_WIDTH / 2.0, PLAYER_TEXTURE_HEIGHT / 2.0, 0.0);
   CmpAddSprite(shield_id, microResourceGet("atlas"), 0, 0, 16, 16);
-  CmpAddAnimation(shield_id, anim_shield, 0.1, 0, 0);
+  CmpAddAnimation(shield_id, anim_shield, 0.1, FALSE, FALSE, FALSE);
   float planetX, planetY;
   PlanetGetPos(&planetX, &planetY);
   CmpAddLifetime(shield_id, 0.4);
@@ -395,13 +418,13 @@ void PlayerShieldHit(float damage)
 
 void PlayerEntityAdd()
 {
-  anim_player_idle = microAnimationGet("robot-idle");
-  anim_player_walk = microAnimationGet("robot-walk");
-  anim_player_jump = microAnimationGet("robot-jump");
-  anim_player_idle_noenergy = microAnimationGet("robot-idle-noenergy");
-  anim_player_walk_noenergy = microAnimationGet("robot-walk-noenergy");
-  anim_player_jump_noenergy = microAnimationGet("robot-jump-noenergy");
-  anim_player_solar_charging = microAnimationGet("robot-solarpanel");
+  anim_player_idle = microAnimationGet("robot-2-idle");
+  anim_player_walk = microAnimationGet("robot-2-walk");
+  anim_player_jump = microAnimationGet("robot-2-jump");
+  anim_player_idle_noenergy = microAnimationGet("robot-2-idle-noenergy");
+  anim_player_walk_noenergy = microAnimationGet("robot-2-walk-noenergy");
+  anim_player_jump_noenergy = microAnimationGet("robot-2-jump-noenergy");
+  anim_player_solar_charging = microAnimationGet("robot-2-charging");
   anim_shield = microAnimationGet("shield");
 
   player_entity_id = microECSEntityNew(NULL, NULL);
@@ -422,14 +445,14 @@ void PlayerEntityAdd()
   //                                            0.0, 0.0);
   player_body_id = microPhysicsBodyNewRect(player_entity_id, 0, x, y,
                                            PLAYER_BODY_WIDTH,
-                                           PLAYER_BODY_HEIGHT, 1.0, FALSE, FALSE, 0.0,
-                                           0.0);
+                                           PLAYER_BODY_HEIGHT, 1.0, FALSE,
+                                           FALSE, 0.0, 0.0);
   microPhysicsBodySetCollisionCallback(player_body_id, PlayerCollide);
-  microPhysicsBodySetFilter(player_body_id, COLLISION_GROUP_PLAYER, COLLISION_MASK_PLAYER);
+  microPhysicsBodySetFilter(player_body_id, COLLISION_GROUP_PLAYER,
+                            COLLISION_MASK_PLAYER);
   CmpAddBody(player_entity_id, player_body_id);
 
   // Sprite component
-  // int textureId = microTextureLoadFromFile("./res/robot.png");
   int atlasId = microResourceGet("atlas");
   int textureId = microTextureAtlasGetTextureId(atlasId);
   microTextureSetFilter(textureId, MICRO_FILTER_NEAREST);
@@ -439,7 +462,7 @@ void PlayerEntityAdd()
                   PLAYER_TEXTURE_WIDTH / 2.0, PLAYER_TEXTURE_HEIGHT / 2.0, 0.0);
   CmpAddColor(player_entity_id, 1.0, 1.0, 1.0, 1.0);
   CmpAddDrawable(player_entity_id, 4, 1);
-  CmpAddAnimation(player_entity_id, anim_player_idle, 1.0, 0, 0);
+  CmpAddAnimation(player_entity_id, anim_player_idle, 1.0, FALSE, FALSE, FALSE);
   CmpAddUpdate(player_entity_id, playerUpdate);
   CmpAddLockOnView(player_entity_id, 1);
 
@@ -454,29 +477,15 @@ void PlayerEntityAdd()
   interactionSystemSetActorId(player_entity_id);
 
   // Load sounds for robot
-  robot_say_introduce = microResourceLoad(
-    "robot_introduce", "./res/sounds/robot_say_introduce.wav", "sound");
-  robot_say_no = microResourceLoad("robot_say_no",
-                                   "./res/sounds/robot_say_no.wav", "sound");
-  robot_say_yes = microResourceLoad("robot_say_yes",
-                                    "./res/sounds/robot_say_yes.wav", "sound");
-  robot_jump = microResourceLoad("robot_jump", "./res/sounds/jump.wav",
-                                 "sound");
-
-  robot_footstep = microResourceLoad("robot_footstep",
-                                     "./res/sounds/footstep05.ogg", "sound");
-
-  gun_shot = microResourceLoad("gun_shot", "./res/sounds/laser-beam.mp3",
-                               "sound");
-
-  robot_recharging = microResourceLoad("robot_recharging",
-                                       "./res/sounds/recharging.wav", "sound");
-
-  robot_alarm = microResourceLoad("robot_alarm", "./res/sounds/alarm.wav",
-                                  "sound");
-
-  robot_shield_hit = microResourceLoad("robot_shield_hit",
-                                       "./res/sounds/shield-hit.wav", "sound");
-
+  robot_say_introduce = microResourceGet("robot_introduce");
+  robot_say_no = microResourceGet("robot_say_no");
+  robot_say_yes = microResourceGet("robot_say_yes");
+  robot_jump = microResourceGet("robot_jump");
+  robot_footstep = microResourceGet("robot_footstep");
+  gun_shot = microResourceGet("gun_shot");
+  microSoundSetVolume(gun_shot, 0.2);
+  robot_recharging = microResourceGet("robot_recharging");
+  robot_alarm = microResourceGet("robot_alarm");
+  robot_shield_hit = microResourceGet("robot_shield_hit");
   microSoundPlay(robot_say_introduce, 0);
 }

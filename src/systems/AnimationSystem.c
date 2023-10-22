@@ -25,7 +25,16 @@ void animationSystem(float dt)
     if (animation->timeSinceLastFrame > frameDuration)
     {
       animation->timeSinceLastFrame = 0;
-      animation->frameId = (animation->frameId + 1) % framesCount;
+      if (animation->reverse)
+      {
+        animation->frameId--;
+        if (animation->frameId < 0)
+          animation->frameId = framesCount - 1;
+      }
+      else
+      {
+        animation->frameId = (animation->frameId + 1) % framesCount;
+      }
     }
 
     // Update texture source

@@ -154,7 +154,7 @@ void GUI_show_interact_message(char *message)
   CmpAddSprite(interact_button_id, microResourceGet("atlas"), 0, 0, 16, 16);
   CmpAddTransform(interact_button_id, 48, 48, 24, 24, 0);
   const int button_anim_id = microAnimationGet("keyboard-button");
-  CmpAddAnimation(interact_button_id, button_anim_id, 0.5, 0, 0);
+  CmpAddAnimation(interact_button_id, button_anim_id, 0.5, FALSE, FALSE, FALSE);
 
   // Message
   interact_message_id = microECSEntityNew(NULL, NULL);
