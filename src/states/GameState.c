@@ -48,23 +48,20 @@ void gameStateLoadResources()
 
   // Load sounds
   microResourceLoad("explosion", "./res/sounds/explosion.wav", "sound");
+
   // Load sounds for robot
   microResourceLoad("robot_introduce", "./res/sounds/robot_say_introduce.wav",
                     "sound");
   microResourceLoad("robot_say_no", "./res/sounds/robot_say_no.wav", "sound");
   microResourceLoad("robot_say_yes", "./res/sounds/robot_say_yes.wav", "sound");
   microResourceLoad("robot_jump", "./res/sounds/robot-jump.wav", "sound");
-
   microResourceLoad("robot_footstep", "./res/sounds/footstep05.ogg", "sound");
-
   uint32_t gun_shot = microResourceLoad("gun_shot",
                                         "./res/sounds/laser-beam.mp3", "sound");
   microSoundSetVolume(gun_shot, 0.2);
 
   microResourceLoad("robot_recharging", "./res/sounds/recharging.wav", "sound");
-
   microResourceLoad("robot_alarm", "./res/sounds/alarm.wav", "sound");
-
   microResourceLoad("robot_shield_hit", "./res/sounds/shield-hit.wav", "sound");
 
   // Setup inventory system

@@ -26,8 +26,7 @@ typedef struct
 
 extern int cid_text;
 extern void RegisterCText();
-extern void CmpAddText(int entity_id, u8 fontId, f32 lineSpacing,
-                       char *text);
+extern void CmpAddText(int entity_id, u8 fontId, f32 lineSpacing, char *text);
 extern CText *CmpGetText(int entity_id);
 
 // Color
@@ -77,7 +76,8 @@ typedef struct
 extern int cid_animation;
 extern void RegisterCAnimation();
 extern void CmpAddAnimation(int entity_id, int animationId,
-                            float framesDuration, bool flipX, bool flipY, bool reverse);
+                            float framesDuration, bool flipX, bool flipY,
+                            bool reverse);
 extern CAnimation *CmpGetAnimation(int entity_id);
 
 // ShadedCanvas
@@ -113,8 +113,8 @@ typedef struct
 } CParticleEmitter;
 extern int cid_particle_emitter;
 extern void RegisterCParticleEmitter();
-extern void CmpAddParticleEmitter(int entity_id, u16 emitterId,
-                                  u16 offsetX, u16 offsetY);
+extern void CmpAddParticleEmitter(int entity_id, u16 emitterId, u16 offsetX,
+                                  u16 offsetY);
 extern CParticleEmitter *CmpGetParticleEmitter(int entity_id);
 
 extern void RegisterRenderingComponents();

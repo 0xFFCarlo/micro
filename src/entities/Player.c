@@ -93,6 +93,11 @@ void PlayerWalk()
   else
     animation->animationId = anim_player_walk;
 
+  if (player_direction == PLAYER_DIRECTION_RIGHT)
+    animation->reverse = FALSE;
+  else
+    animation->reverse = TRUE;
+
   animation->framesDuration = 0.25;
 }
 
@@ -114,6 +119,7 @@ void PlayerJump()
   else
     animation->animationId = anim_player_jump;
   animation->framesDuration = 0.1;
+  animation->reverse = FALSE;
 }
 
 void PlayerChargeWithSolarPanel(float dt)
@@ -142,6 +148,7 @@ void PlayerChargeWithSolarPanel(float dt)
     animation->frameId = 0;
   animation->animationId = anim_player_solar_charging;
   animation->framesDuration = 1.0;
+  animation->reverse = FALSE;
 }
 
 void PlayerGetSize(float *width, float *height)
@@ -216,7 +223,8 @@ void PlayerIdle()
     animation->animationId = anim_player_idle_noenergy;
   else
     animation->animationId = anim_player_idle;
-
+  
+  animation->reverse = FALSE;
   animation->framesDuration = 1.0;
 }
 
