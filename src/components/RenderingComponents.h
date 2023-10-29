@@ -67,16 +67,16 @@ typedef struct
 {
   int animationId;
   u16 frameId;
-  f32 framesDuration;
+  f32 duration;
   bool flipX;
   bool flipY;
   bool reverse;
-  float timeSinceLastFrame;
+  float animationTime;
 } CAnimation;
 extern int cid_animation;
 extern void RegisterCAnimation();
 extern void CmpAddAnimation(int entity_id, int animationId,
-                            float framesDuration, bool flipX, bool flipY,
+                            float duration, bool flipX, bool flipY,
                             bool reverse);
 extern CAnimation *CmpGetAnimation(int entity_id);
 

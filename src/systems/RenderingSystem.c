@@ -47,8 +47,13 @@ void renderingSystem(float dt)
                                                            cid_position);
     CDrawable *drawable = (CDrawable *)microECSEntityGetComponent(entityId,
                                                                   cid_drawable);
-
-    if (drawable->visible == 0)
+    
+    // Check if the entity was removed during the game loop
+    if (microECSEntityIsAlive(entityId) == FALSE)
+      continue;
+    
+    // Should the entity be drawn?
+    if (drawable->visible == FALSE)
       continue;
 
     // Determine if entity is HUD

@@ -87,7 +87,7 @@ void DroneLanderUpdate(int droneId, float dt)
       data->is_falling = FALSE;
       animation->animationId = aid_drone_2_walk;
       animation->frameId = 0;
-      animation->timeSinceLastFrame = 0;
+      animation->animationTime = 0;
     }
   }
 

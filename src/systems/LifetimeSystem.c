@@ -5,8 +5,6 @@
 
 void lifetimeSystem(float dt)
 {
-  (void)(dt); // Unused parameter
-
   CLifetime *components_lifetime = (CLifetime *)
     microECSComponentsGet(cid_lifetime);
   const unsigned int components_count = microECSComponentsCount(cid_lifetime);

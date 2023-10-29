@@ -98,7 +98,7 @@ void PlayerWalk()
   else
     animation->reverse = TRUE;
 
-  animation->framesDuration = 0.25;
+  animation->duration = 0.25;
 }
 
 void PlayerJump()
@@ -118,7 +118,7 @@ void PlayerJump()
     animation->animationId = anim_player_jump_noenergy;
   else
     animation->animationId = anim_player_jump;
-  animation->framesDuration = 0.1;
+  animation->duration = 0.1;
   animation->reverse = FALSE;
 }
 
@@ -147,7 +147,7 @@ void PlayerChargeWithSolarPanel(float dt)
       animation->animationId != anim_player_idle)
     animation->frameId = 0;
   animation->animationId = anim_player_solar_charging;
-  animation->framesDuration = 1.0;
+  animation->duration = 1.0;
   animation->reverse = FALSE;
 }
 
@@ -225,7 +225,7 @@ void PlayerIdle()
     animation->animationId = anim_player_idle;
   
   animation->reverse = FALSE;
-  animation->framesDuration = 1.0;
+  animation->duration = 1.0;
 }
 
 void playerUpdate(int entityId, float dt)

@@ -3,6 +3,7 @@
 #include "../micro/ECS.h"
 #include "../micro/Graphics.h"
 #include <stdlib.h>
+#include <math.h>
 
 void animationSystem(float dt)
 {
@@ -18,25 +19,22 @@ void animationSystem(float dt)
     CSprite *sprite = (CSprite *)microECSEntityGetComponent(entityId,
                                                             cid_sprite);
     int framesCount = microAnimationGetFramesCount(animation->animationId);
-    float frameDuration = animation->framesDuration / (float)framesCount;
+    float frameDuration = animation->duration / (float)framesCount;
 
+    // Update animation time
+    if (animation->reverse)
+      animation->animationTime -= dt;
+    else
+      animation->animationTime += dt;
+
+    if (animation->animationTime > animation->duration)
+      animation->animationTime -= animation->duration;
+    else if (animation->animationTime < 0)
+      animation->animationTime += animation->duration;
+    
     // Update animation frame
-    animation->timeSinceLastFrame += dt;
-    if (animation->timeSinceLastFrame > frameDuration)
-    {
-      animation->timeSinceLastFrame = 0;
-      if (animation->reverse)
-      {
-        animation->frameId--;
-        if (animation->frameId < 0)
-          animation->frameId = framesCount - 1;
-      }
-      else
-      {
-        animation->frameId = (animation->frameId + 1) % framesCount;
-      }
-    }
-
+    animation->frameId = (int)floorf(animation->animationTime / frameDuration); 
+    
     // Update texture source
     MicroTextureSource source = microAnimationGetFrame(animation->animationId,
                                                        animation->frameId,

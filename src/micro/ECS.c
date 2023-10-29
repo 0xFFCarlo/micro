@@ -232,19 +232,16 @@ int microECSEntityNew(void *data, void (*free)(int))
 
 void microECSEntityRemove(int entityId)
 {
+  entities[entityId].alive = 0;
   vector_push_back(&entities_to_remove, &entityId);
 }
 
 void microECSEntityFree(int entityId)
 {
-  if (entities[entityId].alive == 0)
-    return;
-
   // Remove from queries
   microECSQueriesEntityRemoved(entityId);
 
   // Free
-  entities[entityId].alive = 0;
   if (entities[entityId].free_entity != NULL)
     entities[entityId].free_entity(entityId);
 
@@ -484,7 +481,6 @@ void microECSRun(float dt)
   {
     const int eid = *(int *)vector_back(&entities_to_remove);
     vector_pop_back(&entities_to_remove);
-    if (entities[eid].alive)
       microECSEntityFree(eid);
   }
 

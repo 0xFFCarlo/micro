@@ -116,17 +116,17 @@ void RegisterCAnimation()
 }
 
 void CmpAddAnimation(int entity_id, int animationId,
-                            float framesDuration, bool flipX, bool flipY,
+                            float duration, bool flipX, bool flipY,
                             bool reverse)
 {
   microECSEntityAddComponent(entity_id, cid_animation,
                              &(CAnimation){
                                .animationId = animationId,
-                               .framesDuration = framesDuration,
+                               .duration = duration,
                                .flipX = flipX,
                                .flipY = flipY,
                                .reverse = reverse,
-                               .timeSinceLastFrame = 0,
+                               .animationTime = 0,
                                .frameId = 0,
                              });
 }

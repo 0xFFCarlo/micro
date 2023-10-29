@@ -10,6 +10,9 @@
 #include <math.h>
 #include <stdio.h>
 
+// Controls the resolution of the space shader
+#define SPACE_CANVAS_HEIGHT 512
+
 int spaceId = -1;
 int space_shader_id = -1;
 int space_canvas_id = -1;
@@ -19,6 +22,8 @@ double curr_time = 0.0;
 // in the right place
 void spaceUpdate(int spaceId, float dt)
 {
+  (void)(dt); // Unused parameter
+
   float planetX, planetY;
   PlanetGetPos(&planetX, &planetY);
 
@@ -32,7 +37,7 @@ void spaceUpdate(int spaceId, float dt)
   float normPlanetX = ((planetX - viewX) * 2.0) / viewHeight;
   float normPlanetY = ((planetY - viewY) * 2.0) / viewHeight;
 
-  curr_time += dt * 0.03;
+  // curr_time += dt * 0.03;
 
   microShaderApply(space_shader_id);
 
@@ -64,7 +69,7 @@ void SpaceEntityAdd()
 
   // Create planet
   spaceId = microECSEntityNew(NULL, NULL);
-  float canvas_space_height = 512;
+  float canvas_space_height = SPACE_CANVAS_HEIGHT;
   float canvas_space_width = viewWidth * (canvas_space_height / viewHeight);
   float planet_radius = 2 * PlanetGetRadius() / viewHeight;
   float view_angle = 0.0;
