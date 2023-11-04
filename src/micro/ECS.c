@@ -10,6 +10,15 @@
 #define MAX_SYSTEMS 32
 #define MAX_QUERIES 32
 
+#define SETBIT(x, n) x |= (1 << n)
+#define CLEARBIT(x, n) x &= ~(1 << n)
+#define GETBIT(x, n) ((x >> n) & 1)
+#define ENTITY_ALIVE_BIT 0
+#define ENTITY_ALIVE_MASK 0x1
+#define ENTITY_FREED_BIT 1
+#define ENTITY_FREED_MASK 0x2
+
+
 ////////////////////////////////////
 ////// 128-BIT INTEGER TYPE ////////
 ////////////////////////////////////
@@ -64,7 +73,7 @@ uint128_t uint128(unsigned long long val)
 typedef struct
 {
   int id;
-  uint8_t alive;
+  uint8_t state;
   uint128_t components;
   uint16_t *component_offset;
   void *data;
@@ -220,7 +229,8 @@ int microECSEntityNew(void *data, void (*free)(int))
   }
 
   entities[id].id = id;
-  entities[id].alive = 1;
+  SETBIT(entities[id].state, ENTITY_ALIVE_BIT);
+  CLEARBIT(entities[id].state, ENTITY_FREED_BIT);
   entities[id].free_entity = free;
   entities[id].data = data;
   entities[id].components = uint128(0); // No components enabled
@@ -232,12 +242,16 @@ int microECSEntityNew(void *data, void (*free)(int))
 
 void microECSEntityRemove(int entityId)
 {
-  entities[entityId].alive = 0;
+  CLEARBIT(entities[entityId].state, ENTITY_ALIVE_BIT);
   vector_push_back(&entities_to_remove, &entityId);
 }
 
 void microECSEntityFree(int entityId)
 {
+  if (entities[entityId].state & ENTITY_FREED_MASK)
+    return;
+  SETBIT(entities[entityId].state, ENTITY_FREED_BIT);
+
   // Remove from queries
   microECSQueriesEntityRemoved(entityId);
 
@@ -263,7 +277,7 @@ void microECSEntityFree(int entityId)
 
 int microECSEntityIsAlive(int entityId)
 {
-  return entities[entityId].alive;
+  return entities[entityId].state & ENTITY_ALIVE_MASK;
 }
 
 void* microECSEntityGetData(int entityId)
@@ -329,7 +343,7 @@ void microECSEntityRemoveComponent(int entityId, const int componentTypeId)
   components_count[componentTypeId]--;
 
   // Update queries, if entity is alive but changed
-  if (entities[entityId].alive == 1)
+  if (entities[entityId].state & ENTITY_ALIVE_MASK)
     microECSQueriesEntityChanged(entityId, old_components);
 }
 
@@ -349,7 +363,7 @@ int microECSEntityHasComponent(int entityId, const int componentTypeId)
 void microECSEntityFreeAll()
 {
   for (unsigned int i = 0; i < entities_len; i++)
-    if (entities[i].alive)
+    if (entities[i].state & ENTITY_ALIVE_MASK)
       microECSEntityFree(i);
 }
 
@@ -577,8 +591,9 @@ ecs_entity_list microECSCachedQueryRun(int queryId)
   query->entities.size = 0;
   for (unsigned int i = 0; i < entities_len; i++)
   {
-    if (entities[i].alive == 0)
+    if ((entities[i].state & ENTITY_ALIVE_MASK) == 0)
       continue;
+
     if (uint128_are_bits_set(&entities[i].components, &query->componentsMask))
     {
       query->entities.entityIds[query->entities.size] = i;

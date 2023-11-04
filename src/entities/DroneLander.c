@@ -46,6 +46,12 @@ void DroneLanderCollision(int entityId, int otherEntityId)
     CHealth *health = CmpGetHealth(entityId);
     health->health -= 1;
     CPosition *position = CmpGetPosition(entityId);
+  
+
+    //TODO: kickback
+    //CBody *body = CmpGetBody(entityId);
+    //microPhysicsBodyApplyForce(body->body_id, vx * 10.0, vy * 10.0);
+
     if (health->health <= 0.0)
     {
       makeExplosionDroneHit(position->x, position->y, vx, vy, 20, TRUE);

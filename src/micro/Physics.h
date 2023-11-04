@@ -28,6 +28,7 @@ extern float microPhysicsBodyGetMass(int bodyId);
 extern void microPhysicsBodySetPosition(int bodyId, float x, float y);
 extern void microPhysicsBodySetVelocity(int bodyId, float x, float y);
 extern void microPhysicsBodySetForce(int bodyId, float x, float y);
+extern void microPhysicsBodyApplyForce(int bodyId, float x, float y);
 extern void microPhysicsBodyGetPosition(int bodyId, float *x, float *y);
 extern void microPhysicsBodyGetVelocity(int bodyId, float *x, float *y);
 extern void microPhysicsBodyGetForce(int bodyId, float *x, float *y);

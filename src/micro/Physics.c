@@ -295,6 +295,19 @@ void microPhysicsBodySetForce(int bodyId, float x, float y)
   cpBodySetForce(body, cpv(x, y));
 }
 
+void microPhysicsBodyApplyForce(int bodyId, float x, float y)
+{
+  const int worldId = bodyId >> WORLD_ID_BIT_SHIFT;
+  const int shapeId = bodyId & SHAPE_ID_BIT_MASK;
+
+  World *world = vector_at(&worlds, worldId);
+  cpShape *shape = *(cpShape **)vector_at(&world->shapes, shapeId);
+
+  assert(shape != NULL);
+  cpBody *body = cpShapeGetBody(shape);
+  cpBodyApplyForceAtLocalPoint(body, cpv(x, y), cpv(0, 0));
+}
+
 void microPhysicsBodySetCollisionCallback(int bodyId,
                                           void (*callback)(int, int))
 {
