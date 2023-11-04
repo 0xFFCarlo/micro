@@ -414,8 +414,8 @@ void PlayerShieldHit(float damage)
   CmpAddPosition(shield_id, position->x, position->y);
   CmpAddUpdate(shield_id, ShieldUpdate);
   CmpAddDrawable(shield_id, 5, 1);
-  CmpAddTransform(shield_id, PLAYER_TEXTURE_WIDTH, PLAYER_TEXTURE_HEIGHT,
-                  PLAYER_TEXTURE_WIDTH / 2.0, PLAYER_TEXTURE_HEIGHT / 2.0, 0.0);
+  CmpAddTransform(shield_id, PLAYER_TEXTURE_WIDTH/1.5, PLAYER_TEXTURE_HEIGHT/1.5,
+                  PLAYER_TEXTURE_WIDTH / 3.0, PLAYER_TEXTURE_HEIGHT / 3.0, 0.0);
   CmpAddSprite(shield_id, microResourceGet("atlas"), 0, 0, 16, 16);
   CmpAddAnimation(shield_id, anim_shield, 0.1, FALSE, FALSE, FALSE);
   float planetX, planetY;

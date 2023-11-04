@@ -1,9 +1,10 @@
 ## TODO
-- Enemies get kickback when hit depending on bullet
-- Enemies flash when hit
-- Enemies drop Quantium
-- Quantium is attracted by the player at close range and picked up
+- [ ] Enemies drop Quantium
+- [ ] Render sky and atmosphere to texture
+- [ ] Planet rotates at a certain speed?
+- [ ] Quantium is attracted by the player at close range and picked up
 automatically with a low sound
+- [x] Enemies flash when hit
 
 Quantium:
     Description: A rare, quantum-energy-infused metal that is incredibly

@@ -23,6 +23,7 @@
 #define DRONE_TEX_HEIGHT 64
 #define DRONE_SCALE 2.0
 #define DRONE_PROJ_SPEED 600.0
+#define BODY_RADIUS 24
 
 int aid_drone_2_fall = -1;
 int aid_drone_2_walk = -1;
@@ -49,8 +50,8 @@ void DroneLanderCollision(int entityId, int otherEntityId)
   
 
     //TODO: kickback
-    //CBody *body = CmpGetBody(entityId);
-    //microPhysicsBodyApplyForce(body->body_id, vx * 10.0, vy * 10.0);
+    // CBody *body = CmpGetBody(entityId);
+    // microPhysicsBodyApplyForce(body->body_id, vx * 10.0, vy * 10.0);
 
     if (health->health <= 0.0)
     {
@@ -63,6 +64,10 @@ void DroneLanderCollision(int entityId, int otherEntityId)
     else
     {
       makeExplosionDroneHit(position->x, position->y, vx, vy, 3, FALSE);
+      CColor *color = CmpGetColor(entityId);
+      color->r = 2.0;
+      color->g = 2.0;
+      color->b = 2.0;
     }
   }
 }
@@ -76,6 +81,12 @@ void DroneLanderUpdate(int droneId, float dt)
 
   CPosition *position = CmpGetPosition(droneId);
   CAnimation *animation = CmpGetAnimation(droneId);
+
+  // Update color flash
+  CColor *color = CmpGetColor(droneId);
+  color->r = fmax(color->r - 4.0 * dt, 1.0);
+  color->g = fmax(color->g - 4.0 * dt, 1.0);
+  color->b = fmax(color->b - 4.0 * dt, 1.0);
 
   // Get planet info
   f32 planetX, planetY;
@@ -213,8 +224,7 @@ void DroneLanderAddEntity(const int x, const int y)
   CmpAddAnimation(drone_eid, aid_drone_2_fall, 0.4, FALSE, FALSE, FALSE);
   CmpAddUpdate(drone_eid, DroneLanderUpdate);
 
-  const f32 bodyRadius = (DRONE_TEX_WIDTH / 2.0) * DRONE_SCALE / 2.0;
-  int drone_bodyid = microPhysicsBodyNewCircle(drone_eid, 0, x, y, bodyRadius,
+  int drone_bodyid = microPhysicsBodyNewCircle(drone_eid, 0, x, y, BODY_RADIUS,
                                                0.01, FALSE, FALSE, 0, 0.0);
   microPhysicsBodySetCollisionCallback(drone_bodyid, DroneLanderCollision);
   microPhysicsBodySetFilter(drone_bodyid, COLLISION_GROUP_ENEMY,

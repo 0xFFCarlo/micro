@@ -114,55 +114,28 @@ void SpaceEntityAdd()
   microShaderApply(current_shader);
 
   // Position component
-  microECSEntityAddComponent(spaceId, cid_position,
-                             &(CPosition){
-                               .x = 0,
-                               .y = 0,
-                             });
+  CmpAddPosition(spaceId, 0, 0);
 
   // Shaded canvas component
   int canvasId = microCanvasCreate(canvas_space_width, canvas_space_height);
-  microECSEntityAddComponent(spaceId, cid_shadedCanvas,
-                             &(CShadedCanvas){
-                               .canvasId = canvasId,
-                               .shaderId = space_shader_id,
-                               .width = canvas_space_width,
-                               .height = canvas_space_height,
-                               .needsUpdate = 1,
-                             });
+  CmpAddShaderCanvas(spaceId, canvas_space_width, canvas_space_height,
+                     space_shader_id, canvasId);
 
   // Sprite component
   int textureId = microCanvasGetTextureId(canvasId);
   microTextureSetFilter(textureId, MICRO_FILTER_NEAREST);
   int texWidth, texHeight;
   microTextureGetSize(textureId, &texWidth, &texHeight);
-  microECSEntityAddComponent(spaceId, cid_sprite,
-                             &(CSprite){
-                               .textureId = textureId,
-                               .tx = 0,
-                               .ty = 0,
-                               .tw = texWidth,
-                               .th = texHeight,
-                             });
+  CmpAddSprite(spaceId, textureId, 0, 0, texWidth, texHeight);
 
   // Transform component
   float viewportWidth, viewportHeight;
   microViewGetViewport(&viewportWidth, &viewportHeight);
-  microECSEntityAddComponent(spaceId, cid_transform,
-                             &(CTransform){
-                               .width = viewportWidth,
-                               .height = viewportHeight,
-                               .originX = 0,
-                               .originY = 0,
-                               .rotation = 0,
-                             });
+  CmpAddTransform(spaceId, viewportWidth, viewportHeight, 0, 0, 0);
 
   // Color component
-  microECSEntityAddComponent(spaceId, cid_color,
-                             &(CColor){.r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0});
-  microECSEntityAddComponent(spaceId, cid_drawable,
-                             &(CDrawable){.layerId = 0, .visible = 1});
-  microECSEntityAddComponent(spaceId, cid_hud, &(CHud){});
-  microECSEntityAddComponent(spaceId, cid_update,
-                             &(CUpdate){.update = spaceUpdate});
+  CmpAddColor(spaceId, 1.0, 1.0, 1.0, 1.0);
+  CmpAddDrawable(spaceId, 0, TRUE);
+  CmpAddHud(spaceId);
+  CmpAddUpdate(spaceId, spaceUpdate);
 }

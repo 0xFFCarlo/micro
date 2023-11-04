@@ -23,6 +23,7 @@
 #define DRONE_TEX_HEIGHT 48
 #define DRONE_SCALE 2.0
 #define DRONE_PROJ_SPEED 600.0
+#define BODY_RADIUS 24
 
 void DroneCollision(int entityId, int otherEntityId)
 {
@@ -46,6 +47,10 @@ void DroneCollision(int entityId, int otherEntityId)
     else
     {
       makeExplosionDroneHit(position->x, position->y, vx, vy, 3, FALSE);
+      CColor *color = CmpGetColor(entityId);
+      color->r = 2.0;
+      color->g = 2.0;
+      color->b = 2.0;
     }
   }
 }
@@ -57,6 +62,13 @@ void DroneUpdate(int droneId, float dt)
   f32 playerX, playerY;
   PlayerGetPos(&playerX, &playerY);
   CPosition *position = CmpGetPosition(droneId);
+  
+  // Update color flash
+  CColor *color = CmpGetColor(droneId);
+  color->r = fmax(color->r - 4.0 * dt, 1.0);
+  color->g = fmax(color->g - 4.0 * dt, 1.0);
+  color->b = fmax(color->b - 4.0 * dt, 1.0);
+
 
   // Shoot at player if close enough
   if (PlayerIsAlive())
@@ -165,8 +177,7 @@ void DroneAddEntity(const int x, const int y)
   CmpAddAnimation(drone_eid, animId, 0.1, FALSE, FALSE, FALSE);
   CmpAddUpdate(drone_eid, DroneUpdate);
 
-  const f32 bodyRadius = (DRONE_TEX_WIDTH / 2.0) * DRONE_SCALE / 2.0;
-  int drone_bodyid = microPhysicsBodyNewCircle(drone_eid, 0, x, y, bodyRadius,
+  int drone_bodyid = microPhysicsBodyNewCircle(drone_eid, 0, x, y, BODY_RADIUS,
                                                0.01, FALSE, FALSE, 0, 0.0);
   microPhysicsBodySetCollisionCallback(drone_bodyid, DroneCollision);
   microPhysicsBodySetFilter(drone_bodyid, COLLISION_GROUP_ENEMY,
