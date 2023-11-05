@@ -27,8 +27,7 @@
 
 #define PLAYER_TEXTURE_WIDTH (48 * 2.25)
 #define PLAYER_TEXTURE_HEIGHT (48 * 2.25)
-#define PLAYER_BODY_WIDTH (48 / 3.0)
-#define PLAYER_BODY_HEIGHT (48)
+#define PLAYER_BODY_RADIUS (48 / 2.0)
 
 int player_entity_id = -1;
 bool player_alive = 1;
@@ -109,10 +108,6 @@ void PlayerJump()
   microSoundStop(robot_footstep);
   microSoundStop(robot_recharging);
 
-  // Stop at the last frame
-  // if (animation->frameId == 4)
-  //   animation->timeSinceLastFrame = 0;
-
   CHealth *health = CmpGetHealth(player_entity_id);
   if (health->health < health->maxHealth * 0.1)
     animation->animationId = anim_player_jump_noenergy;
@@ -153,8 +148,8 @@ void PlayerChargeWithSolarPanel(float dt)
 
 void PlayerGetSize(float *width, float *height)
 {
-  *width = PLAYER_BODY_WIDTH;
-  *height = PLAYER_BODY_HEIGHT;
+  *width = PLAYER_BODY_RADIUS;
+  *height = PLAYER_BODY_RADIUS;
 }
 
 void PlayerShootAt(float x, float y)
@@ -279,7 +274,7 @@ void playerUpdate(int entityId, float dt)
   toPlanetNormX = toPlanetX / toPlanetDist;
   toPlanetNormY = toPlanetY / toPlanetDist;
   float playerHeight = PlanetGetRadius() - GROUND_HEIGHT * 2 +
-                       PLAYER_BODY_HEIGHT / 2.0;
+                       PLAYER_BODY_RADIUS;
 
   float forceX = toPlanetNormX * 250.0;
   float forceY = toPlanetNormY * 250.0;
@@ -451,9 +446,8 @@ void PlayerEntityAdd()
   //                                            viewportHeight / 2.0 - 100.0,
   //                                            PLAYER_WIDTH / 2.0, 1.0, 0, 0,
   //                                            0.0, 0.0);
-  player_body_id = microPhysicsBodyNewRect(player_entity_id, 0, x, y,
-                                           PLAYER_BODY_WIDTH,
-                                           PLAYER_BODY_HEIGHT, 1.0, FALSE,
+  player_body_id = microPhysicsBodyNewCircle(player_entity_id, 0, x, y,
+                                           PLAYER_BODY_RADIUS, 1.0, FALSE,
                                            FALSE, 0.0, 0.0);
   microPhysicsBodySetCollisionCallback(player_body_id, PlayerCollide);
   microPhysicsBodySetFilter(player_body_id, COLLISION_GROUP_PLAYER,
@@ -496,4 +490,6 @@ void PlayerEntityAdd()
   robot_alarm = microResourceGet("robot_alarm");
   robot_shield_hit = microResourceGet("robot_shield_hit");
   microSoundPlay(robot_say_introduce, 0);
+
+  playerJump = 1;
 }

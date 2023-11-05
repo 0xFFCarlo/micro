@@ -1,9 +1,9 @@
 ## TODO
-- [ ] Enemies drop Quantium
-- [ ] Render sky and atmosphere to texture
 - [ ] Planet rotates at a certain speed?
+- [ ] Render sky and atmosphere to texture
 - [ ] Quantium is attracted by the player at close range and picked up
 automatically with a low sound
+- [x] Enemies drop Quantium
 - [x] Enemies flash when hit
 
 Quantium:

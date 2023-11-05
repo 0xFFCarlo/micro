@@ -16,6 +16,7 @@
 int spaceId = -1;
 int space_shader_id = -1;
 int space_canvas_id = -1;
+float rotation_angle = 0.0;
 double curr_time = 0.0;
 
 // Updates shader parameters to show the planet atmosphere
@@ -45,7 +46,7 @@ void spaceUpdate(int spaceId, float dt)
   float rotationCenterX = 0.0;
   float playerW, playerH;
   PlayerGetSize(&playerW, &playerH);
-  float rotationCenterY = ((PlanetGetRadius() - GROUND_HEIGHT + playerH / 2.0) *
+  float rotationCenterY = ((PlanetGetRadius() - GROUND_HEIGHT + playerH / 2) *
                            2) /
                           viewHeight;
   microShaderSetUniform("view_center", rotationCenterX, rotationCenterY);
