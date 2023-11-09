@@ -10,7 +10,7 @@ typedef struct PlayerData {
   float shootCooldown;
 } PlayerData;
 
-extern void PlayerEntityAdd();
+extern void PlayerEntityAdd(const float x, const float y);
 extern void PlayerGetPos(float *x, float *y);
 extern float PlayerGetRotation();
 extern void PlayerMove(int direction);

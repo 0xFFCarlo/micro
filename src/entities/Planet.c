@@ -208,8 +208,12 @@ unsigned char *makePlanetTexture(int width, int height)
   return texture;
 }
 
-void setupPlanetEntity(int planetId)
+void setupPlanetEntity(const u32 radius)
 {
+  planetRadius = radius;
+
+  planet_id = microECSEntityNew(NULL, NULL);
+
   float viewWidth, viewHeight;
   microViewGetSize(&viewWidth, &viewHeight);
 
@@ -218,10 +222,9 @@ void setupPlanetEntity(int planetId)
   float planet_scale = planetScaleFactor;
 
   // Position component
-  planetX = viewWidth / 2.f;
-  planetY = viewHeight / 2.f + (float)canvas_planet_height +
-            (float)viewHeight * 0.2 / 2.0;
-  CmpAddPosition(planetId, planetX, planetY);
+  planetX = 0;
+  planetY = 0;
+  CmpAddPosition(planet_id, planetX, planetY);
 
   // Sprite component
   unsigned char *texture = makePlanetTexture(canvas_planet_width,
@@ -232,24 +235,24 @@ void setupPlanetEntity(int planetId)
   microTextureSetFilter(textureId, MICRO_FILTER_NEAREST);
   int texWidth, texHeight;
   microTextureGetSize(textureId, &texWidth, &texHeight);
-  CmpAddSprite(planetId, textureId, 0, 0, texWidth, texHeight);
-  CmpAddTransform(planetId, canvas_planet_width * planet_scale,
+  CmpAddSprite(planet_id, textureId, 0, 0, texWidth, texHeight);
+  CmpAddTransform(planet_id, canvas_planet_width * planet_scale,
                   canvas_planet_height * planet_scale,
                   canvas_planet_width * planet_scale / 2.0,
                   canvas_planet_height * planet_scale / 2.0, 0.0);
 
   // Body component
-  planet_body_id = microPhysicsBodyNewCircle(planetId, 0, planetX, planetY,
+  planet_body_id = microPhysicsBodyNewCircle(planet_id, 0, planetX, planetY,
                                              PlanetGetRadius() -
                                                GROUND_HEIGHT * 2.0,
                                              1000.0, 1, 0, 0.0, 1.0);
   microPhysicsBodySetCollisionCallback(planet_body_id, PlanetCollision);
   microPhysicsBodySetFilter(planet_body_id, COLLISION_GROUP_WORLD, COLLISION_MASK_ALL);
-  CmpAddBody(planetId, planet_body_id);
+  CmpAddBody(planet_id, planet_body_id);
 
-  CmpAddColor(planetId, 1.0, 1.0, 1.0, 1.0);
-  CmpAddDrawable(planetId, 1, 1);
-  CmpAddUpdate(planetId, planetUpdate);
+  CmpAddColor(planet_id, 1.0, 1.0, 1.0, 1.0);
+  CmpAddDrawable(planet_id, 1, 1);
+  CmpAddUpdate(planet_id, planetUpdate);
 
   // Add caves
   for (int i = 0; i < 3; i++)
@@ -270,8 +273,10 @@ void setupPlanetEntity(int planetId)
   }
 }
 
-void setupShadow(int shadowId)
+void setupShadow()
 {
+  shadow_id = microECSEntityNew(NULL, NULL);
+
   float viewWidth, viewHeight;
   microViewGetSize(&viewWidth, &viewHeight);
 
@@ -296,12 +301,12 @@ void setupShadow(int shadowId)
   microShaderApply(current_shader);
 
   // Position component
-  CmpAddPosition(shadowId, 0, 0);
+  CmpAddPosition(shadow_id, 0, 0);
 
   // Shaded canvas component
   shadow_canvas_id = microCanvasCreate(canvas_posteffect_width,
                                        canvas_posteffect_height);
-  CmpAddShaderCanvas(shadowId, canvas_posteffect_width,
+  CmpAddShaderCanvas(shadow_id, canvas_posteffect_width,
                      canvas_posteffect_height, shadow_shader_id,
                      shadow_canvas_id);
 
@@ -310,23 +315,17 @@ void setupShadow(int shadowId)
   microTextureSetFilter(textureId, MICRO_FILTER_NEAREST);
   int texWidth, texHeight;
   microTextureGetSize(textureId, &texWidth, &texHeight);
-  CmpAddSprite(shadowId, textureId, 0, 0, texWidth, texHeight);
+  CmpAddSprite(shadow_id, textureId, 0, 0, texWidth, texHeight);
   float viewportWidth, viewportHeight;
   microViewGetViewport(&viewportWidth, &viewportHeight);
-  CmpAddTransform(shadowId, viewportWidth, viewportHeight, 0, 0, 0);
-  CmpAddColor(shadowId, 1.0, 1.0, 1.0, 1.0);
-  CmpAddDrawable(shadowId, 2, 1);
-  CmpAddHud(shadowId);
+  CmpAddTransform(shadow_id, viewportWidth, viewportHeight, 0, 0, 0);
+  CmpAddColor(shadow_id, 1.0, 1.0, 1.0, 1.0);
+  CmpAddDrawable(shadow_id, 2, 1);
+  CmpAddHud(shadow_id);
 }
 
-void PlanetEntityAdd()
+void PlanetEntityAdd(const float radius)
 {
-
-  // Create planet
-  planet_id = microECSEntityNew(NULL, NULL);
-  setupPlanetEntity(planet_id);
-
-  // Create atmosphere and shadow
-  shadow_id = microECSEntityNew(NULL, NULL);
-  setupShadow(shadow_id);
+  setupPlanetEntity(radius);
+  setupShadow();
 }

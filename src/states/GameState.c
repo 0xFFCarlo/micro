@@ -125,8 +125,8 @@ void gameStateInit()
 
   // Register entities
   SpaceEntityAdd();
-  PlanetEntityAdd();
-  PlayerEntityAdd();
+  PlanetEntityAdd(400.0);
+  PlayerEntityAdd(0, PlanetGetRadius() + 150);
   LogGUIAdd();
   GUIInit();
   SpawnerEntityAdd();

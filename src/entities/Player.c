@@ -29,6 +29,8 @@
 #define PLAYER_TEXTURE_HEIGHT (48 * 2.25)
 #define PLAYER_BODY_RADIUS (48 / 2.0)
 
+#define PLAYER_JUNMP_FORCE 4000.0
+
 int player_entity_id = -1;
 bool player_alive = 1;
 int player_idle = -1;
@@ -307,8 +309,8 @@ void playerUpdate(int entityId, float dt)
 
     if (playerJump)
     {
-      forceX += -toPlanetNormX * 4000.0;
-      forceY += -toPlanetNormY * 4000.0;
+      forceX += -toPlanetNormX * PLAYER_JUNMP_FORCE;
+      forceY += -toPlanetNormY * PLAYER_JUNMP_FORCE;
       playerJump = 0;
     }
 
@@ -419,7 +421,7 @@ void PlayerShieldHit(float damage)
   CmpAddFollow(shield_id, player_entity_id, 1, 0, 0);
 }
 
-void PlayerEntityAdd()
+void PlayerEntityAdd(const float x, const float y)
 {
   anim_player_idle = microAnimationGet("robot-2-idle");
   anim_player_walk = microAnimationGet("robot-2-walk");
@@ -433,12 +435,6 @@ void PlayerEntityAdd()
   player_entity_id = microECSEntityNew(NULL, NULL);
   assert(player_entity_id != -1);
 
-  // Position component
-  int viewportWidth, viewportHeight;
-  microSystemGetWindowSize(&viewportWidth, &viewportHeight);
-  int x, y;
-  x = viewportWidth / 2.0;
-  y = viewportHeight / 2.0 - 100.0;
   CmpAddPosition(player_entity_id, x, y);
 
   // Body component
