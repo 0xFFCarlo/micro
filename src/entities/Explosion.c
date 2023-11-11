@@ -12,6 +12,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define EXPLOSION_SIZE 128
+
 float projectileSpeed = 1000.0;
 float projectileVx = 0.0;
 float projectileVy = 0.0;
@@ -131,6 +133,51 @@ MicroParticle particleDroneExplodes(int emitterId)
   return p;
 }
 
+MicroParticle particleMeteorExplodes(int emitterId)
+{
+  MicroParticle p;
+  p.rotation = 0;
+  p.rotationSpeed = 0;
+  p.maxLife = 1.0;
+  p.startAlpha = 1.0;
+  p.endAlpha = 0.0;
+  const int scale = 4 + rand() % 8;
+  p.startScale = scale;
+  p.endScale = scale;
+
+  int peX, peY;
+  microParticleEmitterGetPosition(emitterId, &peX, &peY);
+  float planetX, planetY;
+  PlanetGetPos(&planetX, &planetY);
+  Vector2D planetNorm = {planetX - peX, planetY - peY};
+  planetNorm = v2d_normalize(planetNorm);
+
+  float angle = ((float)rand() / (float)RAND_MAX) * 2.0 * M_PI;
+  Vector2D dir;
+  dir.x = cos(angle);
+  dir.y = sin(angle);
+
+  float randf = ((float)rand() / (float)RAND_MAX);
+  float speed = 300.0;
+  p.vx = dir.x * (0.1 + 0.6 * randf) * speed;
+  p.vy = dir.y * (0.1 + 0.6 * randf) * speed;
+
+  int atlasId = microResourceGet("atlas");
+  assert(atlasId != -1);
+  int textureId = microTextureAtlasGetTextureId(atlasId);
+  assert(textureId != -1);
+  assert(textureId < 100);
+  MicroTextureSource ts = microTextureAtlasGetRegion(atlasId, "particle-smoke");
+  p.textureId = textureId;
+  p.tx = ts.x;
+  p.ty = ts.y;
+  p.tw = ts.w;
+  p.th = ts.h;
+
+  return p;
+}
+
+
 void makeExplosionDroneHit(int x, int y, float vx, float vy, int particleCount,
                            int explode)
 {
@@ -149,7 +196,7 @@ void makeExplosionDroneHit(int x, int y, float vx, float vy, int particleCount,
     int textureId = microTextureAtlasGetTextureId(atlasId);
     CmpAddSprite(explosion_id, textureId, 0, 0, 48, 48);
     f32 rangle = ((float)rand() / (float)RAND_MAX) * 2.0 * M_PI;
-    CmpAddTransform(explosion_id, 128, 128, 64, 64, rangle);
+    CmpAddTransform(explosion_id, EXPLOSION_SIZE, EXPLOSION_SIZE, EXPLOSION_SIZE/2.0, EXPLOSION_SIZE/2.0, rangle);
     int animation_id = microAnimationGet("explosion-1");
     CmpAddAnimation(explosion_id, animation_id, 0.5, FALSE, FALSE, FALSE);
     CmpAddDrawable(explosion_id, 4, 1);
@@ -166,4 +213,19 @@ void makeExplosionDroneHit(int x, int y, float vx, float vy, int particleCount,
   assert(emitterId != -1);
   CmpAddParticleEmitter(explosion_parts_id, emitterId, 0, 0);
   CmpAddLifetime(explosion_parts_id, 1.0);
+}
+
+void makeExplosionMeteorHit(int x, int y)
+{
+  int explosion_parts_id = microECSEntityNew(NULL, NULL);
+  assert(explosion_parts_id != -1);
+  CmpAddPosition(explosion_parts_id, x, y);
+
+  CmpAddDrawable(explosion_parts_id, 4, 1);
+  const int
+    emitterId = microParticleEmitterCreateExplosion(x, y, 30, particleMeteorExplodes);
+  assert(emitterId != -1);
+  CmpAddParticleEmitter(explosion_parts_id, emitterId, 0, 0);
+  CmpAddLifetime(explosion_parts_id, 1.0);
+
 }

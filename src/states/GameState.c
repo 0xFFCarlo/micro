@@ -20,6 +20,7 @@
 #include "../entities/Projectile.h"
 #include "../entities/Space.h"
 #include "../entities/Spawner.h"
+#include "../entities/Meteor.h"
 #include "../misc/ambience_music.h"
 #include "../misc/inventory.h"
 #include "../systems/AnimationSystem.h"
@@ -126,7 +127,7 @@ void gameStateInit()
   // Register entities
   SpaceEntityAdd();
   PlanetEntityAdd(400.0);
-  PlayerEntityAdd(0, PlanetGetRadius() + 150);
+  PlayerEntityAdd(0, PlanetGetRadius() + 500);
   LogGUIAdd();
   GUIInit();
   SpawnerEntityAdd();
@@ -134,6 +135,7 @@ void gameStateInit()
   int x, y;
   PlanetGetSurfacePosition(0.2, -24, &x, &y);
   // PortalAddEntity(x, y);
+  // MeteorAddEntity(100, PlanetGetRadius() + 2000, 200.0);
 
   // Add projectile
   // float playerX, playerY;

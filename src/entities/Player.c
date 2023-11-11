@@ -22,6 +22,7 @@
 #define PLAYER_STATE_WALK 1
 #define PLAYER_STATE_SOLAR_CHARGING 2
 #define PLAYER_STATE_LANDING 3
+#define PLAYER_STATE_DEPARTING 4
 
 #define PLAYER_DIRECTION_RIGHT 0
 #define PLAYER_DIRECTION_LEFT 1
@@ -47,9 +48,6 @@ int anim_player_walk_noenergy = -1;
 int anim_player_jump_noenergy = -1;
 int anim_player_solar_charging = -1;
 int anim_shield = -1;
-
-float toPlanetNormX = 0.0;
-float toPlanetNormY = 0.0;
 
 float playerRotation = 0.0;
 int playerJump = 0;
@@ -121,8 +119,12 @@ void PlayerJump()
   animation->reverse = FALSE;
 }
 
-void PlayerLanding() {
-  
+void PlayerFly() {
+  CAnimation *animation = CmpGetAnimation(player_entity_id);
+
+  animation->animationId = anim_player_fly;
+  animation->duration = 0.1;
+  animation->reverse = FALSE;
 }
 
 void PlayerChargeWithSolarPanel(float dt)
@@ -195,6 +197,10 @@ void PlayerShootAt(float x, float y)
 void playerEventListener(int entity, const SDL_Event *event)
 {
   (void)entity; // unused parameter
+  
+  // Cannot do anything while landing or departing
+  if (player_state == PLAYER_STATE_LANDING || player_state == PLAYER_STATE_DEPARTING)
+    return;
 
   // Mouse press
   if (event->type == SDL_MOUSEBUTTONDOWN)
@@ -236,98 +242,158 @@ void playerUpdate(int entityId, float dt)
   (void)entityId; // unused parameter
 
   // Controls and player state
-  player_state = PLAYER_STATE_IDLE;
-  if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_D])
+  if (player_state != PLAYER_STATE_LANDING &&
+      player_state != PLAYER_STATE_DEPARTING)
   {
-    player_direction = PLAYER_DIRECTION_RIGHT;
-    player_state = PLAYER_STATE_WALK;
-  }
-  else if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_A])
-  {
-    player_direction = PLAYER_DIRECTION_LEFT;
-    player_state = PLAYER_STATE_WALK;
-  }
-
-  if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_W])
-  {
-    if (playerJump == 0)
+    player_state = PLAYER_STATE_IDLE;
+    if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_D])
     {
-      microSoundPlay(robot_jump, 0);
-      playerJump = 1;
+      player_direction = PLAYER_DIRECTION_RIGHT;
+      player_state = PLAYER_STATE_WALK;
     }
-  }
-
-  if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_C])
-  {
-    CHealth *health = CmpGetHealth(player_entity_id);
-    if (health->health < health->maxHealth)
-      player_state = PLAYER_STATE_SOLAR_CHARGING;
-  }
-
-  if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_E])
-    interactionSystemInteract();
-
-  float viewX, viewY;
-  float viewWidth, viewHeight;
-  microViewGetCenter(&viewX, &viewY);
-  microViewGetSize(&viewWidth, &viewHeight);
-
-  CPosition *position = CmpGetPosition(player_entity_id);
-
-  float planetX, planetY;
-  PlanetGetPos(&planetX, &planetY);
-  float toPlanetX = planetX - position->x;
-  float toPlanetY = planetY - position->y;
-  float toPlanetDist = sqrt(toPlanetX * toPlanetX + toPlanetY * toPlanetY);
-  toPlanetNormX = toPlanetX / toPlanetDist;
-  toPlanetNormY = toPlanetY / toPlanetDist;
-  float playerHeight = PlanetGetRadius() - GROUND_HEIGHT * 2 +
-                       PLAYER_BODY_RADIUS;
-
-  float forceX = toPlanetNormX * 250.0;
-  float forceY = toPlanetNormY * 250.0;
-  // float forceX, forceY;
-  // microPhysicsBodyGetForce(player_body_id, &forceX, &forceY);
-
-  // Motion on planet
-  if (toPlanetDist <= playerHeight + 1.0)
-  {
-
-    // float px, py;
-    // microPhysicsBodyGetPosition(player_body_id, &px, &py);
-    float vx, vy;
-    microPhysicsBodyGetVelocity(player_body_id, &vx, &vy);
-
-    // Motion
-    if (player_state == PLAYER_STATE_WALK)
+    else if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_A])
     {
-      if (player_direction == PLAYER_DIRECTION_RIGHT)
+      player_direction = PLAYER_DIRECTION_LEFT;
+      player_state = PLAYER_STATE_WALK;
+    }
+
+    if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_W])
+    {
+      if (playerJump == 0)
       {
-        forceX += toPlanetNormY * 150000.0 * dt;
-        forceY += -toPlanetNormX * 150000.0 * dt;
-      }
-      else
-      {
-        forceX += -toPlanetNormY * 150000.0 * dt;
-        forceY += toPlanetNormX * 150000.0 * dt;
+        microSoundPlay(robot_jump, 0);
+        playerJump = 1;
       }
     }
 
-    if (playerJump)
+    if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_C])
     {
-      forceX += -toPlanetNormX * PLAYER_JUNMP_FORCE;
-      forceY += -toPlanetNormY * PLAYER_JUNMP_FORCE;
-      playerJump = 0;
+      CHealth *health = CmpGetHealth(player_entity_id);
+      if (health->health < health->maxHealth)
+        player_state = PLAYER_STATE_SOLAR_CHARGING;
     }
 
-    vx *= 0.70;
-    vy *= 0.70;
-    microPhysicsBodySetVelocity(player_body_id, vx, vy);
+    if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_E])
+      interactionSystemInteract();
 
-    // microPhysicsBodySetPosition(player_body_id, px, py);
+    float viewX, viewY;
+    float viewWidth, viewHeight;
+    microViewGetCenter(&viewX, &viewY);
+    microViewGetSize(&viewWidth, &viewHeight);
+
+    CPosition *position = CmpGetPosition(player_entity_id);
+
+    float planetX, planetY;
+    PlanetGetPos(&planetX, &planetY);
+    float toPlanetX = planetX - position->x;
+    float toPlanetY = planetY - position->y;
+    float toPlanetDist = sqrt(toPlanetX * toPlanetX + toPlanetY * toPlanetY);
+    float toPlanetNormX = toPlanetX / toPlanetDist;
+    float toPlanetNormY = toPlanetY / toPlanetDist;
+    float playerHeight = PlanetGetRadius() - GROUND_HEIGHT * 2 +
+      PLAYER_BODY_RADIUS;
+
+    float forceX = toPlanetNormX * 250.0;
+    float forceY = toPlanetNormY * 250.0;
+    // float forceX, forceY;
+    // microPhysicsBodyGetForce(player_body_id, &forceX, &forceY);
+
+    // Motion on planet
+    if (toPlanetDist <= playerHeight + 1.0)
+    {
+
+      // float px, py;
+      // microPhysicsBodyGetPosition(player_body_id, &px, &py);
+      float vx, vy;
+      microPhysicsBodyGetVelocity(player_body_id, &vx, &vy);
+
+      // Motion
+      if (player_state == PLAYER_STATE_WALK)
+      {
+        if (player_direction == PLAYER_DIRECTION_RIGHT)
+        {
+          forceX += toPlanetNormY * 150000.0 * dt;
+          forceY += -toPlanetNormX * 150000.0 * dt;
+        }
+        else
+        {
+          forceX += -toPlanetNormY * 150000.0 * dt;
+          forceY += toPlanetNormX * 150000.0 * dt;
+        }
+      }
+
+      if (playerJump)
+      {
+        forceX += -toPlanetNormX * PLAYER_JUNMP_FORCE;
+        forceY += -toPlanetNormY * PLAYER_JUNMP_FORCE;
+        playerJump = 0;
+      }
+
+      vx *= 0.70;
+      vy *= 0.70;
+      microPhysicsBodySetVelocity(player_body_id, vx, vy);
+
+      // microPhysicsBodySetPosition(player_body_id, px, py);
+    }
+
+    microPhysicsBodySetForce(player_body_id, forceX, forceY);
+
   }
+  else if (player_state == PLAYER_STATE_LANDING)
+  {
+    CPosition *position = CmpGetPosition(player_entity_id);
 
-  microPhysicsBodySetForce(player_body_id, forceX, forceY);
+    float planetX, planetY;
+    PlanetGetPos(&planetX, &planetY);
+    float deltaX = planetX - position->x;
+    float deltaY = planetY - position->y;
+    float planetDist = sqrt(deltaX * deltaX + deltaY * deltaY);
+    float toDirX = deltaX / planetDist;
+    float toDirY = deltaY / planetDist;
+    const float surfaceDist = planetDist - PlanetGetRadius();
+    float speed = fmin(surfaceDist, 400);
+    speed = fmax(speed, 100);
+
+    float velX = toDirX * speed;
+    float velY = toDirY * speed;
+
+    microPhysicsBodySetVelocity(player_body_id, velX, velY);
+
+    if (surfaceDist < 10.0) {
+      player_state = PLAYER_STATE_IDLE;
+      microSoundPlay(robot_say_introduce, 0);
+    }
+  }
+  else if (player_state == PLAYER_STATE_DEPARTING)
+  {
+    CPosition *position = CmpGetPosition(player_entity_id);
+
+    float planetX, planetY;
+    PlanetGetPos(&planetX, &planetY);
+    float deltaX = planetX - position->x;
+    float deltaY = planetY - position->y;
+    float planetDist = sqrt(deltaX * deltaX + deltaY * deltaY);
+    float toDirX = -deltaX / planetDist;
+    float toDirY = -deltaY / planetDist;
+    const float surfaceDist = planetDist - PlanetGetRadius();
+    float speed = fmin(surfaceDist, 400);
+    speed = fmax(speed, 100);
+
+    if (surfaceDist >= 500.0)
+      speed = 0.0;
+
+    float velX = toDirX * speed;
+    float velY = toDirY * speed;
+
+    microPhysicsBodySetVelocity(player_body_id, velX, velY);
+  }
+    
+  if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_P])
+    player_state = PLAYER_STATE_DEPARTING;
+
+  if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_I])
+    player_state = PLAYER_STATE_LANDING;
+
 
   // Energy alarm
   CHealth *health = CmpGetHealth(player_entity_id);
@@ -342,7 +408,9 @@ void playerUpdate(int entityId, float dt)
   }
 
   // Update player based on state
-  if (playerJump == 1)
+  if (player_state == PLAYER_STATE_LANDING || player_state == PLAYER_STATE_DEPARTING)
+    PlayerFly();
+  else if (playerJump == 1)
     PlayerJump();
   else if (player_state == PLAYER_STATE_WALK)
     PlayerWalk();
@@ -353,6 +421,8 @@ void playerUpdate(int entityId, float dt)
 
   // Update Planet alignment component
   CPlanetaryAlignment *pa = CmpGetPlanetaryAlignment(player_entity_id);
+  float planetX, planetY;
+  PlanetGetPos(&planetX, &planetY);
   pa->planet_x = planetX;
   pa->planet_y = planetY;
 }
@@ -444,11 +514,6 @@ void PlayerEntityAdd(const float x, const float y)
 
   CmpAddPosition(player_entity_id, x, y);
 
-  // Body component
-  // player_body_id = microPhysicsBodyNewCircle(0, viewportWidth / 2.0,
-  //                                            viewportHeight / 2.0 - 100.0,
-  //                                            PLAYER_WIDTH / 2.0, 1.0, 0, 0,
-  //                                            0.0, 0.0);
   player_body_id = microPhysicsBodyNewCircle(player_entity_id, 0, x, y,
                                            PLAYER_BODY_RADIUS, 1.0, FALSE,
                                            FALSE, 0.0, 0.0);
@@ -492,7 +557,6 @@ void PlayerEntityAdd(const float x, const float y)
   robot_recharging = microResourceGet("robot_recharging");
   robot_alarm = microResourceGet("robot_alarm");
   robot_shield_hit = microResourceGet("robot_shield_hit");
-  microSoundPlay(robot_say_introduce, 0);
 
-  playerJump = 1;
+  player_state = PLAYER_STATE_LANDING;
 }

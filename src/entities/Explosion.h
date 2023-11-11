@@ -3,5 +3,6 @@
 
 extern void makeExplostionProjectileGroundHit(int x, int y, float vx, float vy);
 extern void makeExplosionDroneHit(int x, int y, float vx, float vy, int particleCount, int explode);
+extern void makeExplosionMeteorHit(int x, int y);
 
 #endif
