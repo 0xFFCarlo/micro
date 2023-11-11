@@ -21,6 +21,7 @@
 #define PLAYER_STATE_IDLE 0
 #define PLAYER_STATE_WALK 1
 #define PLAYER_STATE_SOLAR_CHARGING 2
+#define PLAYER_STATE_LANDING 3
 
 #define PLAYER_DIRECTION_RIGHT 0
 #define PLAYER_DIRECTION_LEFT 1
@@ -38,6 +39,7 @@ int player_state = 0;
 int player_direction = 0;
 
 int anim_player_idle = -1;
+int anim_player_fly = -1;
 int anim_player_walk = -1;
 int anim_player_jump = -1;
 int anim_player_idle_noenergy = -1;
@@ -117,6 +119,10 @@ void PlayerJump()
     animation->animationId = anim_player_jump;
   animation->duration = 0.1;
   animation->reverse = FALSE;
+}
+
+void PlayerLanding() {
+  
 }
 
 void PlayerChargeWithSolarPanel(float dt)
@@ -424,6 +430,7 @@ void PlayerShieldHit(float damage)
 void PlayerEntityAdd(const float x, const float y)
 {
   anim_player_idle = microAnimationGet("robot-2-idle");
+  anim_player_fly = microAnimationGet("robot-2-fly");
   anim_player_walk = microAnimationGet("robot-2-walk");
   anim_player_jump = microAnimationGet("robot-2-jump");
   anim_player_idle_noenergy = microAnimationGet("robot-2-idle-noenergy");
