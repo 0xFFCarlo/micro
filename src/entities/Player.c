@@ -240,6 +240,8 @@ void PlayerIdle()
 void playerUpdate(int entityId, float dt)
 {
   (void)entityId; // unused parameter
+  
+  CPosition *position = CmpGetPosition(player_entity_id);
 
   // Controls and player state
   if (player_state != PLAYER_STATE_LANDING &&
@@ -280,8 +282,6 @@ void playerUpdate(int entityId, float dt)
     float viewWidth, viewHeight;
     microViewGetCenter(&viewX, &viewY);
     microViewGetSize(&viewWidth, &viewHeight);
-
-    CPosition *position = CmpGetPosition(player_entity_id);
 
     float planetX, planetY;
     PlanetGetPos(&planetX, &planetY);
@@ -341,8 +341,6 @@ void playerUpdate(int entityId, float dt)
   }
   else if (player_state == PLAYER_STATE_LANDING)
   {
-    CPosition *position = CmpGetPosition(player_entity_id);
-
     float planetX, planetY;
     PlanetGetPos(&planetX, &planetY);
     float deltaX = planetX - position->x;
@@ -366,8 +364,6 @@ void playerUpdate(int entityId, float dt)
   }
   else if (player_state == PLAYER_STATE_DEPARTING)
   {
-    CPosition *position = CmpGetPosition(player_entity_id);
-
     float planetX, planetY;
     PlanetGetPos(&planetX, &planetY);
     float deltaX = planetX - position->x;

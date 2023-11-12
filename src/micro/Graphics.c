@@ -2142,6 +2142,7 @@ float microGraphicsDelayToNextFrame(float target_fps)
   frame_time = SDL_GetTicks() - lastTime;
   float deltaTime = (float)frame_time / 1000.0;
   lastTime = SDL_GetTicks();
+  deltaTime = fmin(deltaTime, 2.f / target_fps);
 
   return deltaTime;
 }

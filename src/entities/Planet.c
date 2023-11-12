@@ -301,7 +301,7 @@ void setupShadow()
   microShaderApply(current_shader);
 
   // Position component
-  CmpAddPosition(shadow_id, 0, 0);
+  CmpAddPosition(shadow_id, planetX, planetY);
 
   // Shaded canvas component
   shadow_canvas_id = microCanvasCreate(canvas_posteffect_width,

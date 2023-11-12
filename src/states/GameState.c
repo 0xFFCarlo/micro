@@ -127,13 +127,13 @@ void gameStateInit()
   // Register entities
   SpaceEntityAdd();
   PlanetEntityAdd(400.0);
-  PlayerEntityAdd(0, PlanetGetRadius() + 500);
+  PlayerEntityAdd(0, PlanetGetRadius() + 400);
   LogGUIAdd();
   GUIInit();
   SpawnerEntityAdd();
 
-  int x, y;
-  PlanetGetSurfacePosition(0.2, -24, &x, &y);
+  // int x, y;
+  // PlanetGetSurfacePosition(0.2, -24, &x, &y);
   // PortalAddEntity(x, y);
   // MeteorAddEntity(100, PlanetGetRadius() + 2000, 200.0);
 

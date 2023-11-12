@@ -12,7 +12,7 @@ int main()
   microECSInit();
   microStateSet(gameStateGet());
 
-  float deltaTime = 0;
+  float deltaTime = 0.0;
   while (1)
   {
     microStateUpdate(deltaTime);
