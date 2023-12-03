@@ -370,7 +370,7 @@ void playerUpdate(int entityId, float dt)
       player_state = PLAYER_STATE_IDLE;
       microSoundStop(robot_engine);
       microSoundPlay(robot_say_introduce, 0);
-      GUIPlayerSay("I'm a robot.");
+      GUIPlayerSay("I am robot.");
       SpawnerStart(); 
     }
   }

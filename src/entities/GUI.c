@@ -41,6 +41,8 @@
 #define RESOURCES_FRAME_WIDTH (64 * 3)
 #define RESOURCES_FRAME_HEIGHT (20 * 3)
 
+#define SAY_OPEN_SPEED 800.0
+
 int gui_font_id = 0;
 
 // inventory counters
@@ -73,6 +75,8 @@ u32 say_message_id = 0;
 u32 say_background_arrow_id = 0;
 char say_text[256] = "\0";
 float say_timer = 0.0;
+float say_width = 0.0;
+float say_target_width = 0.0;
 
 // Cursor
 u32 cursor_id = 0;
@@ -283,16 +287,33 @@ void GUI_update_player_say(float dt)
 {
   if (say_timer <= 0.0)
   {
-    CDrawable *drawable = CmpGetDrawable(say_background_id);
+    CDrawable *drawable = CmpGetDrawable(say_message_id);
     drawable->visible = 0;
-    drawable = CmpGetDrawable(say_message_id);
-    drawable->visible = 0;
-    drawable = CmpGetDrawable(say_background_arrow_id);
-    drawable->visible = 0;
-    return;
+
+    say_width -= SAY_OPEN_SPEED * dt;
+    if (say_width <= 0) {
+      say_width = say_target_width;
+    
+      drawable = CmpGetDrawable(say_background_id);
+      drawable->visible = 0;
+      drawable = CmpGetDrawable(say_background_arrow_id);
+      drawable->visible = 0;
+    }
+  }
+  else
+  {
+    say_timer -= dt;
+    say_width += SAY_OPEN_SPEED * dt;
+    if (say_width >= say_target_width) {
+      say_width = say_target_width;
+      CDrawable *drawable = CmpGetDrawable(say_message_id);
+      drawable->visible = 1;
+    }
   }
 
-  say_timer -= dt;
+  CTransform *transform = CmpGetTransform(say_background_id);
+  transform->width = say_width;
+  transform->originX = say_width / 2.0;
 }
 
 void GUI_update(int entity, float dt)
@@ -517,13 +538,13 @@ void GUIInit()
   float viewWidth, viewHeight;
   microViewGetViewport(&viewWidth, &viewHeight);
   say_background_id = microECSEntityNew(NULL, NULL);
-  CmpAddPosition(say_background_id, viewWidth / 2.0, viewHeight / 2.0 - 128);
+  CmpAddPosition(say_background_id, viewWidth / 2.0, viewHeight / 2.0 - 94);
   CmpAddDrawable(say_background_id, 5, 1);
   CmpAddHud(say_background_id);
   txs = microTextureAtlasGetRegion(atlasId, "blank");
   CmpAddSprite(say_background_id, atlasId, txs.x, txs.y, txs.w, txs.h);
   CmpAddTransform(say_background_id, 256, 128, 128, 64, 0);
-  CmpAddColor(say_background_id, 0.0, 0.0, 0.0, 0.5);
+  CmpAddColor(say_background_id, 0.0, 0.0, 0.0, 0.7);
 
   // Add say message
   say_message_id = microECSEntityNew(NULL, NULL);
@@ -534,29 +555,55 @@ void GUIInit()
   
   // Add say background arrow
   say_background_arrow_id = microECSEntityNew(NULL, NULL);
-  CmpAddPosition(say_background_arrow_id, viewWidth / 2 - 256.0 / 2 + 128,
-                 viewHeight - 128 - 16 + 128);
+  CmpAddPosition(say_background_arrow_id, viewWidth / 2.0,
+                 viewHeight - 94 - 16 + 128);
   CmpAddDrawable(say_background_arrow_id, 5, 1);
   CmpAddHud(say_background_arrow_id);
-  txs = microTextureAtlasGetRegion(atlasId, "blank");
-  CmpAddSprite(say_background_arrow_id, atlasId, txs.x, txs.y, txs.w, txs.h);
-  CmpAddTransform(say_background_arrow_id, 128, 128, 0, 0, 0);
-  CmpAddColor(say_background_arrow_id, 0.0, 0.0, 0.0, 0.5);
+  txs = microTextureAtlasGetRegion(atlasId, "triangle");
+  CmpAddSprite(say_background_arrow_id, atlasId, txs.x, txs.y + txs.h, txs.w, -txs.h);
+  CmpAddTransform(say_background_arrow_id, 32, 16, 16, 8, 0);
+  CmpAddColor(say_background_arrow_id, 0.0, 0.0, 0.0, 0.7);
 }
 
 void GUIPlayerSay(const char *text)
 {
-  float viewWidth, viewHeight;
-  microViewGetViewport(&viewWidth, &viewHeight);
   strcpy(say_text, text);
+  const u32 text_len_px = microFontGetTextWidth(gui_font_id, say_text);
+
+  u32 lines = 1;
+  for (int i = 0; i < (int)strlen(say_text); i++)
+    if (say_text[i] == '\n')
+      lines++;
+  
+  // Draw say message
   CDrawable *drawable = CmpGetDrawable(say_background_id);
   drawable->visible = 1;
   drawable = CmpGetDrawable(say_message_id);
-  drawable->visible = 1;
+  drawable->visible = 0;
   drawable = CmpGetDrawable(say_background_arrow_id);
   drawable->visible = 1;
-  CPosition *pos = CmpGetPosition(say_message_id);
-  pos->x = viewWidth/2.0 - microFontGetTextWidth(gui_font_id, say_text) / 2.0;
   say_timer = strlen(say_text) * 0.2;
+  
+  // Update position and size of say message
+  float viewWidth, viewHeight;
+  microViewGetViewport(&viewWidth, &viewHeight);
+
+  CPosition *pos = CmpGetPosition(say_background_id);
+  pos->y = viewHeight / 2.0 - 94;
+  CTransform *transform = CmpGetTransform(say_background_id);
+  transform->width = text_len_px + 32;
+  transform->height = 24 * lines + 8;
+  transform->originX = transform->width / 2.0;
+  transform->originY = transform->height / 2.0;
+
+  CPosition *arrow_pos = CmpGetPosition(say_background_arrow_id);
+  arrow_pos->y = viewHeight/2.0 - 94 + transform->height / 2.0 + 8;
+
+  pos = CmpGetPosition(say_message_id);
+  pos->x = viewWidth/2.0 - text_len_px/2.0;
+  pos->y = viewHeight / 2.0 - 94 - 24 * lines / 2.0 + 4 + 24.0/2;
+
+  say_width = 0.0;
+  say_target_width = transform->width;
 }
 
