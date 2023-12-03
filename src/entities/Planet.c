@@ -8,27 +8,37 @@
 #include "../micro/Resources.h"
 #include "../misc/collision.h"
 #include "../util/perlin_noise.h"
+#include "../util/debug.h"
+#include "../util/vector.h"
 #include "Cave.h"
+#include "Space.h"
 #include "Explosion.h"
 #include "Resource.h"
 #include <assert.h>
-#include <stdio.h>
 
+// Resources management
 int planet_id = -1;
+int planet_texture_id = -1;
 int planet_shader_id = -1;
 int planet_canvas_id = -1;
+int planet_body_id = -1;
+unsigned char* planet_texture = NULL;
 int shadow_id = -1;
 int shadow_shader_id = -1;
 int shadow_canvas_id = -1;
+Vector planet_entities;
 
+// Planet fixed parameters
 float planetX = 0.0;
 float planetY = 0.0;
-float planetRadius = 400;
 float planetScaleFactor = 2.0;
 float planetLightDepth = 140;
 float planetSurfaceDepth = GROUND_HEIGHT / 2.0;
 
-int planet_body_id = -1;
+// Planet genertion parameters 
+PlanetType planetType = PLANET_RED_ROCKY;
+float planetRadius = 400;
+
 
 void PlanetCollision(int entityId, int otherEntityId)
 {
@@ -73,10 +83,8 @@ void planetUpdate(int planetId, float dt)
   CPosition *position = CmpGetPosition(planetId);
 
   float viewX, viewY;
-  float viewWidth, viewHeight;
   float viewAngle;
   microViewGetCenter(&viewX, &viewY);
-  microViewGetSize(&viewWidth, &viewHeight);
   viewAngle = microViewGetRotation();
 
   float windowWidth, windowHeight;
@@ -283,14 +291,26 @@ unsigned char *makePlanetTextureAsteroid(int width, int height)
   return texture;
 }
 
-void setupPlanetEntity(const u32 radius)
+void PlanetFree(int planet_eid)
 {
+  CBody *body = CmpGetBody(planet_eid);
+  microPhysicsBodyFree(body->body_id);
+  if (planet_texture_id != -1)
+    microTextureFree(planet_texture_id);
+  if (planet_texture != NULL)
+    free(planet_texture);
+  CShadedCanvas *canvas = CmpGetShadedCanvas(planet_eid);
+  microCanvasFree(canvas->canvasId);
+  microShaderFree(canvas->shaderId);
+  vector_free(&planet_entities);
+}
+
+void setupPlanetEntity()
+{
+  const u32 radius = 400;
   planetRadius = radius;
 
-  planet_id = microECSEntityNew(NULL, NULL);
-
-  float viewWidth, viewHeight;
-  microViewGetSize(&viewWidth, &viewHeight);
+  planet_id = microECSEntityNew(NULL, PlanetFree);
 
   float canvas_planet_height = planetRadius * 2.0 / 2.0;
   float canvas_planet_width = planetRadius * 2.0 / 2.0;
@@ -302,15 +322,12 @@ void setupPlanetEntity(const u32 radius)
   CmpAddPosition(planet_id, planetX, planetY);
 
   // Sprite component
-  unsigned char *texture = makePlanetTextureRedPlanet(canvas_planet_width,
-                                             canvas_planet_height);
-  int textureId = microTextureLoadFromMemory(texture, canvas_planet_width,
-                                             canvas_planet_height, 4,
-                                             MICRO_FILTER_NEAREST);
-  microTextureSetFilter(textureId, MICRO_FILTER_NEAREST);
+  planet_texture = NULL;
+  planet_texture_id = -1;
   int texWidth, texHeight;
-  microTextureGetSize(textureId, &texWidth, &texHeight);
-  CmpAddSprite(planet_id, textureId, 0, 0, texWidth, texHeight);
+  texWidth = radius * 2.0;
+  texHeight = radius * 2.0;
+  CmpAddSprite(planet_id, planet_texture_id, 0, 0, texWidth, texHeight);
   CmpAddTransform(planet_id, canvas_planet_width * planet_scale,
                   canvas_planet_height * planet_scale,
                   canvas_planet_width * planet_scale / 2.0,
@@ -328,29 +345,21 @@ void setupPlanetEntity(const u32 radius)
   CmpAddColor(planet_id, 1.0, 1.0, 1.0, 1.0);
   CmpAddDrawable(planet_id, 1, 1);
   CmpAddUpdate(planet_id, planetUpdate);
+  
+  // Allocate vector
+  planet_entities = vector_create(sizeof(int));
+}
 
-  // Add caves
-  for (int i = 0; i < 3; i++)
-  {
-    float angle = (double)rand() / (double)RAND_MAX * 2.0 * M_PI;
-    int caveX, caveY;
-    PlanetGetSurfacePosition(angle, 32.0 / 2.0 - 16, &caveX, &caveY);
-    CaveAddEntity(caveX, caveY);
-  }
-
-  // Add rock
-  for (int i = 0; i < 3; i++)
-  {
-    float angle = (double)rand() / (double)RAND_MAX * 2.0 * M_PI;
-    int rockX, rockY;
-    PlanetGetSurfacePosition(angle, 16.0 / 2.0, &rockX, &rockY);
-    ResourceAddEntity(rockX, rockY, RES_METAL);
-  }
+void ShadowFree(int shadow_eid)
+{
+  CShadedCanvas *canvas = CmpGetShadedCanvas(shadow_eid);
+  microCanvasFree(canvas->canvasId);
+  microShaderFree(canvas->shaderId);
 }
 
 void setupShadow()
 {
-  shadow_id = microECSEntityNew(NULL, NULL);
+  shadow_id = microECSEntityNew(NULL, ShadowFree);
 
   float viewWidth, viewHeight;
   microViewGetSize(&viewWidth, &viewHeight);
@@ -399,8 +408,144 @@ void setupShadow()
   CmpAddHud(shadow_id);
 }
 
-void PlanetEntityAdd(const float radius)
+void PlanetGenerate()
 {
-  setupPlanetEntity(radius);
+  // Generate new planet parameters 
+  planetType = rand() % PLANET_TYPES_COUNT;
+  int rocksCount = 3;
+  int cavesCount = 3;
+  if (planetType == PLANET_ASTEROID)
+    cavesCount = 0;
+  
+  if (planetType == PLANET_RED_ROCKY)
+    planetRadius = 300 + rand() % 100;
+  else if (planetType == PLANET_ASTEROID)
+    planetRadius = 200 + rand() % 100;
+  else
+    assert(0);
+  
+  // Clear previous planet texture
+  if (planet_texture_id != -1)
+    microTextureFree(planet_texture_id);
+  if (planet_texture != NULL)
+    free(planet_texture);
+
+  // Generate new planet texture
+  float viewWidth, viewHeight;
+  microViewGetSize(&viewWidth, &viewHeight);
+
+  float canvas_planet_height = planetRadius * 2.0 / 2.0;
+  float canvas_planet_width = planetRadius * 2.0 / 2.0;
+  float planet_scale = planetScaleFactor;
+
+  if (planetType == PLANET_RED_ROCKY)
+    planet_texture = makePlanetTextureRedPlanet(canvas_planet_width,canvas_planet_height);
+  else if (planetType == PLANET_ASTEROID)
+    planet_texture = makePlanetTextureAsteroid(canvas_planet_width,canvas_planet_height);
+  else
+    assert(0);
+
+  planet_texture_id = microTextureLoadFromMemory(planet_texture, canvas_planet_width,
+                                             canvas_planet_height, 4,
+                                             MICRO_FILTER_NEAREST);
+  microTextureSetFilter(planet_texture_id, MICRO_FILTER_NEAREST);
+  int texWidth, texHeight;
+  microTextureGetSize(planet_texture_id, &texWidth, &texHeight);
+  CSprite *sprite = CmpGetSprite(planet_id);
+  sprite->textureId = planet_texture_id;
+  sprite->tw = texWidth;
+  sprite->th = texHeight;
+  
+  // Update sprite size
+  CTransform *transform = CmpGetTransform(planet_id);
+  transform->width = canvas_planet_width * planet_scale;
+  transform->height = canvas_planet_height * planet_scale;
+  transform->originX = canvas_planet_width * planet_scale / 2.0;
+  transform->originY = canvas_planet_height * planet_scale / 2.0;
+  transform->rotation = 0.0;
+  
+  // Update body size
+  CBody *body = CmpGetBody(planet_id);
+  microPhysicsBodyFree(body->body_id);
+  planet_body_id = microPhysicsBodyNewCircle(planet_id, 0, planetX, planetY,
+                                             PlanetGetRadius() -
+                                               GROUND_HEIGHT * 2.0,
+                                             1000.0, 1, 0, 0.0, 1.0);
+  microPhysicsBodySetCollisionCallback(planet_body_id, PlanetCollision);
+  microPhysicsBodySetFilter(planet_body_id, COLLISION_GROUP_WORLD, COLLISION_MASK_ALL);
+  body->body_id = planet_body_id;
+  
+  // Update shadow
+  float canvas_posteffect_height = 512.0;
+  float canvas_posteffect_width = viewWidth *
+                                  (canvas_posteffect_height / viewHeight);
+  int current_shader = microShaderGetCurrent();
+  microShaderApply(shadow_shader_id);
+  microViewApply(); // send view matrix to shader
+  microShaderSetUniform("resolution", canvas_posteffect_width,
+                        canvas_posteffect_height);
+  microShaderSetUniform("radius", (PlanetGetRadius() * 2.0) / viewHeight);
+  microShaderSetUniform("lightDepth", planetLightDepth / viewHeight);
+  microShaderSetUniform("planet_center", 0.0,
+                        0.2 + PlanetGetRadius() / viewHeight);
+  microShaderSetUniform("view_angle", 0.0);
+  microShaderApply(current_shader);
+
+  // Clear previously allocated entities
+  u32 entitiesCount = planet_entities.size;
+  while (entitiesCount--) {
+    int eid = *(int*)vector_back(&planet_entities);
+    if (microECSEntityIsAlive(eid))
+      microECSEntityRemove(eid);
+    vector_pop_back(&planet_entities);
+  }
+  
+  // Add caves
+  for (int i = 0; i < cavesCount; i++)
+  {
+    float angle = (double)rand() / (double)RAND_MAX * 2.0 * M_PI;
+    int caveX, caveY;
+    PlanetGetSurfacePosition(angle, 32.0 / 2.0 - 16, &caveX, &caveY);
+    int eid = CaveAddEntity(caveX, caveY);
+    vector_push_back(&planet_entities, &eid);
+  }
+
+  // Add rock
+  for (int i = 0; i < rocksCount; i++)
+  {
+    float angle = (double)rand() / (double)RAND_MAX * 2.0 * M_PI;
+    int rockX, rockY;
+    PlanetGetSurfacePosition(angle, 16.0 / 2.0, &rockX, &rockY);
+    int eid = ResourceAddEntity(rockX, rockY, RES_METAL);
+    vector_push_back(&planet_entities, &eid);
+  }
+
+  // Update atmosphere and space location
+  if (planetType == PLANET_RED_ROCKY)
+  {
+    SpaceSetAtmosphereMaxIntensity(0.5);
+    SpaceSetAtmosphereDecay(0.90);
+    SpaceSetAtmosphereColor(0.6, 0.6, 1.0);
+  }
+  else if (planetType == PLANET_ASTEROID)
+  {
+    SpaceSetAtmosphereMaxIntensity(0.1);
+    SpaceSetAtmosphereDecay(0.99);
+    SpaceSetAtmosphereColor(1.0, 1.0, 1.0);
+  }
+  else
+    assert(0);
+    
+  //SpaceSetNebulaColor(0.57, 0.27, 0.41);
+  SpaceSetStarfieldTh1(40.0);
+  SpaceSetStarfieldTh2(40.0);
+
+  SpaceApplyParameters();
+}
+
+void PlanetEntityAdd()
+{
+  setupPlanetEntity();
   setupShadow();
 }
+

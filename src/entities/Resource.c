@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void ResourceAddEntity(const int x, const int y, const int type)
+int ResourceAddEntity(const int x, const int y, const int type)
 {
   int res_entity_id = microECSEntityNew(NULL, NULL);
   assert(res_entity_id != -1);
@@ -48,4 +48,6 @@ void ResourceAddEntity(const int x, const int y, const int type)
     CmpAddItem(res_entity_id, ITEM_CRYSTAL, 1);
   else if (type == RES_DEUTERIUM)
     CmpAddItem(res_entity_id, ITEM_DEUTERIUM, 1);
+
+  return res_entity_id;
 }

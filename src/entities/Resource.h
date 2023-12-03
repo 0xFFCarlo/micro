@@ -5,6 +5,6 @@
 #define RES_CRYSTAL 1
 #define RES_DEUTERIUM 2
 
-extern void ResourceAddEntity(const int x, const int y, const int type);
+extern int ResourceAddEntity(const int x, const int y, const int type);
 
 #endif /* end of include guard: RESOURCE_H */

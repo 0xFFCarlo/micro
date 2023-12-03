@@ -67,6 +67,13 @@ u32 interact_background_id = 0;
 char interact_text[32] = "E: Interact";
 u32 interact_message_id = 0;
 
+// say message
+u32 say_background_id = 0;
+u32 say_message_id = 0;
+u32 say_background_arrow_id = 0;
+char say_text[256] = "\0";
+float say_timer = 0.0;
+
 // Cursor
 u32 cursor_id = 0;
 
@@ -81,7 +88,6 @@ void GUISetHide(int hide)
   drawable = CmpGetDrawable(bar_diff_id);
   drawable->visible = !hide;
 }
-
 
 void GUI_show_pop_up(char *text, int x, int y)
 {
@@ -273,6 +279,22 @@ void GUI_update_pop_up()
   }
 }
 
+void GUI_update_player_say(float dt)
+{
+  if (say_timer <= 0.0)
+  {
+    CDrawable *drawable = CmpGetDrawable(say_background_id);
+    drawable->visible = 0;
+    drawable = CmpGetDrawable(say_message_id);
+    drawable->visible = 0;
+    drawable = CmpGetDrawable(say_background_arrow_id);
+    drawable->visible = 0;
+    return;
+  }
+
+  say_timer -= dt;
+}
+
 void GUI_update(int entity, float dt)
 {
   (void)(entity); // Unused parameter
@@ -289,6 +311,7 @@ void GUI_update(int entity, float dt)
   GUI_update_inventory();
   // GUI_update_pop_up();
   GUI_update_interact_message();
+  GUI_update_player_say(dt);
 }
 
 u32 GUI_add_image(u32 atlasId, u32 x, u32 y,
@@ -486,5 +509,54 @@ void GUIInit()
   CmpAddSprite(cursor_id, atlasId, txs.x, txs.y, txs.w, txs.h);
   CmpAddTransform(cursor_id, 24, 24, 12, 12, 0);
   CmpAddUpdate(cursor_id, GUI_update_cursor);
+  
+  // === Say message ===
+  say_timer = 0.0;
+
+  // Add say background
+  float viewWidth, viewHeight;
+  microViewGetViewport(&viewWidth, &viewHeight);
+  say_background_id = microECSEntityNew(NULL, NULL);
+  CmpAddPosition(say_background_id, viewWidth / 2.0, viewHeight / 2.0 - 128);
+  CmpAddDrawable(say_background_id, 5, 1);
+  CmpAddHud(say_background_id);
+  txs = microTextureAtlasGetRegion(atlasId, "blank");
+  CmpAddSprite(say_background_id, atlasId, txs.x, txs.y, txs.w, txs.h);
+  CmpAddTransform(say_background_id, 256, 128, 128, 64, 0);
+  CmpAddColor(say_background_id, 0.0, 0.0, 0.0, 0.5);
+
+  // Add say message
+  say_message_id = microECSEntityNew(NULL, NULL);
+  CmpAddPosition(say_message_id, viewWidth / 2.0, viewHeight / 2.0 - 128);
+  CmpAddDrawable(say_message_id, 5, 1);
+  CmpAddHud(say_message_id);
+  CmpAddText(say_message_id, gui_font_id, 3, say_text);
+  
+  // Add say background arrow
+  say_background_arrow_id = microECSEntityNew(NULL, NULL);
+  CmpAddPosition(say_background_arrow_id, viewWidth / 2 - 256.0 / 2 + 128,
+                 viewHeight - 128 - 16 + 128);
+  CmpAddDrawable(say_background_arrow_id, 5, 1);
+  CmpAddHud(say_background_arrow_id);
+  txs = microTextureAtlasGetRegion(atlasId, "blank");
+  CmpAddSprite(say_background_arrow_id, atlasId, txs.x, txs.y, txs.w, txs.h);
+  CmpAddTransform(say_background_arrow_id, 128, 128, 0, 0, 0);
+  CmpAddColor(say_background_arrow_id, 0.0, 0.0, 0.0, 0.5);
+}
+
+void GUIPlayerSay(const char *text)
+{
+  float viewWidth, viewHeight;
+  microViewGetViewport(&viewWidth, &viewHeight);
+  strcpy(say_text, text);
+  CDrawable *drawable = CmpGetDrawable(say_background_id);
+  drawable->visible = 1;
+  drawable = CmpGetDrawable(say_message_id);
+  drawable->visible = 1;
+  drawable = CmpGetDrawable(say_background_arrow_id);
+  drawable->visible = 1;
+  CPosition *pos = CmpGetPosition(say_message_id);
+  pos->x = viewWidth/2.0 - microFontGetTextWidth(gui_font_id, say_text) / 2.0;
+  say_timer = strlen(say_text) * 0.2;
 }
 

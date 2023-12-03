@@ -125,8 +125,9 @@ void gameStateInit()
   ambienceMusicSet(AMBIENCE_NORMAL);
 
   // Register entities
-  PlanetEntityAdd(400.0);
+  PlanetEntityAdd();
   SpaceEntityAdd();
+  PlanetGenerate();
   PlayerEntityAdd(0, PlanetGetRadius() + 400);
   LogGUIAdd();
   GUIInit();

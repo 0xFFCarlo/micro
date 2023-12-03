@@ -2,6 +2,7 @@
 #include "Audio.h"
 #include "Graphics.h"
 #include <assert.h>
+#include "../util/debug.h"
 #include <stdio.h>
 #include <string.h>
 

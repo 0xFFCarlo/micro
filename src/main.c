@@ -8,6 +8,8 @@
 
 int main()
 {
+  srand(time(NULL));
+
   microGraphicsInit();
   microECSInit();
   microStateSet(gameStateGet());

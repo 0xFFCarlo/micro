@@ -4,6 +4,7 @@
 #include "../micro/ECS.h"
 #include "../micro/Graphics.h"
 #include "../micro/Resources.h"
+#include "../util/debug.h"
 #include "Planet.h"
 #include "Player.h"
 #include <assert.h>
@@ -36,17 +37,20 @@ float starfieldThreshold2 = 40.0;
 // in the right place
 void spaceUpdate(int spaceId, float dt)
 {
+  (void)dt;
   if (warp_enabled)
-  {
-    warp_speed += warp_acceleration * dt;
-    warp_position += warp_speed;
-    if (warp_position >= 5.0)
-    {
-      warp_position = 0.0;
-      warp_speed = 0.0;
-      warp_enabled = FALSE;
-    }
-  }
+    warp_enabled = FALSE;
+  // if (warp_enabled)
+  // {
+  //   warp_speed += warp_acceleration * dt;
+  //   warp_position += warp_speed;
+  //   if (warp_position >= 5.0)
+  //   {
+  //     warp_position = 0.0;
+  //     warp_speed = 0.0;
+  //     warp_enabled = FALSE;
+  //   }
+  // }
 
   float planetX, planetY;
   PlanetGetPos(&planetX, &planetY);
@@ -194,4 +198,24 @@ void SpaceWarpDriveStart()
   warp_acceleration = 0.0003;
   warp_position = 0.0;
   warp_enabled = TRUE;
+}
+
+void SpaceApplyParameters()
+{
+  int current_shader = microShaderGetCurrent();
+  microShaderApply(space_shader_id);
+  microShaderSetUniform("nebulaColor", nebulaColor[0], nebulaColor[1],
+                        nebulaColor[2]);
+  microShaderSetUniform("starfieldThreshold1", starfieldThreshold1);
+  microShaderSetUniform("starfieldThreshold2", starfieldThreshold2);
+  microShaderSetUniform("atmosphereMaxIntensity", atmosphereMaxIntensity);
+  microShaderSetUniform("atmosphereDecay", atmosphereDecay);
+  microShaderSetUniform("atmosphereColor", atmosphereColor[0],
+                        atmosphereColor[1], atmosphereColor[2],
+                        atmosphereColor[3]);
+  float viewWidth, viewHeight;
+  microViewGetSize(&viewWidth, &viewHeight);
+  float planet_radius = 2 * PlanetGetRadius() / viewHeight;
+  microShaderSetUniform("planet_radius", planet_radius);
+  microShaderApply(current_shader);
 }

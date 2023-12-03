@@ -11,6 +11,7 @@
 #include "../micro/System.h"
 #include "../misc/collision.h"
 #include "../systems/InteractionSystem.h"
+#include "GUI.h"
 #include "Spawner.h"
 #include "Planet.h"
 #include "Space.h"
@@ -369,6 +370,7 @@ void playerUpdate(int entityId, float dt)
       player_state = PLAYER_STATE_IDLE;
       microSoundStop(robot_engine);
       microSoundPlay(robot_say_introduce, 0);
+      GUIPlayerSay("I'm a robot.");
       SpawnerStart(); 
     }
   }
@@ -400,8 +402,10 @@ void playerUpdate(int entityId, float dt)
   }
   else if (player_state == PLAYER_STATE_WARP_DRIVE)
   {
-    if (SpaceIsWarping() == 0)
+    if (SpaceIsWarping() == 0) {
+      PlanetGenerate();
       player_state = PLAYER_STATE_LANDING;
+    }
   }
     
   if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_P])

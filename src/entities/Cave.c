@@ -59,7 +59,7 @@ MicroParticle smokeGenerator(int emitterId)
   return p;
 }
 
-void CaveAddEntity(const int x, const int y)
+int CaveAddEntity(const int x, const int y)
 {
   int cave_entity_id = microECSEntityNew(NULL, NULL);
   assert(cave_entity_id != -1);
@@ -131,4 +131,6 @@ void CaveAddEntity(const int x, const int y)
                                .offsetX = 0,
                                .offsetY = 0,
                              });
+
+  return cave_entity_id;
 }
