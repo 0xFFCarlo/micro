@@ -70,6 +70,19 @@ u32 interact_message_id = 0;
 // Cursor
 u32 cursor_id = 0;
 
+void GUISetHide(int hide)
+{
+  CDrawable *drawable = CmpGetDrawable(bar_frame_id);
+  drawable->visible = !hide;
+  drawable = CmpGetDrawable(bar_background_id);
+  drawable->visible = !hide;
+  drawable = CmpGetDrawable(bar_content_id);
+  drawable->visible = !hide;
+  drawable = CmpGetDrawable(bar_diff_id);
+  drawable->visible = !hide;
+}
+
+
 void GUI_show_pop_up(char *text, int x, int y)
 {
   if (pop_up_text != text)
@@ -263,6 +276,14 @@ void GUI_update_pop_up()
 void GUI_update(int entity, float dt)
 {
   (void)(entity); // Unused parameter
+  
+  PlayerState player_state = PlayerGetState();
+  if (player_state == PLAYER_STATE_WARP_DRIVE ||
+      player_state == PLAYER_STATE_LANDING ||
+      player_state == PLAYER_STATE_DEPARTING)
+    GUISetHide(TRUE);
+  else
+    GUISetHide(FALSE);
 
   GUI_update_energy_bar(dt);
   GUI_update_inventory();
@@ -466,3 +487,4 @@ void GUIInit()
   CmpAddTransform(cursor_id, 24, 24, 12, 12, 0);
   CmpAddUpdate(cursor_id, GUI_update_cursor);
 }
+

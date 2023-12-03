@@ -10,6 +10,15 @@ typedef struct PlayerData {
   float shootCooldown;
 } PlayerData;
 
+typedef enum PlayerState {
+  PLAYER_STATE_IDLE,
+  PLAYER_STATE_WALK,
+  PLAYER_STATE_SOLAR_CHARGING,
+  PLAYER_STATE_LANDING,
+  PLAYER_STATE_DEPARTING,
+  PLAYER_STATE_WARP_DRIVE
+} PlayerState;
+
 extern void PlayerEntityAdd(const float x, const float y);
 extern void PlayerGetPos(float *x, float *y);
 extern float PlayerGetRotation();
@@ -19,6 +28,7 @@ extern float PlayerGetHealth();
 extern float PlayerGetMaxHealth();
 extern bool PlayerIsAlive();
 extern void PlayerGetSize(float *width, float *height);
-extern void PlayerShieldHit(float damage);
+extern void PlayerHit(float damage);
+extern PlayerState PlayerGetState();
 
 #endif /* end of include guard: PLAYER_H */

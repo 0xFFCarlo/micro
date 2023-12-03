@@ -157,7 +157,7 @@ void DroneFree(int entityId)
   microPhysicsBodyFree(body->body_id);
 }
 
-void DroneAddEntity(const int x, const int y)
+int DroneAddEntity(const int x, const int y)
 {
   int drone_eid = microECSEntityNew(NULL, DroneFree);
   assert(drone_eid != -1);
@@ -189,4 +189,6 @@ void DroneAddEntity(const int x, const int y)
   float planetX, planetY;
   PlanetGetPos(&planetX, &planetY);
   CmpAddPlanetaryAlignment(drone_eid, planetX, planetY);
+
+  return drone_eid;
 }

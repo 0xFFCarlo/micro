@@ -16,14 +16,37 @@
 int spaceId = -1;
 int space_shader_id = -1;
 int space_canvas_id = -1;
+
+// Space state
 float rotation_angle = 0.0;
-double curr_time = 0.0;
+double warp_position = 0.0;
+double warp_speed = 0.0;
+double warp_acceleration = 0.01;
+uint8_t warp_enabled = 0;
+
+// Space look settings
+float nebulaColor[3] = {0.57, 0.27, 0.41};
+float atmosphereMaxIntensity = 0.5;
+float atmosphereDecay = 0.90;
+float atmosphereColor[4] = {0.6, 0.6, 1.0, 1.0};
+float starfieldThreshold1 = 40.0;
+float starfieldThreshold2 = 40.0;
 
 // Updates shader parameters to show the planet atmosphere
 // in the right place
 void spaceUpdate(int spaceId, float dt)
 {
-  (void)(dt); // Unused parameter
+  if (warp_enabled)
+  {
+    warp_speed += warp_acceleration * dt;
+    warp_position += warp_speed;
+    if (warp_position >= 5.0)
+    {
+      warp_position = 0.0;
+      warp_speed = 0.0;
+      warp_enabled = FALSE;
+    }
+  }
 
   float planetX, planetY;
   PlanetGetPos(&planetX, &planetY);
@@ -37,8 +60,6 @@ void spaceUpdate(int spaceId, float dt)
 
   float normPlanetX = ((planetX - viewX) * 2.0) / viewHeight;
   float normPlanetY = ((planetY - viewY) * 2.0) / viewHeight;
-
-  // curr_time += dt * 0.03;
 
   microShaderApply(space_shader_id);
 
@@ -54,7 +75,7 @@ void spaceUpdate(int spaceId, float dt)
   // Update planet center
   microShaderSetUniform("planet_center", normPlanetX, normPlanetY);
   microShaderSetUniform("view_angle", viewAngle);
-  microShaderSetUniform("time", curr_time);
+  microShaderSetUniform("position", warp_position);
   microShaderApply(0);
 
   CShadedCanvas *canvas = microECSEntityGetComponent(spaceId, cid_shadedCanvas);
@@ -74,12 +95,6 @@ void SpaceEntityAdd()
   float canvas_space_width = viewWidth * (canvas_space_height / viewHeight);
   float planet_radius = 2 * PlanetGetRadius() / viewHeight;
   float view_angle = 0.0;
-  float nebulaColor[3] = {0.57, 0.27, 0.41};
-  float atmosphereMaxIntensity = 0.5;
-  float atmosphereDecay = 0.9;
-  float atmosphereColor[4] = {0.6, 0.6, 1.0, 1.0};
-  float starfieldThreshold1 = 40.0;
-  float starfieldThreshold2 = 40.0;
 
   float planetX, planetY;
   PlanetGetPos(&planetX, &planetY);
@@ -92,7 +107,7 @@ void SpaceEntityAdd()
   microShaderApply(space_shader_id);
   microViewApply(); // send view matrix to shader
   microShaderSetUniform("resolution", canvas_space_width, canvas_space_height);
-  microShaderSetUniform("time", curr_time);
+  microShaderSetUniform("position", warp_position);
 
   float planetCenterDist = sqrt(pow(viewX - planetX, 2) +
                                 pow(viewY - planetY, 2));
@@ -139,4 +154,44 @@ void SpaceEntityAdd()
   CmpAddDrawable(spaceId, 0, TRUE);
   CmpAddHud(spaceId);
   CmpAddUpdate(spaceId, spaceUpdate);
+}
+
+void SpaceSetAtmosphereMaxIntensity(float intensity)
+{
+  atmosphereMaxIntensity = intensity;
+}
+
+void SpaceSetAtmosphereDecay(float decay)
+{
+  atmosphereDecay = decay;
+}
+
+void SpaceSetAtmosphereColor(float r, float g, float b)
+{
+  atmosphereColor[0] = r;
+  atmosphereColor[1] = g;
+  atmosphereColor[2] = b;
+}
+
+void SpaceSetStarfieldTh1(float threshold)
+{
+  starfieldThreshold1 = threshold;
+}
+
+void SpaceSetStarfieldTh2(float threshold)
+{
+  starfieldThreshold2 = threshold; 
+}
+
+bool SpaceIsWarping()
+{
+  return warp_enabled;
+}
+
+void SpaceWarpDriveStart()
+{
+  warp_speed = 0.0;
+  warp_acceleration = 0.0003;
+  warp_position = 0.0;
+  warp_enabled = TRUE;
 }

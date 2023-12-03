@@ -196,7 +196,7 @@ void DroneLanderFree(int entityId)
   microPhysicsBodyFree(body->body_id);
 }
 
-void DroneLanderAddEntity(const int x, const int y)
+int DroneLanderAddEntity(const int x, const int y)
 {
   // Load animations if needed
   if (aid_drone_2_fall == -1)
@@ -236,4 +236,6 @@ void DroneLanderAddEntity(const int x, const int y)
   float planetX, planetY;
   PlanetGetPos(&planetX, &planetY);
   CmpAddPlanetaryAlignment(drone_eid, planetX, planetY);
+
+  return drone_eid;
 }

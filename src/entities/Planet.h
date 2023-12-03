@@ -9,6 +9,6 @@ extern void PlanetEntityAdd(const float radius);
 extern float PlanetGetRadius();
 extern void PlanetGetPos(float *x, float *y);
 extern void PlanetGetSurfacePosition(float angle, float offset, int *x, int *y);
-extern void PlanetTryMine(float x, float y);
+extern void PlanetGenerate();
 
 #endif /* end of include guard: PLANET_H */

@@ -32,7 +32,7 @@ int planet_body_id = -1;
 
 void PlanetCollision(int entityId, int otherEntityId)
 {
-  (void)entityId; // unused parameter
+  (void)entityId; // unused 
   CBody *body = CmpGetBody(otherEntityId);
   float vx, vy;
   microPhysicsBodyGetVelocity(body->body_id, &vx, &vy);
@@ -63,25 +63,6 @@ void PlanetGetSurfacePosition(float angle, float offset, int *x, int *y)
            (PlanetGetRadius() - planetSurfaceDepth - offset) * sin(angle);
   *x = sx;
   *y = sy;
-}
-
-void PlanetTryMine(float x, float y)
-{
-  float p = (double)rand() / (double)RAND_MAX;
-  const float mine_chance = 0.2;
-  if (p < mine_chance)
-  {
-    p = p / mine_chance;
-
-    if (p < 0.8)
-    {
-      ResourceAddEntity(x, y, RES_METAL);
-    }
-    else
-    {
-      ResourceAddEntity(x, y, RES_CRYSTAL);
-    }
-  }
 }
 
 // Updates shader parameters to show the shadows at the planet position
@@ -117,7 +98,7 @@ void planetUpdate(int planetId, float dt)
   canvas->needsUpdate = 1;
 }
 
-unsigned char *makePlanetTexture(int width, int height)
+unsigned char *makePlanetTextureRedPlanet(int width, int height)
 {
   unsigned char *texture = (unsigned char *)malloc(width * height * 4);
   for (int x = 0; x < width; x++)
@@ -149,12 +130,106 @@ unsigned char *makePlanetTexture(int width, int height)
         if (rf < n)
         {
           texture[(y * width + x) * 4 + 0] = r_q_reduced;
+          texture[(y * width + x) * 4 + 1] = r_q_reduced * 0.9;
+          texture[(y * width + x) * 4 + 2] = r_q_reduced * 0.9;
+        }
+        else
+        {
+          texture[(y * width + x) * 4 + 0] = r_q_reduced;
+          texture[(y * width + x) * 4 + 1] = r_q_reduced * 0.5;
+          texture[(y * width + x) * 4 + 2] = r_q_reduced * 0.5;
+        }
+      }
+      else if (r < 0.85)
+      {
+        float n = (r - 0.6) / 0.2;
+        float rf = (double)rand() / (double)RAND_MAX;
+        if (rf < n)
+        {
+          texture[(y * width + x) * 4 + 0] = r_q_reduced * 0.5;
+          texture[(y * width + x) * 4 + 1] = r_q_reduced * 0.5;
+          texture[(y * width + x) * 4 + 2] = r_q_reduced * 0.5;
+        }
+        else
+        {
+          texture[(y * width + x) * 4 + 0] = r_q_reduced;
+          texture[(y * width + x) * 4 + 1] = r_q_reduced * 0.9;
+          texture[(y * width + x) * 4 + 2] = r_q_reduced * 0.9;
+        }
+      }
+      else if (r < 0.95)
+      {
+        float n = (r - 0.85) / 0.1;
+        float rf = (double)rand() / (double)RAND_MAX;
+        if (rf < n)
+        {
+          texture[(y * width + x) * 4 + 0] = r_q_reduced * 0.3;
+          texture[(y * width + x) * 4 + 1] = r_q_reduced * 0.3;
+          texture[(y * width + x) * 4 + 2] = r_q_reduced;
+        }
+        else
+        {
+          texture[(y * width + x) * 4 + 0] = r_q_reduced * 0.5;
+          texture[(y * width + x) * 4 + 1] = r_q_reduced * 0.5;
+          texture[(y * width + x) * 4 + 2] = r_q_reduced * 0.5;
+        }
+      }
+      else
+      {
+        texture[(y * width + x) * 4 + 0] = r_q_reduced;
+        texture[(y * width + x) * 4 + 1] = r_q_reduced;
+        texture[(y * width + x) * 4 + 2] = r_q_reduced * 0.5;
+      }
+
+      // Compute alpha
+      texture[(y * width + x) * 4 + 3] = 255 * (distNorm < 1.0);
+    }
+  }
+
+  return texture;
+}
+
+unsigned char *makePlanetTextureAsteroid(int width, int height)
+{
+  unsigned char *texture = (unsigned char *)malloc(width * height * 4);
+  for (int x = 0; x < width; x++)
+  {
+    for (int y = 0; y < height; y++)
+    {
+      float distX = (float)x - (float)width / 2.0;
+      float distY = (float)y - (float)height / 2.0;
+      float distNorm = sqrt(distX * distX + distY * distY) /
+                       ((float)width * 0.5);
+
+      float angle = atan2(distX, distY);
+      // distNorm += noise2((float)x / 100.0, (float)y / 100.0) * 0.04;
+
+      // Compute color
+      float f = 40.0;
+      float r = (noise2((float)x / f, (float)y / f) + 1.0) * 0.5;
+      r *= sin(distNorm * M_PI * 2.0 * 10.0) * 0.10 + 0.90;
+      float r2 = ((double)rand() / (double)RAND_MAX - 0.5) * 2.0;
+      int r_quant = (0.3 + r * 0.2 + r2 * 0.15) * 255;
+      int r_q_reduced = r_quant;
+      if (r < 0.35)
+      {
+        texture[(y * width + x) * 4 + 0] = r_q_reduced * 0.5;
+        texture[(y * width + x) * 4 + 1] = r_q_reduced * 0.5;
+        texture[(y * width + x) * 4 + 2] = r_q_reduced * 0.5;
+      }
+      else if (r < 0.6)
+      {
+        float n = (r - 0.35) / 0.25;
+        float rf = (double)rand() / (double)RAND_MAX;
+        if (rf < n)
+        {
+          texture[(y * width + x) * 4 + 0] = r_q_reduced;
           texture[(y * width + x) * 4 + 1] = r_q_reduced;
           texture[(y * width + x) * 4 + 2] = r_q_reduced;
         }
         else
         {
-          texture[(y * width + x) * 4 + 0] = r_q_reduced;
+          texture[(y * width + x) * 4 + 0] = r_q_reduced * 0.5;
           texture[(y * width + x) * 4 + 1] = r_q_reduced * 0.5;
           texture[(y * width + x) * 4 + 2] = r_q_reduced * 0.5;
         }
@@ -227,7 +302,7 @@ void setupPlanetEntity(const u32 radius)
   CmpAddPosition(planet_id, planetX, planetY);
 
   // Sprite component
-  unsigned char *texture = makePlanetTexture(canvas_planet_width,
+  unsigned char *texture = makePlanetTextureRedPlanet(canvas_planet_width,
                                              canvas_planet_height);
   int textureId = microTextureLoadFromMemory(texture, canvas_planet_width,
                                              canvas_planet_height, 4,

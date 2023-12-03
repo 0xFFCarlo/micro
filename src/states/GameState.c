@@ -16,7 +16,6 @@
 #include "../entities/LogGUI.h"
 #include "../entities/Planet.h"
 #include "../entities/Player.h"
-#include "../entities/Portal.h"
 #include "../entities/Projectile.h"
 #include "../entities/Space.h"
 #include "../entities/Spawner.h"
@@ -64,6 +63,7 @@ void gameStateLoadResources()
   microResourceLoad("robot_recharging", "./res/sounds/recharging.wav", "sound");
   microResourceLoad("robot_alarm", "./res/sounds/alarm.wav", "sound");
   microResourceLoad("robot_shield_hit", "./res/sounds/shield-hit.wav", "sound");
+  microResourceLoad("robot_engine", "./res/sounds/robot-engine.mp3", "sound");
 
   // Setup inventory system
   uint32_t pickup_sound = microResourceLoad("item_pickup_snd",
@@ -125,12 +125,12 @@ void gameStateInit()
   ambienceMusicSet(AMBIENCE_NORMAL);
 
   // Register entities
-  SpaceEntityAdd();
   PlanetEntityAdd(400.0);
+  SpaceEntityAdd();
   PlayerEntityAdd(0, PlanetGetRadius() + 400);
   LogGUIAdd();
   GUIInit();
-  SpawnerEntityAdd();
+  SpawnerStart();
 
   // int x, y;
   // PlanetGetSurfacePosition(0.2, -24, &x, &y);

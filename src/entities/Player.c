@@ -11,18 +11,15 @@
 #include "../micro/System.h"
 #include "../misc/collision.h"
 #include "../systems/InteractionSystem.h"
+#include "Spawner.h"
 #include "Planet.h"
+#include "Space.h"
 #include "Projectile.h"
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#define PLAYER_STATE_IDLE 0
-#define PLAYER_STATE_WALK 1
-#define PLAYER_STATE_SOLAR_CHARGING 2
-#define PLAYER_STATE_LANDING 3
-#define PLAYER_STATE_DEPARTING 4
 
 #define PLAYER_DIRECTION_RIGHT 0
 #define PLAYER_DIRECTION_LEFT 1
@@ -32,6 +29,7 @@
 #define PLAYER_BODY_RADIUS (48 / 2.0)
 
 #define PLAYER_JUNMP_FORCE 4000.0
+#define PLAYER_MOVE_FORCE 150000.0
 
 int player_entity_id = -1;
 bool player_alive = 1;
@@ -64,6 +62,7 @@ uint32_t gun_shot = 0;
 uint32_t robot_recharging = 0;
 uint32_t robot_alarm = 0;
 uint32_t robot_shield_hit = 0;
+uint32_t robot_engine = 0;
 
 void PlayerCollide(int playerId, int otherEntityId)
 {
@@ -73,7 +72,7 @@ void PlayerCollide(int playerId, int otherEntityId)
   microPhysicsBodyGetVelocity(bodyOther->body_id, &vx, &vy);
   f32 speed = sqrt(vx * vx + vy * vy);
   if (speed > 300)
-    PlayerShieldHit(1.0);
+    PlayerHit(1.0);
 }
 
 void PlayerWalk()
@@ -121,6 +120,12 @@ void PlayerJump()
 
 void PlayerFly() {
   CAnimation *animation = CmpGetAnimation(player_entity_id);
+  
+  microSoundStop(robot_footstep);
+  microSoundStop(robot_recharging);
+
+  if (microSoundIsPlaying(robot_engine) == FALSE)
+    microSoundPlay(robot_engine, TRUE);
 
   animation->animationId = anim_player_fly;
   animation->duration = 0.1;
@@ -199,7 +204,9 @@ void playerEventListener(int entity, const SDL_Event *event)
   (void)entity; // unused parameter
   
   // Cannot do anything while landing or departing
-  if (player_state == PLAYER_STATE_LANDING || player_state == PLAYER_STATE_DEPARTING)
+  if (player_state == PLAYER_STATE_LANDING ||
+      player_state == PLAYER_STATE_DEPARTING ||
+      player_state == PLAYER_STATE_WARP_DRIVE)
     return;
 
   // Mouse press
@@ -245,7 +252,8 @@ void playerUpdate(int entityId, float dt)
 
   // Controls and player state
   if (player_state != PLAYER_STATE_LANDING &&
-      player_state != PLAYER_STATE_DEPARTING)
+      player_state != PLAYER_STATE_DEPARTING &&
+      player_state != PLAYER_STATE_WARP_DRIVE)
   {
     player_state = PLAYER_STATE_IDLE;
     if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_D])
@@ -312,13 +320,13 @@ void playerUpdate(int entityId, float dt)
       {
         if (player_direction == PLAYER_DIRECTION_RIGHT)
         {
-          forceX += toPlanetNormY * 150000.0 * dt;
-          forceY += -toPlanetNormX * 150000.0 * dt;
+          forceX += toPlanetNormY * PLAYER_MOVE_FORCE * dt;
+          forceY += -toPlanetNormX * PLAYER_MOVE_FORCE * dt;
         }
         else
         {
-          forceX += -toPlanetNormY * 150000.0 * dt;
-          forceY += toPlanetNormX * 150000.0 * dt;
+          forceX += -toPlanetNormY * PLAYER_MOVE_FORCE * dt;
+          forceY += toPlanetNormX * PLAYER_MOVE_FORCE * dt;
         }
       }
 
@@ -359,7 +367,9 @@ void playerUpdate(int entityId, float dt)
 
     if (surfaceDist < 10.0) {
       player_state = PLAYER_STATE_IDLE;
+      microSoundStop(robot_engine);
       microSoundPlay(robot_say_introduce, 0);
+      SpawnerStart(); 
     }
   }
   else if (player_state == PLAYER_STATE_DEPARTING)
@@ -375,13 +385,23 @@ void playerUpdate(int entityId, float dt)
     float speed = fmin(surfaceDist, 400);
     speed = fmax(speed, 100);
 
-    if (surfaceDist >= 500.0)
+    if (surfaceDist >= 500.0) {
       speed = 0.0;
+      player_state = PLAYER_STATE_WARP_DRIVE;
+      SpawnerStop();
+      SpawnerClear();
+      SpaceWarpDriveStart();
+    }
 
     float velX = toDirX * speed;
     float velY = toDirY * speed;
 
     microPhysicsBodySetVelocity(player_body_id, velX, velY);
+  }
+  else if (player_state == PLAYER_STATE_WARP_DRIVE)
+  {
+    if (SpaceIsWarping() == 0)
+      player_state = PLAYER_STATE_LANDING;
   }
     
   if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_P])
@@ -404,7 +424,8 @@ void playerUpdate(int entityId, float dt)
   }
 
   // Update player based on state
-  if (player_state == PLAYER_STATE_LANDING || player_state == PLAYER_STATE_DEPARTING)
+  if (player_state == PLAYER_STATE_LANDING || player_state == PLAYER_STATE_DEPARTING 
+      || player_state == PLAYER_STATE_WARP_DRIVE)
     PlayerFly();
   else if (playerJump == 1)
     PlayerJump();
@@ -466,7 +487,7 @@ bool PlayerIsAlive()
   return player_alive;
 }
 
-void PlayerShieldHit(float damage)
+void PlayerHit(float damage)
 {
   CHealth *health = CmpGetHealth(player_entity_id);
   health->health -= damage;
@@ -491,6 +512,11 @@ void PlayerShieldHit(float damage)
   PlanetGetPos(&planetX, &planetY);
   CmpAddLifetime(shield_id, 0.4);
   CmpAddFollow(shield_id, player_entity_id, 1, 0, 0);
+}
+
+PlayerState PlayerGetState()
+{
+  return player_state;
 }
 
 void PlayerEntityAdd(const float x, const float y)
@@ -553,6 +579,7 @@ void PlayerEntityAdd(const float x, const float y)
   robot_recharging = microResourceGet("robot_recharging");
   robot_alarm = microResourceGet("robot_alarm");
   robot_shield_hit = microResourceGet("robot_shield_hit");
+  robot_engine = microResourceGet("robot_engine");
 
   player_state = PLAYER_STATE_LANDING;
 }

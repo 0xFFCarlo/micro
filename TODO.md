@@ -1,5 +1,4 @@
 ## TODO
-- [ ] Fix bug random spawn position?
 - [ ] Make sky, atmosphere and planet parameter tweakable 
       and ordered for random planet generation
 - [ ] Prototype random planet generation
@@ -14,6 +13,7 @@
       = Alien plants
 - [ ] Corner notification with text when clearning area and other events happen.
 
+- [x] Fix bug random spawn position?
 - [x] Falling meteorites 
 - [x] Landing and departing animation to planet
 - [x] Enemies drop Quantium
