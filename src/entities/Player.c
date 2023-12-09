@@ -10,6 +10,8 @@
 #include "../micro/Resources.h"
 #include "../micro/System.h"
 #include "../misc/collision.h"
+#include "../misc/layers.h"
+#include "Explosion.h"
 #include "../systems/InteractionSystem.h"
 #include "GUI.h"
 #include "Spawner.h"
@@ -254,7 +256,8 @@ void playerUpdate(int entityId, float dt)
   // Controls and player state
   if (player_state != PLAYER_STATE_LANDING &&
       player_state != PLAYER_STATE_DEPARTING &&
-      player_state != PLAYER_STATE_WARP_DRIVE)
+      player_state != PLAYER_STATE_WARP_DRIVE &&
+      player_state != PLAYER_STATE_DEAD)
   {
     player_state = PLAYER_STATE_IDLE;
     if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_D])
@@ -407,6 +410,11 @@ void playerUpdate(int entityId, float dt)
       player_state = PLAYER_STATE_LANDING;
     }
   }
+  else if (player_state == PLAYER_STATE_DEAD)
+  {
+    CDrawable *drawable = CmpGetDrawable(player_entity_id);
+    drawable->visible = FALSE;
+  }
     
   if (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_P])
     player_state = PLAYER_STATE_DEPARTING;
@@ -493,10 +501,20 @@ bool PlayerIsAlive()
 
 void PlayerHit(float damage)
 {
+  CPosition *position = CmpGetPosition(player_entity_id);
+
   CHealth *health = CmpGetHealth(player_entity_id);
   health->health -= damage;
-  if (health->health < 0.0)
+  if (health->health <= 0.0) {
     health->health = 0.0;
+    if (player_state != PLAYER_STATE_DEAD) {
+      makeExplosionDroneHit(position->x, position->y, 0, 0, 20, TRUE);
+      uint32_t explosion_snd = microResourceGet("explosion");
+      microSoundPlay(explosion_snd, 0);
+      player_state = PLAYER_STATE_DEAD;
+    }
+    return;
+  }
 
   // Play sound
   microSoundPlay(robot_shield_hit, 0);
@@ -504,7 +522,6 @@ void PlayerHit(float damage)
   PlayerData *playerData = malloc(sizeof(PlayerData));
   int shield_id = microECSEntityNew(playerData, PlayerFree);
   assert(shield_id != -1);
-  CPosition *position = CmpGetPosition(player_entity_id);
   CmpAddPosition(shield_id, position->x, position->y);
   CmpAddUpdate(shield_id, ShieldUpdate);
   CmpAddDrawable(shield_id, 5, 1);
@@ -557,7 +574,7 @@ void PlayerEntityAdd(const float x, const float y)
   CmpAddTransform(player_entity_id, PLAYER_TEXTURE_WIDTH, PLAYER_TEXTURE_HEIGHT,
                   PLAYER_TEXTURE_WIDTH / 2.0, PLAYER_TEXTURE_HEIGHT / 2.0, 0.0);
   CmpAddColor(player_entity_id, 1.0, 1.0, 1.0, 1.0);
-  CmpAddDrawable(player_entity_id, 4, 1);
+  CmpAddDrawable(player_entity_id, LAYER_PLAYER, 1);
   CmpAddAnimation(player_entity_id, anim_player_idle, 1.0, FALSE, FALSE, FALSE);
   CmpAddUpdate(player_entity_id, playerUpdate);
   CmpAddLockOnView(player_entity_id, 1);

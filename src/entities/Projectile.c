@@ -8,6 +8,7 @@
 #include "../micro/Physics.h"
 #include "../micro/Resources.h"
 #include "../misc/collision.h"
+#include "../misc/layers.h"
 #include "Explosion.h"
 #include "Planet.h"
 #include <assert.h>
@@ -58,7 +59,7 @@ void ProjectileAddEntity(ProjectileType type, const int x, const int y, const in
   CmpAddTransform(projectile_entity_id, PROJECTILE_SIZE * 2, PROJECTILE_SIZE,
                   PROJECTILE_SIZE / 2.0, PROJECTILE_SIZE / 2.0, rotation);
   CmpAddColor(projectile_entity_id, 1.0, 1.0, 1.0, 1.0);
-  CmpAddDrawable(projectile_entity_id, 4, 1);
+  CmpAddDrawable(projectile_entity_id, LAYER_EFFECTS, TRUE);
 
   // Body component
   int projectile_body_id = microPhysicsBodyNewCircle(projectile_entity_id, 0, x,

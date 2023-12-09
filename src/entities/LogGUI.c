@@ -7,6 +7,7 @@
 #include "../micro/Physics.h"
 #include "../micro/Resources.h"
 #include "../micro/State.h"
+#include "../misc/layers.h"
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
@@ -102,7 +103,7 @@ void LogGUIAdd()
                              });
   microECSEntityAddComponent(log_gui_entity_id, cid_drawable,
                              &(CDrawable){
-                               .layerId = 5,
+                               .layerId = LAYER_UI_2,
                                .visible = 0,
                              });
   microECSEntityAddComponent(log_gui_entity_id, cid_hud, NULL);

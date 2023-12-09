@@ -16,7 +16,8 @@ typedef enum PlayerState {
   PLAYER_STATE_SOLAR_CHARGING,
   PLAYER_STATE_LANDING,
   PLAYER_STATE_DEPARTING,
-  PLAYER_STATE_WARP_DRIVE
+  PLAYER_STATE_WARP_DRIVE,
+  PLAYER_STATE_DEAD,
 } PlayerState;
 
 extern void PlayerEntityAdd(const float x, const float y);

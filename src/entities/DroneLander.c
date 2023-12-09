@@ -8,6 +8,7 @@
 #include "../micro/Physics.h"
 #include "../micro/Resources.h"
 #include "../misc/collision.h"
+#include "../misc/layers.h"
 #include "Drone.h"
 #include "Explosion.h"
 #include "Planet.h"
@@ -220,7 +221,7 @@ int DroneLanderAddEntity(const int x, const int y)
   const f32 size = DRONE_TEX_WIDTH * DRONE_SCALE;
   CmpAddTransform(drone_eid, size, size, size / 2.0, size / 2.0, 0.0);
   CmpAddColor(drone_eid, 1.0, 1.0, 1.0, 1.0);
-  CmpAddDrawable(drone_eid, 4, TRUE);
+  CmpAddDrawable(drone_eid, LAYER_ENEMY, TRUE);
   CmpAddAnimation(drone_eid, aid_drone_2_fall, 0.4, FALSE, FALSE, FALSE);
   CmpAddUpdate(drone_eid, DroneLanderUpdate);
 

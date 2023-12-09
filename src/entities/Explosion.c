@@ -6,6 +6,8 @@
 #include "../micro/Physics.h"
 #include "../micro/Resources.h"
 #include "../util/vector2d.h"
+#include "../util/debug.h"
+#include "../misc/layers.h"
 #include "Planet.h"
 #include <assert.h>
 #include <math.h>
@@ -76,7 +78,7 @@ void makeExplostionProjectileGroundHit(int x, int y, float vx, float vy)
   int explosion_entity_id = microECSEntityNew(NULL, NULL);
   assert(explosion_entity_id != -1);
   CmpAddPosition(explosion_entity_id, x, y);
-  CmpAddDrawable(explosion_entity_id, 4, 1);
+  CmpAddDrawable(explosion_entity_id, LAYER_EFFECTS, TRUE);
   const int emitterId = microParticleEmitterCreateExplosion(x, y, 5,
                                                             particleGroundHit);
   assert(emitterId != -1);
@@ -199,14 +201,14 @@ void makeExplosionDroneHit(int x, int y, float vx, float vy, int particleCount,
     CmpAddTransform(explosion_id, EXPLOSION_SIZE, EXPLOSION_SIZE, EXPLOSION_SIZE/2.0, EXPLOSION_SIZE/2.0, rangle);
     int animation_id = microAnimationGet("explosion-1");
     CmpAddAnimation(explosion_id, animation_id, 0.5, FALSE, FALSE, FALSE);
-    CmpAddDrawable(explosion_id, 4, 1);
+    CmpAddDrawable(explosion_id, LAYER_EFFECTS, TRUE);
     CmpAddLifetime(explosion_id, 0.5);
   }
   int explosion_parts_id = microECSEntityNew(NULL, NULL);
   assert(explosion_parts_id != -1);
   CmpAddPosition(explosion_parts_id, x, y);
 
-  CmpAddDrawable(explosion_parts_id, 4, 1);
+  CmpAddDrawable(explosion_parts_id, LAYER_EFFECTS, TRUE);
   const int
     emitterId = microParticleEmitterCreateExplosion(x, y, particleCount,
                                                     particleDroneExplodes);
@@ -221,7 +223,7 @@ void makeExplosionMeteorHit(int x, int y)
   assert(explosion_parts_id != -1);
   CmpAddPosition(explosion_parts_id, x, y);
 
-  CmpAddDrawable(explosion_parts_id, 4, 1);
+  CmpAddDrawable(explosion_parts_id, LAYER_EFFECTS, TRUE);
   const int
     emitterId = microParticleEmitterCreateExplosion(x, y, 30, particleMeteorExplodes);
   assert(emitterId != -1);

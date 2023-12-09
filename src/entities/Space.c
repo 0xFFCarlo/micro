@@ -5,6 +5,7 @@
 #include "../micro/Graphics.h"
 #include "../micro/Resources.h"
 #include "../util/debug.h"
+#include "../misc/layers.h"
 #include "Planet.h"
 #include "Player.h"
 #include <assert.h>
@@ -155,7 +156,7 @@ void SpaceEntityAdd()
 
   // Color component
   CmpAddColor(spaceId, 1.0, 1.0, 1.0, 1.0);
-  CmpAddDrawable(spaceId, 0, TRUE);
+  CmpAddDrawable(spaceId, LAYER_SPACE, TRUE);
   CmpAddHud(spaceId);
   CmpAddUpdate(spaceId, spaceUpdate);
 }

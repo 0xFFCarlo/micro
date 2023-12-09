@@ -8,6 +8,7 @@
 #include "../micro/Physics.h"
 #include "../micro/Resources.h"
 #include "../misc/inventory.h"
+#include "../misc/layers.h"
 #include "Planet.h"
 #include <assert.h>
 #include <math.h>
@@ -37,7 +38,7 @@ int ResourceAddEntity(const int x, const int y, const int type)
 
   CmpAddTransform(res_entity_id, 32, 32, 32 / 2.0, 32 / 2.0, 0.0);
   CmpAddColor(res_entity_id, 1.0, 1.0, 1.0, 1.0);
-  CmpAddDrawable(res_entity_id, 4, 1);
+  CmpAddDrawable(res_entity_id, LAYER_GROUND_1, TRUE);
   float planetX, planetY;
   PlanetGetPos(&planetX, &planetY);
   CmpAddPlanetaryAlignment(res_entity_id, planetX, planetY);

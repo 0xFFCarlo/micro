@@ -9,6 +9,7 @@
 #include "../micro/State.h"
 #include "../micro/System.h"
 #include "../misc/inventory.h"
+#include "../misc/layers.h"
 #include "../systems/InteractionSystem.h"
 #include "../util/debug.h"
 #include "../util/vector.h"
@@ -127,7 +128,7 @@ void GUI_show_pop_up(char *text, int x, int y)
   // Create pop up
   pop_up_id = microECSEntityNew(NULL, NULL);
   CmpAddPosition(pop_up_id, x, y);
-  CmpAddDrawable(pop_up_id, 5, 1);
+  CmpAddDrawable(pop_up_id, LAYER_UI_1, 1);
   CmpAddHud(pop_up_id);
   gui_font_id = microResourceGet("ui_font");
   CmpAddText(pop_up_id, gui_font_id, 3, text);
@@ -161,7 +162,7 @@ void GUI_show_interact_message(char *message)
   // Background
   interact_background_id = microECSEntityNew(NULL, NULL);
   CmpAddPosition(interact_background_id, 8, viewHeight - 48 - 16);
-  CmpAddDrawable(interact_background_id, 5, 1);
+  CmpAddDrawable(interact_background_id, LAYER_UI_1, 1);
   CmpAddHud(interact_background_id);
   const int texture_id = microResourceGet("atlas");
   MicroTextureSource txs = microTextureAtlasGetRegion(texture_id, "blank");
@@ -172,7 +173,7 @@ void GUI_show_interact_message(char *message)
   // Button
   interact_button_id = microECSEntityNew(NULL, NULL);
   CmpAddPosition(interact_button_id, 24 + 16, viewHeight - 24 - 16);
-  CmpAddDrawable(interact_button_id, 6, 1);
+  CmpAddDrawable(interact_button_id, LAYER_UI_2, 1);
   CmpAddHud(interact_button_id);
   CmpAddSprite(interact_button_id, microResourceGet("atlas"), 0, 0, 16, 16);
   CmpAddTransform(interact_button_id, 48, 48, 24, 24, 0);
@@ -182,7 +183,7 @@ void GUI_show_interact_message(char *message)
   // Message
   interact_message_id = microECSEntityNew(NULL, NULL);
   CmpAddPosition(interact_message_id, 24 + 8 + 48, viewHeight - 16 - 16);
-  CmpAddDrawable(interact_message_id, 6, 1);
+  CmpAddDrawable(interact_message_id, LAYER_UI_2, 1);
   CmpAddHud(interact_message_id);
   CmpAddText(interact_message_id, gui_font_id, 3, message);
 }
@@ -383,7 +384,7 @@ u32 GUI_add_text(u32 x, u32 y, char *text)
 
   microECSEntityAddComponent(entity_id, cid_drawable,
                              &(CDrawable){
-                               .layerId = 6,
+                               .layerId = LAYER_UI_2,
                                .visible = 1,
                              });
   microECSEntityAddComponent(entity_id, cid_hud, NULL);
@@ -524,7 +525,7 @@ void GUIInit()
   // Add cursor
   cursor_id = microECSEntityNew(NULL, NULL);
   CmpAddPosition(cursor_id, 0, 0);
-  CmpAddDrawable(cursor_id, 5, 1);
+  CmpAddDrawable(cursor_id, LAYER_UI_1, TRUE);
   CmpAddHud(cursor_id);
   MicroTextureSource txs = microTextureAtlasGetRegion(atlasId, "cursor");
   CmpAddSprite(cursor_id, atlasId, txs.x, txs.y, txs.w, txs.h);
@@ -539,7 +540,7 @@ void GUIInit()
   microViewGetViewport(&viewWidth, &viewHeight);
   say_background_id = microECSEntityNew(NULL, NULL);
   CmpAddPosition(say_background_id, viewWidth / 2.0, viewHeight / 2.0 - 94);
-  CmpAddDrawable(say_background_id, 5, 1);
+  CmpAddDrawable(say_background_id, LAYER_UI_1, TRUE);
   CmpAddHud(say_background_id);
   txs = microTextureAtlasGetRegion(atlasId, "blank");
   CmpAddSprite(say_background_id, atlasId, txs.x, txs.y, txs.w, txs.h);
@@ -549,7 +550,7 @@ void GUIInit()
   // Add say message
   say_message_id = microECSEntityNew(NULL, NULL);
   CmpAddPosition(say_message_id, viewWidth / 2.0, viewHeight / 2.0 - 128);
-  CmpAddDrawable(say_message_id, 5, 1);
+  CmpAddDrawable(say_message_id, LAYER_UI_1, TRUE);
   CmpAddHud(say_message_id);
   CmpAddText(say_message_id, gui_font_id, 3, say_text);
   
@@ -557,7 +558,7 @@ void GUIInit()
   say_background_arrow_id = microECSEntityNew(NULL, NULL);
   CmpAddPosition(say_background_arrow_id, viewWidth / 2.0,
                  viewHeight - 94 - 16 + 128);
-  CmpAddDrawable(say_background_arrow_id, 5, 1);
+  CmpAddDrawable(say_background_arrow_id, LAYER_UI_1, TRUE);
   CmpAddHud(say_background_arrow_id);
   txs = microTextureAtlasGetRegion(atlasId, "triangle");
   CmpAddSprite(say_background_arrow_id, atlasId, txs.x, txs.y + txs.h, txs.w, -txs.h);

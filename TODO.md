@@ -1,4 +1,5 @@
 ## TODO
+- [ ] Player die and explodes and cannot be controlled
 - [ ] Draw text (microGraphicsDrawText) alignment parameter, left, center, right
 - [ ] Faster than light space traveling animation
 - [ ] Planet rotates at a certain small speed.
@@ -11,6 +12,10 @@
       = Alien plants
 - [ ] Corner notification with text when clearning area and other events happen.
 
+
+- [x] Add craters generation to asteroid
+- [x] Add drawing layers names
+- [x] Fix glitch player moving under object after warp drive
 - [x] Make sky, atmosphere and planet parameter tweakable 
       and ordered for random planet generation
 - [x] Prototype random planet generation
@@ -25,3 +30,8 @@ Quantium:
     durable and continuously emits a low level of energy. Robots built 
     with Quantium are more efficient and can self-power for years without
     requiring an external energy source.
+
+
+effects:
+
+https://glslsandbox.com/e#108422.0

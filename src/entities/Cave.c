@@ -7,6 +7,7 @@
 #include "../micro/Graphics.h"
 #include "../micro/Physics.h"
 #include "../micro/Resources.h"
+#include "../misc/layers.h"
 #include "Planet.h"
 #include <assert.h>
 #include <math.h>
@@ -109,8 +110,8 @@ int CaveAddEntity(const int x, const int y)
   // Layer component
   microECSEntityAddComponent(cave_entity_id, cid_drawable,
                              &(CDrawable){
-                               .layerId = 4,
-                               .visible = 1,
+                               .layerId = LAYER_GROUND_1,
+                               .visible = TRUE,
                              });
 
   // Planetary alignment component

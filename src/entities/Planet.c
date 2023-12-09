@@ -10,6 +10,7 @@
 #include "../util/perlin_noise.h"
 #include "../util/debug.h"
 #include "../util/vector.h"
+#include "../misc/layers.h"
 #include "Cave.h"
 #include "Space.h"
 #include "Explosion.h"
@@ -221,9 +222,9 @@ unsigned char *makePlanetTextureAsteroid(int width, int height)
       int r_q_reduced = r_quant;
       if (r < 0.35)
       {
-        texture[(y * width + x) * 4 + 0] = r_q_reduced * 0.5;
-        texture[(y * width + x) * 4 + 1] = r_q_reduced * 0.5;
-        texture[(y * width + x) * 4 + 2] = r_q_reduced * 0.5;
+        texture[(y * width + x) * 4 + 0] = r_q_reduced * 0.7;
+        texture[(y * width + x) * 4 + 1] = r_q_reduced * 0.7;
+        texture[(y * width + x) * 4 + 2] = r_q_reduced * 0.7;
       }
       else if (r < 0.6)
       {
@@ -237,9 +238,9 @@ unsigned char *makePlanetTextureAsteroid(int width, int height)
         }
         else
         {
-          texture[(y * width + x) * 4 + 0] = r_q_reduced * 0.5;
-          texture[(y * width + x) * 4 + 1] = r_q_reduced * 0.5;
-          texture[(y * width + x) * 4 + 2] = r_q_reduced * 0.5;
+          texture[(y * width + x) * 4 + 0] = r_q_reduced * 0.7;
+          texture[(y * width + x) * 4 + 1] = r_q_reduced * 0.7;
+          texture[(y * width + x) * 4 + 2] = r_q_reduced * 0.7;
         }
       }
       else if (r < 0.85)
@@ -248,9 +249,9 @@ unsigned char *makePlanetTextureAsteroid(int width, int height)
         float rf = (double)rand() / (double)RAND_MAX;
         if (rf < n)
         {
-          texture[(y * width + x) * 4 + 0] = r_q_reduced * 0.5;
-          texture[(y * width + x) * 4 + 1] = r_q_reduced * 0.5;
-          texture[(y * width + x) * 4 + 2] = r_q_reduced * 0.5;
+          texture[(y * width + x) * 4 + 0] = r_q_reduced * 0.7;
+          texture[(y * width + x) * 4 + 1] = r_q_reduced * 0.7;
+          texture[(y * width + x) * 4 + 2] = r_q_reduced * 0.7;
         }
         else
         {
@@ -265,26 +266,52 @@ unsigned char *makePlanetTextureAsteroid(int width, int height)
         float rf = (double)rand() / (double)RAND_MAX;
         if (rf < n)
         {
-          texture[(y * width + x) * 4 + 0] = r_q_reduced * 0.3;
-          texture[(y * width + x) * 4 + 1] = r_q_reduced * 0.3;
+          texture[(y * width + x) * 4 + 0] = r_q_reduced * 0.5;
+          texture[(y * width + x) * 4 + 1] = r_q_reduced * 0.5;
           texture[(y * width + x) * 4 + 2] = r_q_reduced;
         }
         else
         {
-          texture[(y * width + x) * 4 + 0] = r_q_reduced * 0.5;
-          texture[(y * width + x) * 4 + 1] = r_q_reduced * 0.5;
-          texture[(y * width + x) * 4 + 2] = r_q_reduced * 0.5;
+          texture[(y * width + x) * 4 + 0] = r_q_reduced * 0.7;
+          texture[(y * width + x) * 4 + 1] = r_q_reduced * 0.7;
+          texture[(y * width + x) * 4 + 2] = r_q_reduced * 0.7;
         }
       }
       else
       {
         texture[(y * width + x) * 4 + 0] = r_q_reduced;
         texture[(y * width + x) * 4 + 1] = r_q_reduced;
-        texture[(y * width + x) * 4 + 2] = r_q_reduced * 0.5;
+        texture[(y * width + x) * 4 + 2] = r_q_reduced * 0.7;
       }
 
       // Compute alpha
       texture[(y * width + x) * 4 + 3] = 255 * (distNorm < 1.0);
+    }
+  }
+
+  const u32 craters_count = 150;
+  for (u32 cid = 0; cid < craters_count; cid++) {
+    const float r_angle = ((float)rand() / (float)RAND_MAX) * 2.0 * M_PI;
+    const float r_radius = ((float)rand() / (float)RAND_MAX) * 4 + 3;
+    const float r_depth = ((float)rand() / (float)RAND_MAX) * (30 - r_radius * 2);
+    
+    const int cx = (float)width / 2.0 + cos(r_angle) * (width / 2.0 - r_depth);
+    const int cy = (float)height / 2.0 + sin(r_angle) * (height / 2.0 - r_depth);
+
+    const float rf = ((float)rand() / (float)RAND_MAX) * 0.6 - 0.3;
+    
+    // Draw circle at cx, cy with radius r_radius
+    for (int x = cx - r_radius; x < cx + r_radius; x++) {
+      for (int y = cy - r_radius; y < cy + r_radius; y++) {
+
+        const float d = sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy)); 
+        if (d >= r_radius)
+          continue;
+
+        texture[(y * width + x) * 4 + 0] *= 1.0 + rf;
+        texture[(y * width + x) * 4 + 1] *= 1.0 + rf;
+        texture[(y * width + x) * 4 + 2] *= 1.0 + rf;
+      }
     }
   }
 
@@ -343,7 +370,7 @@ void setupPlanetEntity()
   CmpAddBody(planet_id, planet_body_id);
 
   CmpAddColor(planet_id, 1.0, 1.0, 1.0, 1.0);
-  CmpAddDrawable(planet_id, 1, 1);
+  CmpAddDrawable(planet_id, LAYER_PLANET, 1);
   CmpAddUpdate(planet_id, planetUpdate);
   
   // Allocate vector
@@ -404,7 +431,7 @@ void setupShadow()
   microViewGetViewport(&viewportWidth, &viewportHeight);
   CmpAddTransform(shadow_id, viewportWidth, viewportHeight, 0, 0, 0);
   CmpAddColor(shadow_id, 1.0, 1.0, 1.0, 1.0);
-  CmpAddDrawable(shadow_id, 2, 1);
+  CmpAddDrawable(shadow_id, LAYER_SHADOW, 1);
   CmpAddHud(shadow_id);
 }
 
