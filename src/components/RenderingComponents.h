@@ -21,12 +21,13 @@ typedef struct
 {
   u8 fontId;
   f32 lineSpacing;
+  u32 alignment;
   char *text;
 } CText;
 
 extern int cid_text;
 extern void RegisterCText();
-extern void CmpAddText(int entity_id, u8 fontId, f32 lineSpacing, char *text);
+extern void CmpAddText(int entity_id, u8 fontId, f32 lineSpacing, u32 alignment, char *text);
 extern CText *CmpGetText(int entity_id);
 
 // Color

@@ -102,10 +102,10 @@ void gameStateInit()
   microECSSystemAdd(eventsSystem);
   microECSSystemAdd(gravitySystem);
   microECSSystemAdd(interactionSystem);
-  microECSSystemAdd(lockOnViewSystem);
   microECSSystemAdd(updateSystem);
   microECSSystemAdd(physicsSystem);
   microECSSystemAdd(planetaryAligntmentSystem);
+  microECSSystemAdd(lockOnViewSystem);
   microECSSystemAdd(followSystem);
   microECSSystemAdd(particlesSystem);
   microECSSystemAdd(shadedCanvasSystem);

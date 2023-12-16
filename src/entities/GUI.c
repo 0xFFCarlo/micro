@@ -131,7 +131,7 @@ void GUI_show_pop_up(char *text, int x, int y)
   CmpAddDrawable(pop_up_id, LAYER_UI_1, 1);
   CmpAddHud(pop_up_id);
   gui_font_id = microResourceGet("ui_font");
-  CmpAddText(pop_up_id, gui_font_id, 3, text);
+  CmpAddText(pop_up_id, gui_font_id, 3, TEXT_ALIGN_LEFT, text);
 }
 
 void GUI_hide_pop_up()
@@ -185,7 +185,7 @@ void GUI_show_interact_message(char *message)
   CmpAddPosition(interact_message_id, 24 + 8 + 48, viewHeight - 16 - 16);
   CmpAddDrawable(interact_message_id, LAYER_UI_2, 1);
   CmpAddHud(interact_message_id);
-  CmpAddText(interact_message_id, gui_font_id, 3, message);
+  CmpAddText(interact_message_id, gui_font_id, 3, TEXT_ALIGN_LEFT, message);
 }
 
 void GUI_hide_interact_message()
@@ -552,7 +552,7 @@ void GUIInit()
   CmpAddPosition(say_message_id, viewWidth / 2.0, viewHeight / 2.0 - 128);
   CmpAddDrawable(say_message_id, LAYER_UI_1, TRUE);
   CmpAddHud(say_message_id);
-  CmpAddText(say_message_id, gui_font_id, 3, say_text);
+  CmpAddText(say_message_id, gui_font_id, 3, TEXT_ALIGN_LEFT, say_text);
   
   // Add say background arrow
   say_background_arrow_id = microECSEntityNew(NULL, NULL);
@@ -590,7 +590,7 @@ void GUIPlayerSay(const char *text)
   microViewGetViewport(&viewWidth, &viewHeight);
 
   CPosition *pos = CmpGetPosition(say_background_id);
-  pos->y = viewHeight / 2.0 - 94;
+  pos->y = viewHeight / 2.0 - 96;
   CTransform *transform = CmpGetTransform(say_background_id);
   transform->width = text_len_px + 32;
   transform->height = 24 * lines + 8;
@@ -598,7 +598,7 @@ void GUIPlayerSay(const char *text)
   transform->originY = transform->height / 2.0;
 
   CPosition *arrow_pos = CmpGetPosition(say_background_arrow_id);
-  arrow_pos->y = viewHeight/2.0 - 94 + transform->height / 2.0 + 8;
+  arrow_pos->y = viewHeight/2.0 - 94 + transform->height / 2.0 + 4;
 
   pos = CmpGetPosition(say_message_id);
   pos->x = viewWidth/2.0 - text_len_px/2.0;

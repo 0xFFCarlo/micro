@@ -411,7 +411,7 @@ int microECSSystemAdd(void (*system)(float dt))
     }
   }
 
-  assert(systems_count < MAX_SYSTEMS - 1);
+  assert(systems_count < MAX_SYSTEMS);
   int id = systems_count;
   systems[id].system = system;
   systems_count++;

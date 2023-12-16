@@ -40,12 +40,13 @@ void RegisterCText()
   cid_text = microECSComponentRegister(sizeof(CText));
 }
 
-void CmpAddText(int entity_id, u8 fontId, float lineSpacing, char *text)
+void CmpAddText(int entity_id, u8 fontId, f32 lineSpacing, u32 alignment, char *text)
 {
   microECSEntityAddComponent(entity_id, cid_text,
                              &(CText){
                                .fontId = fontId,
                                .lineSpacing = lineSpacing,
+                               .alignment = alignment,
                                .text = text,
                              });
 }

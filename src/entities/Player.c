@@ -31,7 +31,7 @@
 #define PLAYER_TEXTURE_HEIGHT (48 * 2.25)
 #define PLAYER_BODY_RADIUS (48 / 2.0)
 
-#define PLAYER_JUNMP_FORCE 4000.0
+#define PLAYER_JUNMP_FORCE 5000.0
 #define PLAYER_MOVE_FORCE 150000.0
 
 int player_entity_id = -1;
@@ -311,7 +311,7 @@ void playerUpdate(int entityId, float dt)
     // microPhysicsBodyGetForce(player_body_id, &forceX, &forceY);
 
     // Motion on planet
-    if (toPlanetDist <= playerHeight + 1.0)
+    if (toPlanetDist <= playerHeight)
     {
 
       // float px, py;

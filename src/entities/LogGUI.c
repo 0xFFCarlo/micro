@@ -99,6 +99,7 @@ void LogGUIAdd()
                              &(CText){
                                .text = logText,
                                .lineSpacing = 3,
+                               .alignment = TEXT_ALIGN_LEFT,
                                .fontId = font_id,
                              });
   microECSEntityAddComponent(log_gui_entity_id, cid_drawable,

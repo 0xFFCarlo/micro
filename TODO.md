@@ -1,4 +1,5 @@
 ## TODO
+- [ ] Launch and landing ground dust particle effect
 - [ ] Player die and explodes and cannot be controlled
 - [ ] Draw text (microGraphicsDrawText) alignment parameter, left, center, right
 - [ ] Faster than light space traveling animation

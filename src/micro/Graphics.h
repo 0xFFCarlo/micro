@@ -203,6 +203,12 @@ extern void microCanvasFree(int canvasId);
 /////////////////////////////
 // Graphics
 /////////////////////////////
+typedef enum TextAlignment
+{
+  TEXT_ALIGN_LEFT = 0,
+  TEXT_ALIGN_CENTER = 1,
+  TEXT_ALIGN_RIGHT = 2,
+} TextAlignment;
 typedef struct RenderingDebugInfo
 {
   int drawCalls;
@@ -243,7 +249,8 @@ extern void microGraphicsDrawRectRot(int textureId, float tx, float ty,
 
 // Draw text with font
 extern void microGraphicsDrawText(int fontId, const char *text, float x,
-                                  float y, float lineSpacing, float r, float g,
+                                  float y, float lineSpacing,
+                                  TextAlignment align, float r, float g,
                                   float b, float a);
 
 // Get rendering debug info
