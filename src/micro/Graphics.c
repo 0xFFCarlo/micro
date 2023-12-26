@@ -1808,13 +1808,16 @@ void microGraphicsDrawRectRot(int textureId, float tx, float ty, float tw,
   static float v3X, v3Y;
   static float v4X, v4Y;
 
+  x = floor(x);
+  y = floor(y);
+
   if (rotation)
   {
     const float ca = cosf(rotation);
     const float sa = sinf(rotation);
 
-    const float cx = floor(x + originX);
-    const float cy = floor(y + originY);
+    const float cx = x + originX;
+    const float cy = y + originY;
 
     const float dx1 = x - cx;
     const float dy1 = y - cy;
@@ -1857,8 +1860,8 @@ void microGraphicsDrawRectRot(int textureId, float tx, float ty, float tw,
     glTextureId = microTextures[textureId].id;
 
     microGraphicsDraw(glTextureId, v1X, v1Y, v2X, v2Y, v3X, v3Y, v4X, v4Y,
-        tx / tex_w, ty / tex_h, tw / tex_w, th / tex_h, r, g, b,
-        a);
+        tx / (float)tex_w, ty / (float)tex_h, tw / (float)tex_w, 
+        th / (float)tex_h, r, g, b, a);
   }
   else
   {

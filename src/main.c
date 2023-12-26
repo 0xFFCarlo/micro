@@ -4,6 +4,7 @@
 #include <SDL2/SDL.h>
 
 #include "states/GameState.h"
+#include "states/TestState.h"
 #include <string.h>
 
 int main()
@@ -12,6 +13,7 @@ int main()
 
   microGraphicsInit();
   microECSInit();
+  // microStateSet(testStateGet());
   microStateSet(gameStateGet());
 
   float deltaTime = 0.0;

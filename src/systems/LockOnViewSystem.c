@@ -34,4 +34,6 @@ void lockOnViewSystem(float dt)
       microViewSetRotation(t->rotation);
     }
   }
+
+  microViewApply();
 }
