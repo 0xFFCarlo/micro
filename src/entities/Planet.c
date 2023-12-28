@@ -32,7 +32,7 @@ Vector planet_entities;
 // Planet fixed parameters
 float planetX = 0.0;
 float planetY = 0.0;
-float planetScaleFactor = 2.0;
+float planetScaleFactor = 1.0;
 float planetLightDepth = 140;
 float planetSurfaceDepth = GROUND_HEIGHT / 2.0;
 
@@ -57,7 +57,7 @@ void PlanetCollision(int entityId, int otherEntityId)
 
 float PlanetGetRadius()
 {
-  return planetRadius * planetScaleFactor / 2.0;
+  return planetRadius * planetScaleFactor;
 }
 
 void PlanetGetPos(float *x, float *y)
@@ -121,7 +121,7 @@ unsigned char *makePlanetTextureRedPlanet(int width, int height)
       // distNorm += noise2((float)x / 100.0, (float)y / 100.0) * 0.04;
 
       // Compute color
-      float f = 40.0;
+      float f = 80.0;
       float r = (noise2((float)x / f, (float)y / f) + 1.0) * 0.5;
       float r2 = ((double)rand() / (double)RAND_MAX - 0.5) * 2.0;
       int r_quant = (0.3 + r * 0.2 + r2 * 0.15) * 255;
@@ -192,6 +192,20 @@ unsigned char *makePlanetTextureRedPlanet(int width, int height)
 
       // Compute alpha
       texture[(y * width + x) * 4 + 3] = 255 * (distNorm < 1.0);
+      
+      // Pixelate effect
+      if (x % 2 == 1)
+      {
+        texture[(y * width + x) * 4 + 0] = texture[(y * width + x - 1) * 4 + 0];
+        texture[(y * width + x) * 4 + 1] = texture[(y * width + x - 1) * 4 + 1];
+        texture[(y * width + x) * 4 + 2] = texture[(y * width + x - 1) * 4 + 2];
+      }
+      if (y % 2 == 1)
+      {
+        texture[(y * width + x) * 4 + 0] = texture[((y - 1) * width + x) * 4 + 0];
+        texture[(y * width + x) * 4 + 1] = texture[((y - 1) * width + x) * 4 + 1];
+        texture[(y * width + x) * 4 + 2] = texture[((y - 1) * width + x) * 4 + 2];
+      }
     }
   }
 
@@ -286,6 +300,20 @@ unsigned char *makePlanetTextureAsteroid(int width, int height)
 
       // Compute alpha
       texture[(y * width + x) * 4 + 3] = 255 * (distNorm < 1.0);
+
+      // Pixelate effect
+      if (x % 2 == 1)
+      {
+        texture[(y * width + x) * 4 + 0] = texture[(y * width + x - 1) * 4 + 0];
+        texture[(y * width + x) * 4 + 1] = texture[(y * width + x - 1) * 4 + 1];
+        texture[(y * width + x) * 4 + 2] = texture[(y * width + x - 1) * 4 + 2];
+      }
+      if (y % 2 == 1)
+      {
+        texture[(y * width + x) * 4 + 0] = texture[((y - 1) * width + x) * 4 + 0];
+        texture[(y * width + x) * 4 + 1] = texture[((y - 1) * width + x) * 4 + 1];
+        texture[(y * width + x) * 4 + 2] = texture[((y - 1) * width + x) * 4 + 2];
+      }
     }
   }
 
@@ -461,8 +489,8 @@ void PlanetGenerate()
   float viewWidth, viewHeight;
   microViewGetSize(&viewWidth, &viewHeight);
 
-  float canvas_planet_height = planetRadius * 2.0 / 2.0;
-  float canvas_planet_width = planetRadius * 2.0 / 2.0;
+  float canvas_planet_height = planetRadius * 2.0;
+  float canvas_planet_width = planetRadius * 2.0;
   float planet_scale = planetScaleFactor;
 
   if (planetType == PLANET_RED_ROCKY)
