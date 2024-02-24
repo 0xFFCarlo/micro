@@ -1,6 +1,6 @@
 #include "ambience_music.h"
-#include "../micro/Audio.h"
-#include "../micro/Resources.h"
+#include "../micro/core/Audio.h"
+#include "../micro/core/Resources.h"
 
 AmbienceType ambience_type = AMBIENCE_NONE;
 uint32_t ambience_music_ids[AMBIENCE_COUNT] = {0};

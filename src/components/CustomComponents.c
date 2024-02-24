@@ -1,5 +1,5 @@
 #include "CustomComponents.h"
-#include "../micro/ECS.h"
+#include "../micro/core/ECS.h"
 
 int cid_planetary_alignment = -1;
 int cid_gravity = -1;

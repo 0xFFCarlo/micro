@@ -1,7 +1,7 @@
 #ifndef PLAYER_H
 #define PLAYER_H
 
-#include "../micro/Types.h"
+#include "../micro/util/Types.h"
 
 typedef struct PlayerData {
   float movementSpeed;

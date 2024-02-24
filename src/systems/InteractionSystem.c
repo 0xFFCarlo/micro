@@ -1,7 +1,7 @@
 #include "InteractionSystem.h"
 #include "../components/CustomComponents.h"
-#include "../components/MotionComponents.h"
-#include "../micro/ECS.h"
+#include "../micro/components/MotionComponents.h"
+#include "../micro/core/ECS.h"
 #include <math.h>
 #include <stdlib.h>
 

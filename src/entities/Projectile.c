@@ -1,12 +1,12 @@
 #include "Projectile.h"
 #include "../components/CustomComponents.h"
-#include "../components/LogicComponents.h"
-#include "../components/MotionComponents.h"
-#include "../components/RenderingComponents.h"
-#include "../micro/ECS.h"
-#include "../micro/Graphics.h"
-#include "../micro/Physics.h"
-#include "../micro/Resources.h"
+#include "../micro/components/LogicComponents.h"
+#include "../micro/components/MotionComponents.h"
+#include "../micro/components/RenderingComponents.h"
+#include "../micro/core/ECS.h"
+#include "../micro/core/Graphics.h"
+#include "../micro/core/Physics.h"
+#include "../micro/core/Resources.h"
 #include "../misc/collision.h"
 #include "../misc/layers.h"
 #include "Explosion.h"
@@ -28,7 +28,7 @@ void ProjectileCollision(int entityId, int otherEntityId)
 {
   (void)entityId;
   (void)otherEntityId;
-  
+
   // Remove projectile on collision
   microECSEntityRemove(entityId);
 }

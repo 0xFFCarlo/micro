@@ -1,9 +1,12 @@
 ## TODO
+- [ ] Movement speed and projectile speed should be proportional to screen height
+      given that everything is proportinal to it.
+- [ ] UI/GUI size should be proportional to screen height
+- [ ] Planet rotates at a certain small speed.
 - [ ] Launch and landing ground dust particle effect
 - [ ] Player die and explodes and cannot be controlled
 - [ ] Draw text (microGraphicsDrawText) alignment parameter, left, center, right
 - [ ] Faster than light space traveling animation
-- [ ] Planet rotates at a certain small speed.
       Do I need a separate rotation for camera and planet?
 - [ ] Render sky and atmosphere to texture
 - [ ] Quantium is attracted by the player at close range and picked up

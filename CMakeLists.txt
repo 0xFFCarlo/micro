@@ -23,7 +23,6 @@ endif()
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
 
 # Add include directories
-include_directories(${CMAKE_SOURCE_DIR}/src/ext) # external libraries
 include_directories(${CMAKE_SOURCE_DIR}/src/systems)
 include_directories(${CMAKE_SOURCE_DIR}/src/components)
 include_directories(${CMAKE_SOURCE_DIR}/src/entities)

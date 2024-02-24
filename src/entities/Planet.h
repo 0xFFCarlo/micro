@@ -1,7 +1,7 @@
 #ifndef PLANET_H
 #define PLANET_H
 
-#include "../micro/Types.h"
+#include "../micro/util/Types.h"
 
 typedef enum {
   PLANET_ASTEROID = 0,

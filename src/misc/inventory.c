@@ -1,7 +1,7 @@
 #include "../components/CustomComponents.h"
-#include "../micro/Audio.h"
-#include "../micro/ECS.h"
-#include "../util/debug.h"
+#include "../micro/core/Audio.h"
+#include "../micro/core/ECS.h"
+#include "../micro/util/debug.h"
 #include "items.h"
 #include <stdint.h>
 

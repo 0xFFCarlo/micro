@@ -1,9 +1,9 @@
 #include "GravitySystem.h"
 #include "../components/CustomComponents.h"
-#include "../components/MotionComponents.h"
-#include "../components/RenderingComponents.h"
-#include "../micro/ECS.h"
-#include "../micro/Physics.h"
+#include "../micro/components/MotionComponents.h"
+#include "../micro/components/RenderingComponents.h"
+#include "../micro/core/ECS.h"
+#include "../micro/core/Physics.h"
 #include <math.h>
 #include <stdio.h>
 

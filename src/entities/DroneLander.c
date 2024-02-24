@@ -1,12 +1,12 @@
 #include "../components/CustomComponents.h"
-#include "../components/LogicComponents.h"
-#include "../components/MotionComponents.h"
-#include "../components/RenderingComponents.h"
-#include "../micro/Audio.h"
-#include "../micro/ECS.h"
-#include "../micro/Graphics.h"
-#include "../micro/Physics.h"
-#include "../micro/Resources.h"
+#include "../micro/components/LogicComponents.h"
+#include "../micro/components/MotionComponents.h"
+#include "../micro/components/RenderingComponents.h"
+#include "../micro/core/Audio.h"
+#include "../micro/core/ECS.h"
+#include "../micro/core/Graphics.h"
+#include "../micro/core/Physics.h"
+#include "../micro/core/Resources.h"
 #include "../misc/collision.h"
 #include "../misc/layers.h"
 #include "Drone.h"
@@ -23,8 +23,9 @@
 #define DRONE_TEX_WIDTH 64
 #define DRONE_TEX_HEIGHT 64
 #define DRONE_SCALE 2.0
-#define DRONE_PROJ_SPEED 600.0
+#define DRONE_PROJ_SPEED 1.0
 #define BODY_RADIUS 24
+#define DRONE_MOVE_SPEED 0.1
 
 int aid_drone_2_fall = -1;
 int aid_drone_2_walk = -1;
@@ -48,7 +49,7 @@ void DroneLanderCollision(int entityId, int otherEntityId)
     CHealth *health = CmpGetHealth(entityId);
     health->health -= 1;
     CPosition *position = CmpGetPosition(entityId);
-  
+
 
     //TODO: kickback
     // CBody *body = CmpGetBody(entityId);
@@ -79,6 +80,8 @@ void DroneLanderUpdate(int droneId, float dt)
 
   f32 playerX, playerY;
   PlayerGetPos(&playerX, &playerY);
+  f32 viewWidth, viewHeight;
+  microViewGetSize(&viewWidth, &viewHeight);
 
   CPosition *position = CmpGetPosition(droneId);
   CAnimation *animation = CmpGetAnimation(droneId);
@@ -120,8 +123,8 @@ void DroneLanderUpdate(int droneId, float dt)
       if (rand() % 60 == 0)
       {
         f32 angle = atan2(dy, dx);
-        f32 vx = cos(angle) * DRONE_PROJ_SPEED;
-        f32 vy = sin(angle) * DRONE_PROJ_SPEED;
+        f32 vx = cos(angle) * DRONE_PROJ_SPEED * viewHeight;
+        f32 vy = sin(angle) * DRONE_PROJ_SPEED * viewHeight;
         ProjectileAddEntity(PROJECTILE_TYPE_ENEMY, position->x, position->y, vx,
                             vy);
         int laser_snd_id = microResourceGet("gun_shot");
@@ -145,7 +148,7 @@ void DroneLanderUpdate(int droneId, float dt)
   if (data->is_falling == FALSE)
   {
     f32 hangle = angle + M_PI / 2.0;
-    f32 hforce = 40;
+    f32 hforce = DRONE_MOVE_SPEED * viewHeight;
 
     // Handle wrap-around scenarios
     f32 difference = playerAngle - angle;

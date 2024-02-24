@@ -1,14 +1,14 @@
 #include "Player.h"
 #include "../components/CustomComponents.h"
-#include "../components/LogicComponents.h"
-#include "../components/MotionComponents.h"
-#include "../components/RenderingComponents.h"
-#include "../micro/Audio.h"
-#include "../micro/ECS.h"
-#include "../micro/Graphics.h"
-#include "../micro/Physics.h"
-#include "../micro/Resources.h"
-#include "../micro/System.h"
+#include "../micro/components/LogicComponents.h"
+#include "../micro/components/MotionComponents.h"
+#include "../micro/components/RenderingComponents.h"
+#include "../micro/core/Audio.h"
+#include "../micro/core/ECS.h"
+#include "../micro/core/Graphics.h"
+#include "../micro/core/Physics.h"
+#include "../micro/core/Resources.h"
+#include "../micro/core/System.h"
 #include "../misc/collision.h"
 #include "../misc/layers.h"
 #include "Explosion.h"
@@ -31,8 +31,10 @@
 #define PLAYER_TEXTURE_HEIGHT (48 * 2.5)
 #define PLAYER_BODY_RADIUS (48 / 2.25)
 
-#define PLAYER_JUNMP_FORCE 5000.0
-#define PLAYER_MOVE_FORCE 150000.0
+#define PLAYER_JUMP_FORCE 10.0
+#define PLAYER_MOVE_FORCE 200.0
+
+#define PLAYER_PROJ_SPEED 1.0
 
 int player_entity_id = -1;
 bool player_alive = 1;
@@ -183,6 +185,8 @@ void PlayerShootAt(float x, float y)
 
   float playerX, playerY;
   PlayerGetPos(&playerX, &playerY);
+  f32 viewWidth, viewHeight;
+  microViewGetSize(&viewWidth, &viewHeight);
 
   const CTransform *transform = CmpGetTransform(player_entity_id);
   const f32 eyeOffsetX = cos(transform->rotation - M_PI / 2) * 8.0;
@@ -193,8 +197,8 @@ void PlayerShootAt(float x, float y)
   const f32 toMouseDist = sqrt(toMouseX * toMouseX + toMouseY * toMouseY);
   toMouseX /= toMouseDist;
   toMouseY /= toMouseDist;
-  float forceX = toMouseX * 600.0;
-  float forceY = toMouseY * 600.0;
+  float forceX = toMouseX * PLAYER_PROJ_SPEED * viewHeight;
+  float forceY = toMouseY * PLAYER_PROJ_SPEED * viewHeight;
 
   ProjectileAddEntity(PROJECTILE_TYPE_PLAYER, playerX + eyeOffsetX,
                       playerY + eyeOffsetY, forceX, forceY);
@@ -318,26 +322,28 @@ void playerUpdate(int entityId, float dt)
       // microPhysicsBodyGetPosition(player_body_id, &px, &py);
       float vx, vy;
       microPhysicsBodyGetVelocity(player_body_id, &vx, &vy);
+      const float player_move_speed = PLAYER_MOVE_FORCE * viewHeight;
+      const float player_jump_speed = PLAYER_JUMP_FORCE * viewHeight;
 
       // Motion
       if (player_state == PLAYER_STATE_WALK)
       {
         if (player_direction == PLAYER_DIRECTION_RIGHT)
         {
-          forceX += toPlanetNormY * PLAYER_MOVE_FORCE * dt;
-          forceY += -toPlanetNormX * PLAYER_MOVE_FORCE * dt;
+          forceX += toPlanetNormY * player_move_speed * dt;
+          forceY += -toPlanetNormX * player_move_speed * dt;
         }
         else
         {
-          forceX += -toPlanetNormY * PLAYER_MOVE_FORCE * dt;
-          forceY += toPlanetNormX * PLAYER_MOVE_FORCE * dt;
+          forceX += -toPlanetNormY * player_move_speed * dt;
+          forceY += toPlanetNormX * player_move_speed * dt;
         }
       }
 
       if (playerJump)
       {
-        forceX += -toPlanetNormX * PLAYER_JUNMP_FORCE;
-        forceY += -toPlanetNormY * PLAYER_JUNMP_FORCE;
+        forceX += -toPlanetNormX * player_jump_speed;
+        forceY += -toPlanetNormY * player_jump_speed;
         playerJump = 0;
       }
 
@@ -512,6 +518,7 @@ void PlayerHit(float damage)
       uint32_t explosion_snd = microResourceGet("explosion");
       microSoundPlay(explosion_snd, 0);
       player_state = PLAYER_STATE_DEAD;
+      player_alive = FALSE;
     }
     return;
   }

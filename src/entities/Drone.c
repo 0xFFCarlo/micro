@@ -1,13 +1,13 @@
 #include "Drone.h"
 #include "../components/CustomComponents.h"
-#include "../components/LogicComponents.h"
-#include "../components/MotionComponents.h"
-#include "../components/RenderingComponents.h"
-#include "../micro/Audio.h"
-#include "../micro/ECS.h"
-#include "../micro/Graphics.h"
-#include "../micro/Physics.h"
-#include "../micro/Resources.h"
+#include "../micro/components/LogicComponents.h"
+#include "../micro/components/MotionComponents.h"
+#include "../micro/components/RenderingComponents.h"
+#include "../micro/core/Audio.h"
+#include "../micro/core/ECS.h"
+#include "../micro/core/Graphics.h"
+#include "../micro/core/Physics.h"
+#include "../micro/core/Resources.h"
 #include "../misc/collision.h"
 #include "../misc/layers.h"
 #include "Explosion.h"
@@ -23,7 +23,7 @@
 #define DRONE_TEX_WIDTH 48
 #define DRONE_TEX_HEIGHT 48
 #define DRONE_SCALE 2.0
-#define DRONE_PROJ_SPEED 600.0
+#define DRONE_PROJ_SPEED 1.0
 #define BODY_RADIUS 24
 
 void DroneCollision(int entityId, int otherEntityId)
@@ -60,10 +60,12 @@ void DroneUpdate(int droneId, float dt)
 {
   (void)dt;
 
+  f32 viewWidth, viewHeight;
+  microViewGetSize(&viewWidth, &viewHeight);
   f32 playerX, playerY;
   PlayerGetPos(&playerX, &playerY);
   CPosition *position = CmpGetPosition(droneId);
-  
+
   // Update color flash
   CColor *color = CmpGetColor(droneId);
   color->r = fmax(color->r - 4.0 * dt, 1.0);
@@ -82,8 +84,8 @@ void DroneUpdate(int droneId, float dt)
       if (rand() % 120 == 0)
       {
         f32 angle = atan2(dy, dx);
-        f32 vx = cos(angle) * DRONE_PROJ_SPEED;
-        f32 vy = sin(angle) * DRONE_PROJ_SPEED;
+        f32 vx = cos(angle) * DRONE_PROJ_SPEED * viewHeight;
+        f32 vy = sin(angle) * DRONE_PROJ_SPEED * viewHeight;
         ProjectileAddEntity(PROJECTILE_TYPE_ENEMY, position->x, position->y, vx,
                             vy);
         int laser_snd_id = microResourceGet("gun_shot");
