@@ -5,7 +5,7 @@
 ---@field source_id number
 
 local ffi = require("ffi")
-local lib = require("src/lua/libmicro")
+local lib = require("micro/lua/libmicro")
 
 ffi.cdef([[
   typedef struct
@@ -325,6 +325,14 @@ function Cmp.getShadedCanvas(entity_id)
 	return lib.CmpGetShadedCanvas(entity_id)
 end
 
+--- Add a lock on view component to an entity.
+--- @param entity_id number
+--- @param followRotation boolean|nil
+--- @param hasBoundaries boolean|nil
+--- @param minX number|nil
+--- @param minY number|nil
+--- @param maxX number|nil
+--- @param maxY number|nil
 function Cmp.addLockOnView(entity_id, followRotation, hasBoundaries, minX, minY, maxX, maxY)
 	followRotation = followRotation or false
 	hasBoundaries = hasBoundaries or false

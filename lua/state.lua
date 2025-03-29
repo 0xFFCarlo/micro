@@ -1,5 +1,5 @@
 local ffi = require("ffi")
-local lib = require("src/lua/libmicro")
+local lib = require("micro/lua/libmicro")
 
 ffi.cdef([[
 typedef struct {

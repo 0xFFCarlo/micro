@@ -9,7 +9,7 @@ else
 	libName = "libmicro.so"
 end
 
-local libPath = "lib/" .. libName
+local libPath = "micro/lib/" .. libName
 local lib = ffi.load(libPath)
 
 return lib

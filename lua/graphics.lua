@@ -1,5 +1,5 @@
 local ffi = require("ffi")
-local lib = require("src/lua/libmicro") -- your dynamic library
+local lib = require("micro/lua/libmicro") -- your dynamic library
 
 ffi.cdef([[
 /* Texture */
@@ -258,37 +258,37 @@ local Gfx = {}
 --- MicroFilter enumeration.
 -- @type MicroFilter
 Gfx.MicroFilter = {
-	NEAREST = 0,
-	LINEAR = 1,
+  NEAREST = 0,
+  LINEAR = 1,
 }
 
 --- MicroVAODrawType enumeration.
 -- @type MicroVAODrawType
 Gfx.MicroVAODrawType = {
-	STATIC_DRAW = 0,
-	DYNAMIC_DRAW = 1,
-	STREAM_DRAW = 2,
+  STATIC_DRAW = 0,
+  DYNAMIC_DRAW = 1,
+  STREAM_DRAW = 2,
 }
 
 --- MicroAttributeType enumeration.
 -- @type MicroAttributeType
 Gfx.MicroAttributeType = {
-	BYTE = 0,
-	UNSIGNED_BYTE = 1,
-	SHORT = 2,
-	UNSIGNED_SHORT = 3,
-	INT = 4,
-	UNSIGNED_INT = 5,
-	FLOAT = 6,
-	DOUBLE = 7,
+  BYTE = 0,
+  UNSIGNED_BYTE = 1,
+  SHORT = 2,
+  UNSIGNED_SHORT = 3,
+  INT = 4,
+  UNSIGNED_INT = 5,
+  FLOAT = 6,
+  DOUBLE = 7,
 }
 
 --- TextAlignment enumeration.
 -- @type TextAlignment
 Gfx.TextAlignment = {
-	LEFT = 0,
-	CENTER = 1,
-	RIGHT = 2,
+  LEFT = 0,
+  CENTER = 1,
+  RIGHT = 2,
 }
 
 --[[-------------------------------------------------------------------------
@@ -298,12 +298,12 @@ Gfx.TextAlignment = {
 -- @param filepath string path to the file.
 -- @return ret number (0 on success), data pointer, width number, height number, channels number.
 function Gfx.loadBitmapFromFile(filepath)
-	local dataPtr = ffi.new("unsigned char*[1]")
-	local width = ffi.new("unsigned int[1]")
-	local height = ffi.new("unsigned int[1]")
-	local channels = ffi.new("unsigned int[1]")
-	local ret = lib.microBitmapLoadFromFile(filepath, dataPtr, width, height, channels)
-	return ret, dataPtr[0], tonumber(width[0]), tonumber(height[0]), tonumber(channels[0])
+  local dataPtr = ffi.new("unsigned char*[1]")
+  local width = ffi.new("unsigned int[1]")
+  local height = ffi.new("unsigned int[1]")
+  local channels = ffi.new("unsigned int[1]")
+  local ret = lib.microBitmapLoadFromFile(filepath, dataPtr, width, height, channels)
+  return ret, dataPtr[0], tonumber(width[0]), tonumber(height[0]), tonumber(channels[0])
 end
 
 --- Loads a texture from file.
@@ -311,7 +311,7 @@ end
 -- @param filepath string path to the texture file.
 -- @return textureId number.
 function Gfx.loadTextureFromFile(resName, filepath)
-	return lib.microTextureLoadFromFile(resName, filepath)
+  return lib.microTextureLoadFromFile(resName, filepath)
 end
 
 --- Loads a texture from memory.
@@ -323,8 +323,24 @@ end
 -- @param filter MicroFilter filtering mode.
 -- @param textureUnitId number texture unit identifier.
 -- @return textureId number.
-function Gfx.loadTextureFromMemory(resName, data, width, height, channels, filter, textureUnitId)
-	return lib.microTextureLoadFromMemory(resName, data, width, height, channels, filter, textureUnitId)
+function Gfx.loadTextureFromMemory(
+  resName,
+  data,
+  width,
+  height,
+  channels,
+  filter,
+  textureUnitId
+)
+  return lib.microTextureLoadFromMemory(
+    resName,
+    data,
+    width,
+    height,
+    channels,
+    filter,
+    textureUnitId
+  )
 end
 
 --- Submits new texture data.
@@ -335,44 +351,44 @@ end
 -- @param height number.
 -- @param data userdata pointer to new data.
 function Gfx.textureSubmitData(textureId, startX, startY, width, height, data)
-	lib.microTextureSubmitData(textureId, startX, startY, width, height, data)
+  lib.microTextureSubmitData(textureId, startX, startY, width, height, data)
 end
 
 --- Retrieves the size of a texture.
 -- @param textureId number.
 -- @return width number, height number.
 function Gfx.getTextureSize(textureId)
-	local width = ffi.new("int[1]")
-	local height = ffi.new("int[1]")
-	lib.microTextureGetSize(textureId, width, height)
-	return tonumber(width[0]), tonumber(height[0])
+  local width = ffi.new("int[1]")
+  local height = ffi.new("int[1]")
+  lib.microTextureGetSize(textureId, width, height)
+  return tonumber(width[0]), tonumber(height[0])
 end
 
 --- Gets a texture by resource name.
 -- @param resName string.
 -- @return textureId number.
 function Gfx.getTexture(resName)
-	return lib.microTextureGet(resName)
+  return lib.microTextureGet(resName)
 end
 
 --- Sets the texture filtering mode.
 -- @param textureId number.
 -- @param filter MicroFilter.
 function Gfx.setTextureFilter(textureId, filter)
-	lib.microTextureSetFilter(textureId, filter)
+  lib.microTextureSetFilter(textureId, filter)
 end
 
 --- Applies a texture to a texture unit.
 -- @param textureId number.
 -- @param textureUnitId number.
 function Gfx.applyTexture(textureId, textureUnitId)
-	lib.microTextureApply(textureId, textureUnitId)
+  lib.microTextureApply(textureId, textureUnitId)
 end
 
 --- Frees a texture.
 -- @param textureId number.
 function Gfx.freeTexture(textureId)
-	lib.microTextureFree(textureId)
+  lib.microTextureFree(textureId)
 end
 
 --[[-------------------------------------------------------------------------
@@ -383,7 +399,7 @@ end
 -- @param filepath string path to the atlas file.
 -- @return atlasId number.
 function Gfx.loadAtlas(resName, filepath)
-	return lib.microAtlasLoadFromPath(resName, filepath)
+  return lib.microAtlasLoadFromPath(resName, filepath)
 end
 
 --- Gets a region from a texture atlas.
@@ -391,28 +407,28 @@ end
 -- @param name string name of the region.
 -- @return region table with fields x, y, w, h.
 function Gfx.getAtlasRegion(atlasId, name)
-	local region = lib.microAtlasGetRegion(atlasId, name)
-	return { x = region.x, y = region.y, w = region.w, h = region.h }
+  local region = lib.microAtlasGetRegion(atlasId, name)
+  return { x = region.x, y = region.y, w = region.w, h = region.h }
 end
 
 --- Gets the texture ID of a texture atlas.
 -- @param atlasId number.
 -- @return textureId number.
 function Gfx.getAtlasTextureId(atlasId)
-	return lib.microAtlasGetTextureId(atlasId)
+  return lib.microAtlasGetTextureId(atlasId)
 end
 
 --- Gets a texture atlas by resource name.
 -- @param resName string.
 -- @return atlasId number.
 function Gfx.getAtlas(resName)
-	return lib.microAtlasGet(resName)
+  return lib.microAtlasGet(resName)
 end
 
 --- Frees a texture atlas.
 -- @param atlasId number.
 function Gfx.freeAtlas(atlasId)
-	lib.microAtlasFree(atlasId)
+  lib.microAtlasFree(atlasId)
 end
 
 --[[-------------------------------------------------------------------------
@@ -423,22 +439,23 @@ end
 -- @param frames table array of frame indices.
 -- @return animationId number.
 function Gfx.createAnimationFromFrames(name, frames)
-	local cframes = ffi.new("int[?]", #frames, frames)
-	return lib.microAnimationCreateFromFrames(name, cframes, #frames)
+  local cframes = ffi.new("int[?]", #frames, frames)
+  return lib.microAnimationCreateFromFrames(name, cframes, #frames)
 end
 
 --- Gets an animation by name.
 -- @param name string.
 -- @return animationId number.
 function Gfx.getAnimation(name)
-	return lib.microAnimationGet(name)
+  local cName = ffi.new("char[?]", #name, name)
+  return lib.microAnimationGet(cName)
 end
 
 --- Retrieves the name of an animation.
 -- @param animationId number.
 -- @return name string.
 function Gfx.getAnimationName(animationId)
-	return ffi.string(lib.microAnimationGetName(animationId))
+  return ffi.string(lib.microAnimationGetName(animationId))
 end
 
 --- Retrieves a specific frame of an animation.
@@ -448,26 +465,26 @@ end
 -- @param flipY number (0 or 1).
 -- @return region table with fields x, y, w, h.
 function Gfx.getAnimationFrame(animationId, frameId, flipX, flipY)
-	local region = lib.microAnimationGetFrame(animationId, frameId, flipX, flipY)
-	return { x = region.x, y = region.y, w = region.w, h = region.h }
+  local region = lib.microAnimationGetFrame(animationId, frameId, flipX, flipY)
+  return { x = region.x, y = region.y, w = region.w, h = region.h }
 end
 
 --- Gets the number of frames in an animation.
 -- @param animationId number.
 -- @return count number.
 function Gfx.getAnimationFramesCount(animationId)
-	return lib.microAnimationGetFramesCount(animationId)
+  return lib.microAnimationGetFramesCount(animationId)
 end
 
 --- Frees an animation.
 -- @param animationId number.
 function Gfx.freeAnimation(animationId)
-	lib.microAnimationFree(animationId)
+  lib.microAnimationFree(animationId)
 end
 
 --- Frees all animations.
 function Gfx.freeAllAnimations()
-	lib.microAnimationFreeAll()
+  lib.microAnimationFreeAll()
 end
 
 --[[-------------------------------------------------------------------------
@@ -480,7 +497,7 @@ end
 -- @param filter number filtering mode.
 -- @return fontId number.
 function Gfx.loadFontTTF(resName, filepath, fontSize, filter)
-	return lib.microFontTTFLoad(resName, filepath, fontSize, filter)
+  return lib.microFontTTFLoad(resName, filepath, fontSize, filter)
 end
 
 --- Creates a bitmap font.
@@ -491,8 +508,22 @@ end
 -- @param charCodeStart number.
 -- @param charCodeEnd number.
 -- @return fontId number.
-function Gfx.createFontBitmap(resName, textureId, charWidth, charHeight, charCodeStart, charCodeEnd)
-	return lib.microFontBitmapMake(resName, textureId, charWidth, charHeight, charCodeStart, charCodeEnd)
+function Gfx.createFontBitmap(
+  resName,
+  textureId,
+  charWidth,
+  charHeight,
+  charCodeStart,
+  charCodeEnd
+)
+  return lib.microFontBitmapMake(
+    resName,
+    textureId,
+    charWidth,
+    charHeight,
+    charCodeStart,
+    charCodeEnd
+  )
 end
 
 --- Creates a bitmap font from a patch.
@@ -504,32 +535,42 @@ end
 -- @param charCodeStart number.
 -- @param charCodeEnd number.
 -- @return fontId number.
-function Gfx.createFontBitmapFromPatch(resName, textureId, texSource, charWidth, charHeight, charCodeStart, charCodeEnd)
-	local ctexSource =
-		ffi.new("MicroTextureRegion", { x = texSource.x, y = texSource.y, w = texSource.w, h = texSource.h })
-	return lib.microFontBitmapMakeFromPatch(
-		resName,
-		textureId,
-		ctexSource,
-		charWidth,
-		charHeight,
-		charCodeStart,
-		charCodeEnd
-	)
+function Gfx.createFontBitmapFromPatch(
+  resName,
+  textureId,
+  texSource,
+  charWidth,
+  charHeight,
+  charCodeStart,
+  charCodeEnd
+)
+  local ctexSource = ffi.new(
+    "MicroTextureRegion",
+    { x = texSource.x, y = texSource.y, w = texSource.w, h = texSource.h }
+  )
+  return lib.microFontBitmapMakeFromPatch(
+    resName,
+    textureId,
+    ctexSource,
+    charWidth,
+    charHeight,
+    charCodeStart,
+    charCodeEnd
+  )
 end
 
 --- Gets the texture ID used by a font.
 -- @param fontId number.
 -- @return textureId number.
 function Gfx.getFontTextureId(fontId)
-	return lib.microFontGetTextureId(fontId)
+  return lib.microFontGetTextureId(fontId)
 end
 
 --- Gets the font size.
 -- @param fontId number.
 -- @return size number.
 function Gfx.getFontSize(fontId)
-	return lib.microFontGetSize(fontId)
+  return lib.microFontGetSize(fontId)
 end
 
 --- Gets the line height for a font.
@@ -537,7 +578,7 @@ end
 -- @param scale number.
 -- @return lineHeight number.
 function Gfx.getFontLineHeight(fontId, scale)
-	return lib.microFontGetLineHeight(fontId, scale)
+  return lib.microFontGetLineHeight(fontId, scale)
 end
 
 --- Gets the width of a text string using the font.
@@ -546,7 +587,7 @@ end
 -- @param scale number.
 -- @return width number.
 function Gfx.getTextWidth(fontId, text, scale)
-	return lib.microFontGetTextWidth(fontId, text, scale)
+  return lib.microFontGetTextWidth(fontId, text, scale)
 end
 
 --- Gets the height of a text string using the font.
@@ -556,25 +597,25 @@ end
 -- @param lineSpacing number.
 -- @return height number.
 function Gfx.getTextHeight(fontId, text, scale, lineSpacing)
-	return lib.microFontGetTextHeigth(fontId, text, scale, lineSpacing)
+  return lib.microFontGetTextHeigth(fontId, text, scale, lineSpacing)
 end
 
 --- Gets a font by resource name.
 -- @param resName string.
 -- @return fontId number.
 function Gfx.getFont(resName)
-	return lib.microFontGet(resName)
+  return lib.microFontGet(resName)
 end
 
 --- Frees a font.
 -- @param fontId number.
 function Gfx.freeFont(fontId)
-	lib.microFontFree(fontId)
+  lib.microFontFree(fontId)
 end
 
 --- Frees all fonts.
 function Gfx.freeAllFonts()
-	lib.microFontFreeAll()
+  lib.microFontFreeAll()
 end
 
 --[[-------------------------------------------------------------------------
@@ -587,7 +628,7 @@ end
 -- @param generationFunc function that takes an integer and returns a MicroParticle.
 -- @return emitterId number.
 function Gfx.createSteadyEmitter(x, y, emissionRate, generationFunc)
-	return lib.microParticleEmitterCreateSteady(x, y, emissionRate, generationFunc)
+  return lib.microParticleEmitterCreateSteady(x, y, emissionRate, generationFunc)
 end
 
 --- Creates an explosion particle emitter.
@@ -597,7 +638,7 @@ end
 -- @param generationFunc function that takes an integer and returns a MicroParticle.
 -- @return emitterId number.
 function Gfx.createExplosionEmitter(x, y, particlesCount, generationFunc)
-	return lib.microParticleEmitterCreateExplosion(x, y, particlesCount, generationFunc)
+  return lib.microParticleEmitterCreateExplosion(x, y, particlesCount, generationFunc)
 end
 
 --- Sets the position of a particle emitter.
@@ -605,7 +646,7 @@ end
 -- @param x number.
 -- @param y number.
 function Gfx.setEmitterPosition(emitterId, x, y)
-	lib.microParticleEmitterSetPosition(emitterId, x, y)
+  lib.microParticleEmitterSetPosition(emitterId, x, y)
 end
 
 --- Sets the size of a particle emitter.
@@ -613,37 +654,37 @@ end
 -- @param width number.
 -- @param height number.
 function Gfx.setEmitterSize(emitterId, width, height)
-	lib.microParticleEmitterSetSize(emitterId, width, height)
+  lib.microParticleEmitterSetSize(emitterId, width, height)
 end
 
 --- Sets the emission rate of a particle emitter.
 -- @param emitterId number.
 -- @param emissionRate number.
 function Gfx.setEmitterEmissionRate(emitterId, emissionRate)
-	lib.microParticleEmitterSetEmissionRate(emitterId, emissionRate)
+  lib.microParticleEmitterSetEmissionRate(emitterId, emissionRate)
 end
 
 --- Updates all particle emitters.
 -- @param dt number delta time.
 function Gfx.updateEmitters(dt)
-	lib.microParticleEmittersUpdate(dt)
+  lib.microParticleEmittersUpdate(dt)
 end
 
 --- Removes a particle emitter.
 -- @param emitterId number.
 function Gfx.removeEmitter(emitterId)
-	lib.microParticleEmitterRemove(emitterId)
+  lib.microParticleEmitterRemove(emitterId)
 end
 
 --- Removes all particle emitters.
 function Gfx.removeAllEmitters()
-	lib.microParticleEmitterRemoveAll()
+  lib.microParticleEmitterRemoveAll()
 end
 
 --- Returns the total number of particles.
 -- @return count number.
 function Gfx.getParticlesCount()
-	return lib.microParticlesCount()
+  return lib.microParticlesCount()
 end
 
 --[[-------------------------------------------------------------------------
@@ -661,59 +702,59 @@ end
 --- @param rotation number|nil
 --- @param flipY boolean|nil (0 or 1).
 function Gfx.setView(
-	viewportX,
-	viewportY,
-	viewportWidth,
-	viewportHeight,
-	centerX,
-	centerY,
-	width,
-	height,
-	rotation,
-	flipY
+  viewportX,
+  viewportY,
+  viewportWidth,
+  viewportHeight,
+  centerX,
+  centerY,
+  width,
+  height,
+  rotation,
+  flipY
 )
-	local cview = ffi.new("MicroView", {
-		viewportX = viewportX,
-		viewportY = viewportY,
-		viewportWidth = viewportWidth,
-		viewportHeight = viewportHeight,
-		centerX = centerX or viewportWidth / 2,
-		centerY = centerY or viewportHeight / 2,
-		width = width or viewportWidth,
-		height = height or viewportHeight,
-		rotation = rotation or 0,
-		flipY = flipY or false,
-	})
-	lib.microViewSet(cview)
+  local cview = ffi.new("MicroView", {
+    viewportX = viewportX,
+    viewportY = viewportY,
+    viewportWidth = viewportWidth,
+    viewportHeight = viewportHeight,
+    centerX = centerX or viewportWidth / 2,
+    centerY = centerY or viewportHeight / 2,
+    width = width or viewportWidth,
+    height = height or viewportHeight,
+    rotation = rotation or 0,
+    flipY = flipY or false,
+  })
+  lib.microViewSet(cview)
 end
 
 --- Gets the current view.
 -- @return view table.
 function Gfx.getView()
-	local cview = lib.microViewGet()
-	return {
-		viewportX = cview.viewportX,
-		viewportY = cview.viewportY,
-		viewportWidth = cview.viewportWidth,
-		viewportHeight = cview.viewportHeight,
-		centerX = cview.centerX,
-		centerY = cview.centerY,
-		width = cview.width,
-		height = cview.height,
-		rotation = cview.rotation,
-		flipY = cview.flipY,
-	}
+  local cview = lib.microViewGet()
+  return {
+    viewportX = cview.viewportX,
+    viewportY = cview.viewportY,
+    viewportWidth = cview.viewportWidth,
+    viewportHeight = cview.viewportHeight,
+    centerX = cview.centerX,
+    centerY = cview.centerY,
+    width = cview.width,
+    height = cview.height,
+    rotation = cview.rotation,
+    flipY = cview.flipY,
+  }
 end
 
 --- Applies the current view.
 function Gfx.applyView()
-	lib.microViewApply()
+  lib.microViewApply()
 end
 
 --- Flips the view vertically.
 -- @param flipY number (0 or 1).
 function Gfx.flipViewY(flipY)
-	lib.microViewFlipY(flipY)
+  lib.microViewFlipY(flipY)
 end
 
 --- Sets the view's viewport.
@@ -722,27 +763,27 @@ end
 -- @param width number.
 -- @param height number.
 function Gfx.setViewViewport(x, y, width, height)
-	lib.microViewSetViewport(x, y, width, height)
+  lib.microViewSetViewport(x, y, width, height)
 end
 
 --- Sets the view's center.
 -- @param x number.
 -- @param y number.
 function Gfx.setViewCenter(x, y)
-	lib.microViewSetCenter(x, y)
+  lib.microViewSetCenter(x, y)
 end
 
 --- Sets the view's size.
 -- @param width number.
 -- @param height number.
 function Gfx.setViewSize(width, height)
-	lib.microViewSetSize(width, height)
+  lib.microViewSetSize(width, height)
 end
 
 --- Sets the view's rotation.
 -- @param rotation number.
 function Gfx.setViewRotation(rotation)
-	lib.microViewSetRotation(rotation)
+  lib.microViewSetRotation(rotation)
 end
 
 --- Transforms a point from world coordinates to screen coordinates.
@@ -750,10 +791,10 @@ end
 -- @param y number.
 -- @return outX number, outY number.
 function Gfx.worldToScreen(x, y)
-	local outX = ffi.new("float[1]")
-	local outY = ffi.new("float[1]")
-	lib.microViewPointWorldToScreen(x, y, outX, outY)
-	return outX[0], outY[0]
+  local outX = ffi.new("float[1]")
+  local outY = ffi.new("float[1]")
+  lib.microViewPointWorldToScreen(x, y, outX, outY)
+  return outX[0], outY[0]
 end
 
 --- Transforms a point from screen coordinates to world coordinates.
@@ -761,10 +802,10 @@ end
 -- @param y number.
 -- @return outX number, outY number.
 function Gfx.screenToWorld(x, y)
-	local outX = ffi.new("float[1]")
-	local outY = ffi.new("float[1]")
-	lib.microViewPointScreenToWorld(x, y, outX, outY)
-	return outX[0], outY[0]
+  local outX = ffi.new("float[1]")
+  local outY = ffi.new("float[1]")
+  lib.microViewPointScreenToWorld(x, y, outX, outY)
+  return outX[0], outY[0]
 end
 
 --[[-------------------------------------------------------------------------
@@ -776,7 +817,7 @@ end
 -- @param fragmentShaderPath string.
 -- @return shaderId number.
 function Gfx.loadShaderFromFile(resName, vertexShaderPath, fragmentShaderPath)
-	return lib.microShaderLoadFromFile(resName, vertexShaderPath, fragmentShaderPath)
+  return lib.microShaderLoadFromFile(resName, vertexShaderPath, fragmentShaderPath)
 end
 
 --- Loads a shader from source.
@@ -785,44 +826,44 @@ end
 -- @param fragmentShaderSrc string.
 -- @return shaderId number.
 function Gfx.loadShaderFromSource(resName, vertexShaderSrc, fragmentShaderSrc)
-	return lib.microShaderLoadFromSource(resName, vertexShaderSrc, fragmentShaderSrc)
+  return lib.microShaderLoadFromSource(resName, vertexShaderSrc, fragmentShaderSrc)
 end
 
 --- Gets the program ID of a shader.
 -- @param shaderId number.
 -- @return programId number.
 function Gfx.getShaderProgramID(shaderId)
-	return lib.microShaderGetProgramID(shaderId)
+  return lib.microShaderGetProgramID(shaderId)
 end
 
 --- Gets a shader by resource name.
 -- @param resName string.
 -- @return shaderId number.
 function Gfx.getShader(resName)
-	return lib.microShaderGet(resName)
+  return lib.microShaderGet(resName)
 end
 
 --- Frees a shader.
 -- @param shaderId number.
 function Gfx.freeShader(shaderId)
-	lib.microShaderFree(shaderId)
+  lib.microShaderFree(shaderId)
 end
 
 --- Applies a shader.
 -- @param shaderId number.
 function Gfx.applyShader(shaderId)
-	lib.microShaderApply(shaderId)
+  lib.microShaderApply(shaderId)
 end
 
 --- Applies the default shader.
 function Gfx.applyDefaultShader()
-	lib.microShaderApplyDefault()
+  lib.microShaderApplyDefault()
 end
 
 --- Gets the current shader ID.
 -- @return shaderId number.
 function Gfx.getCurrentShader()
-	return lib.microShaderGetCurrent()
+  return lib.microShaderGetCurrent()
 end
 
 --[[-------------------------------------------------------------------------
@@ -833,20 +874,20 @@ end
 -- @param height number.
 -- @return canvasId number.
 function Gfx.createCanvas(width, height)
-	return lib.microCanvasCreate(width, height)
+  return lib.microCanvasCreate(width, height)
 end
 
 --- Gets the texture ID of a canvas.
 -- @param canvasId number.
 -- @return textureId number.
 function Gfx.getCanvasTextureId(canvasId)
-	return lib.microCanvasGetTextureId(canvasId)
+  return lib.microCanvasGetTextureId(canvasId)
 end
 
 --- Frees a canvas.
 -- @param canvasId number.
 function Gfx.freeCanvas(canvasId)
-	lib.microCanvasFree(canvasId)
+  lib.microCanvasFree(canvasId)
 end
 
 --[[-------------------------------------------------------------------------
@@ -859,7 +900,7 @@ end
 -- @param intensity number.
 -- @return lightId number.
 function Gfx.addLight(cx, cy, radius, intensity)
-	return lib.microLightAdd(cx, cy, radius, intensity)
+  return lib.microLightAdd(cx, cy, radius, intensity)
 end
 
 --- Sets the light's position.
@@ -867,74 +908,74 @@ end
 -- @param x number.
 -- @param y number.
 function Gfx.setLightPosition(lightId, x, y)
-	lib.microLightSetPosition(lightId, x, y)
+  lib.microLightSetPosition(lightId, x, y)
 end
 
 --- Sets the light's radius.
 -- @param lightId number.
 -- @param radius number.
 function Gfx.setLightRadius(lightId, radius)
-	lib.microLightSetRadius(lightId, radius)
+  lib.microLightSetRadius(lightId, radius)
 end
 
 --- Sets the light's intensity.
 -- @param lightId number.
 -- @param intensity number.
 function Gfx.setLightIntensity(lightId, intensity)
-	lib.microLightSetIntensity(lightId, intensity)
+  lib.microLightSetIntensity(lightId, intensity)
 end
 
 --- Activates or deactivates a light.
 -- @param lightId number.
 -- @param isActive number (0 or 1).
 function Gfx.setLightActive(lightId, isActive)
-	lib.microLightSetActive(lightId, isActive)
+  lib.microLightSetActive(lightId, isActive)
 end
 
 --- Removes a light.
 -- @param lightId number.
 function Gfx.removeLight(lightId)
-	lib.microLightRemove(lightId)
+  lib.microLightRemove(lightId)
 end
 
 --- Removes all lights.
 function Gfx.removeAllLights()
-	lib.microLightRemoveAll()
+  lib.microLightRemoveAll()
 end
 
 --- Updates the lights texture.
 function Gfx.updateLightsTexture()
-	lib.microLightsUpdateTexture()
+  lib.microLightsUpdateTexture()
 end
 
 --- Gets the lights texture ID.
 -- @return textureId number.
 function Gfx.getLightsTextureId()
-	return lib.microLightsGetTextureId()
+  return lib.microLightsGetTextureId()
 end
 
 --- Gets the total number of lights.
 -- @return count number.
 function Gfx.getLightsCount()
-	return lib.microLightsGetCount()
+  return lib.microLightsGetCount()
 end
 
 --- Gets the count of active lights.
 -- @return count number.
 function Gfx.getActiveLightsCount()
-	return lib.microLightsGetActiveCount()
+  return lib.microLightsGetActiveCount()
 end
 
 --- Sets the ambient light intensity.
 -- @param intensity number.
 function Gfx.setAmbientIntensity(intensity)
-	lib.microLightsSetAmbientIntensity(intensity)
+  lib.microLightsSetAmbientIntensity(intensity)
 end
 
 --- Gets the ambient light intensity.
 -- @return intensity number.
 function Gfx.getAmbientIntensity()
-	return lib.microLightsGetAmbientIntensity()
+  return lib.microLightsGetAmbientIntensity()
 end
 
 --[[-------------------------------------------------------------------------
@@ -952,21 +993,28 @@ end
 --   offset (number) and normalized (boolean).
 -- @return vaoId number.
 function Gfx.newVAO(shaderId, textureId, vertexCount, instancesCount, attributes)
-	local count = #attributes
-	local attrArray = ffi.new("MicroAttributeData[?]", count)
-	for i, attr in ipairs(attributes) do
-		local idx = i - 1
-		attrArray[idx].vbo_id = attr.vbo_id or 0
-		attrArray[idx].consume_vbo = attr.consume_vbo or false
-		attrArray[idx].name = attr.name or ""
-		attrArray[idx].components = attr.components or 0
-		attrArray[idx].type = attr.type or 0
-		attrArray[idx].stride = attr.stride or 0
-		attrArray[idx].divisor = attr.divisor or 0
-		attrArray[idx].offset_bytes = ffi.cast("void*", attr.offset or 0)
-		attrArray[idx].normalized = attr.normalized or false
-	end
-	return lib.microVAONew(shaderId, textureId, vertexCount, instancesCount, attrArray, count)
+  local count = #attributes
+  local attrArray = ffi.new("MicroAttributeData[?]", count)
+  for i, attr in ipairs(attributes) do
+    local idx = i - 1
+    attrArray[idx].vbo_id = attr.vbo_id or 0
+    attrArray[idx].consume_vbo = attr.consume_vbo or false
+    attrArray[idx].name = attr.name or ""
+    attrArray[idx].components = attr.components or 0
+    attrArray[idx].type = attr.type or 0
+    attrArray[idx].stride = attr.stride or 0
+    attrArray[idx].divisor = attr.divisor or 0
+    attrArray[idx].offset_bytes = ffi.cast("void*", attr.offset or 0)
+    attrArray[idx].normalized = attr.normalized or false
+  end
+  return lib.microVAONew(
+    shaderId,
+    textureId,
+    vertexCount,
+    instancesCount,
+    attrArray,
+    count
+  )
 end
 
 --- Submits data to a VAO attribute.
@@ -976,7 +1024,7 @@ end
 -- @param start number start index.
 -- @param count number element count.
 function Gfx.vaoSubmit(vaoId, attributeName, data, start, count)
-	lib.microVAOSubmit(vaoId, attributeName, data, start, count)
+  lib.microVAOSubmit(vaoId, attributeName, data, start, count)
 end
 
 --- Sets the draw range for a VAO.
@@ -986,19 +1034,19 @@ end
 -- @param instancesCount number number of instances.
 -- @param baseInstance number base instance offset.
 function Gfx.vaoSetDrawRange(vaoId, start, count, instancesCount, baseInstance)
-	lib.microVAOSetDrawRange(vaoId, start, count, instancesCount, baseInstance)
+  lib.microVAOSetDrawRange(vaoId, start, count, instancesCount, baseInstance)
 end
 
 --- Draws the VAO.
 -- @param vaoId number.
 function Gfx.drawVAO(vaoId)
-	lib.microVAODraw(vaoId)
+  lib.microVAODraw(vaoId)
 end
 
 --- Frees the VAO.
 -- @param vaoId number.
 function Gfx.freeVAO(vaoId)
-	lib.microVAOFree(vaoId)
+  lib.microVAOFree(vaoId)
 end
 
 --- Creates a new VBO.
@@ -1007,7 +1055,7 @@ end
 -- @param data userdata pointer to initial data (can be nil).
 -- @return vboId number.
 function Gfx.newVBO(size, drawType, data)
-	return lib.microVBONew(size, drawType, data)
+  return lib.microVBONew(size, drawType, data)
 end
 
 --- Submits data to a VBO.
@@ -1016,13 +1064,13 @@ end
 -- @param start number start index.
 -- @param count number element count.
 function Gfx.vboSubmit(vboId, data, start, count)
-	lib.microVBOSubmit(vboId, data, start, count)
+  lib.microVBOSubmit(vboId, data, start, count)
 end
 
 --- Frees the VBO.
 -- @param vboId number.
 function Gfx.freeVBO(vboId)
-	lib.microVBOFree(vboId)
+  lib.microVBOFree(vboId)
 end
 
 --[[-------------------------------------------------------------------------
@@ -1031,17 +1079,17 @@ end
 --- Initializes the graphics system.
 -- @return status number (0 on success).
 function Gfx.initGraphics()
-	return lib.microGraphicsInit()
+  return lib.microGraphicsInit()
 end
 
 --- Quits the graphics system.
 function Gfx.quitGraphics()
-	lib.microGraphicsQuit()
+  lib.microGraphicsQuit()
 end
 
 --- Clears the screen.
 function Gfx.clearGraphics()
-	lib.microGraphicsClear()
+  lib.microGraphicsClear()
 end
 
 --- Sets the clear color.
@@ -1050,23 +1098,23 @@ end
 -- @param b number.
 -- @param a number.
 function Gfx.setClearColor(r, g, b, a)
-	lib.microGraphicsClearColor(r, g, b, a)
+  lib.microGraphicsClearColor(r, g, b, a)
 end
 
 --- Displays the rendered geometry.
 function Gfx.displayGraphics()
-	lib.microGraphicsDisplay()
+  lib.microGraphicsDisplay()
 end
 
 --- Sets the rendering target to screen.
 function Gfx.renderToScreen()
-	lib.microGraphicsRenderToScreen()
+  lib.microGraphicsRenderToScreen()
 end
 
 --- Sets the rendering target to a canvas.
 -- @param canvasId number.
 function Gfx.renderToCanvas(canvasId)
-	lib.microGraphicsRenderToCanvas(canvasId)
+  lib.microGraphicsRenderToCanvas(canvasId)
 end
 
 --- Draws a sprite.
@@ -1086,8 +1134,42 @@ end
 -- @param g number green.
 -- @param b number blue.
 -- @param a number alpha.
-function Gfx.drawSprite(textureId, tx, ty, tw, th, x, y, w, h, originX, originY, rotation, r, g, b, a)
-	lib.microGraphicsDrawSprite(textureId, tx, ty, tw, th, x, y, w, h, originX, originY, rotation, r, g, b, a)
+function Gfx.drawSprite(
+  textureId,
+  tx,
+  ty,
+  tw,
+  th,
+  x,
+  y,
+  w,
+  h,
+  originX,
+  originY,
+  rotation,
+  r,
+  g,
+  b,
+  a
+)
+  lib.microGraphicsDrawSprite(
+    textureId,
+    tx,
+    ty,
+    tw,
+    th,
+    x,
+    y,
+    w,
+    h,
+    originX,
+    originY,
+    rotation,
+    r,
+    g,
+    b,
+    a
+  )
 end
 
 --- Draws text using a font.
@@ -1103,38 +1185,64 @@ end
 -- @param g number green.
 -- @param b number blue.
 -- @param a number alpha.
-function Gfx.drawText(fontId, text, x, y, lineSpacing, scale, align, maxLineWidth, r, g, b, a)
-	lib.microGraphicsDrawText(fontId, text, x, y, lineSpacing, scale, align, maxLineWidth, r, g, b, a)
+function Gfx.drawText(
+  fontId,
+  text,
+  x,
+  y,
+  lineSpacing,
+  scale,
+  align,
+  maxLineWidth,
+  r,
+  g,
+  b,
+  a
+)
+  lib.microGraphicsDrawText(
+    fontId,
+    text,
+    x,
+    y,
+    lineSpacing,
+    scale,
+    align,
+    maxLineWidth,
+    r,
+    g,
+    b,
+    a
+  )
 end
 
 --- Gets rendering debug information.
 -- @return info table with keys: drawCalls, vertices, textureSwitches, shaderSwitches, bytesSent.
 function Gfx.getRenderingDebugInfo()
-	local info = lib.microGetRenderingDebugInfo()
-	return {
-		drawCalls = info.drawCalls,
-		vertices = info.vertices,
-		textureSwitches = info.textureSwitches,
-		shaderSwitches = info.shaderSwitches,
-		bytesSent = info.bytesSent,
-	}
+  local info = lib.microGetRenderingDebugInfo()
+  return {
+    drawCalls = info.drawCalls,
+    vertices = info.vertices,
+    textureSwitches = info.textureSwitches,
+    shaderSwitches = info.shaderSwitches,
+    bytesSent = info.bytesSent,
+  }
 end
 
 --- Clears the rendering debug information.
 function Gfx.clearRenderingDebugInfo()
-	lib.microRenderingDebugInfoClear()
+  lib.microRenderingDebugInfoClear()
 end
 
 --- Swaps the buffers.
 function Gfx.swapBuffers()
-	lib.microSwapBuffers()
+  lib.microSwapBuffers()
 end
 
 --- Caps the framerate and returns the delta time.
 -- @param targetFPS number.
 -- @return dt number.
 function Gfx.delayToNextFrame(targetFPS)
-	return lib.microGraphicsDelayToNextFrame(targetFPS)
+  return lib.microGraphicsDelayToNextFrame(targetFPS)
 end
 
 return Gfx

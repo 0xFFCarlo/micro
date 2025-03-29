@@ -1,5 +1,5 @@
 local ffi = require("ffi")
-local lib = require("src/lua/libmicro")
+local lib = require("micro/lua/libmicro")
 
 ffi.cdef[[
 typedef struct MicroTileAnimation {
@@ -21,7 +21,7 @@ int microTilemapNew(int textureId, int tileTexSize, int tileSize, int x, int y,
 
 void microTilemapSetVisible(int tilemapId, bool isVisible);
 bool microTilemapIsvisible(int tilemapId);
-void microTilemaoSetPosition(int tilemapId, int x, int y);
+void microTilemapSetPosition(int tilemapId, int x, int y);
 void microTilemapGetPosition(int tilemapId, int *x, int *y);
 
 void microTilemapSetTile(int tilemapId, int x, int y, int tileId);
