@@ -4,18 +4,31 @@
 #include "../core/ECS.h"
 #include "../core/Graphics.h"
 #include "../core/System.h"
+#include "../util/debug.h"
 #include <stdio.h>
 
-int sprite_system_query = -1;
+static int sprite_system_query = -1;
+static int shader_id = 0;
+static int hud_mode = 0;
 
 int sort_drawables(int a, int b)
 {
-  CDrawable *spriteA = (CDrawable *)microECSEntityGetComponent(a, cid_drawable);
-  CDrawable *spriteB = (CDrawable *)microECSEntityGetComponent(b, cid_drawable);
-  return spriteA->layerId - spriteB->layerId;
+  const CDrawable *spriteA = CmpGetDrawable(a);
+  const CDrawable *spriteB = CmpGetDrawable(b);
+  const CPosition *posA = CmpGetPosition(a);
+  const CPosition *posB = CmpGetPosition(b);
+  int tmp = spriteA->layerId - spriteB->layerId;
+  if (tmp == 0)
+    return posA->y - posB->y;
+  return tmp;
 }
 
-void renderingSystem(float dt)
+void renderingSystemSetShader(int shader)
+{
+  shader_id = shader;
+}
+
+void rendering_system_update(float dt)
 {
   (void)(dt); // Unused parameter
 
@@ -35,25 +48,23 @@ void renderingSystem(float dt)
 
   // Store old view and set default shader
   MicroView old_view = microViewGet();
-  microShaderApply(0);
-  int hud_mode = 0;
+  microShaderApply(shader_id);
+  hud_mode = 0;
 
   for (int i = 0; i < entities.size; i++)
   {
     const int entityId = entities.entityIds[i];
     if (microECSEntityIsAlive(entityId) == 0)
       continue;
-    CPosition *p = (CPosition *)microECSEntityGetComponent(entityId,
-                                                           cid_position);
-    CDrawable *drawable = (CDrawable *)microECSEntityGetComponent(entityId,
-                                                                  cid_drawable);
-    
+    const CPosition *p = CmpGetPosition(entityId);
+    const CDrawable *drawable = CmpGetDrawable(entityId);
+
     // Check if the entity was removed during the game loop
-    if (microECSEntityIsAlive(entityId) == FALSE)
+    if (microECSEntityIsAlive(entityId) == false)
       continue;
-    
+
     // Should the entity be drawn?
-    if (drawable->visible == FALSE)
+    if (drawable->visible == false)
       continue;
 
     // Determine if entity is HUD
@@ -64,6 +75,7 @@ void renderingSystem(float dt)
     if (entity_hud == 1 && hud_mode == 0)
     {
       microGraphicsDisplay();
+      microShaderApply(shader_id);
       microViewSet((MicroView){.viewportX = 0,
                                .viewportY = 0,
                                .viewportWidth = winWidth,
@@ -80,6 +92,7 @@ void renderingSystem(float dt)
     else if (entity_hud == 0 && hud_mode == 1)
     {
       microGraphicsDisplay();
+      microShaderApply(shader_id);
       microViewSet(old_view);
       microViewApply();
       hud_mode = 0;
@@ -88,47 +101,60 @@ void renderingSystem(float dt)
     // Draw sprite
     if (microECSEntityHasComponent(entityId, cid_sprite))
     {
-      CSprite *sprite = (CSprite *)microECSEntityGetComponent(entityId,
-                                                              cid_sprite);
-      CTransform *t = (CTransform *)microECSEntityGetComponent(entityId,
-                                                               cid_transform);
+      const CSprite *sprite = CmpGetSprite(entityId);
+      const CTransform *t = CmpGetTransform(entityId);
 
       // Get color
       CColor *color;
       if (microECSEntityHasComponent(entityId, cid_color))
-        color = (CColor *)microECSEntityGetComponent(entityId, cid_color);
+        color = CmpGetColor(entityId);
       else
-        color = &(CColor){.r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0};
+        color = &(CColor){.r = 255, .g = 255, .b = 255, .a = 255};
 
-      microGraphicsDrawRectRot(sprite->textureId, sprite->tx, sprite->ty,
-                               sprite->tw, sprite->th, p->x, p->y, t->width,
-                               t->height, t->originX, t->originY, t->rotation,
-                               color->r, color->g, color->b, color->a);
+      microGraphicsDrawSprite(sprite->textureId, sprite->tx, sprite->ty,
+                              sprite->tw, sprite->th, p->x, p->y, t->width,
+                              t->height, t->originX, t->originY, t->rotation,
+                              color->r, color->g, color->b, color->a);
+    }
+
+    // Draw sprite buffer
+    if (microECSEntityHasComponent(entityId, cid_mesh))
+    {
+      const CMesh *mesh = CmpGetMesh(entityId);
+      microVAODraw(mesh->VAOId);
     }
 
     // Draw particles
     if (microECSEntityHasComponent(entityId, cid_particle_emitter))
     {
-      CParticleEmitter *emitter = (CParticleEmitter *)
-        microECSEntityGetComponent(entityId, cid_particle_emitter);
+      const CParticleEmitter *emitter = CmpGetParticleEmitter(entityId);
       microParticleEmitterDraw(emitter->emitterId);
     }
 
     // Draw text
     if (microECSEntityHasComponent(entityId, cid_text))
     {
-      CText *text = (CText *)microECSEntityGetComponent(entityId, cid_text);
+      const CText *text = CmpGetText(entityId);
 
       // Get color
       CColor *color;
       if (microECSEntityHasComponent(entityId, cid_color))
-        color = (CColor *)microECSEntityGetComponent(entityId, cid_color);
+        color = CmpGetColor(entityId);
       else
-        color = &(CColor){.r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0};
+        color = &(CColor){.r = 255, .g = 255, .b = 255, .a = 255};
 
-      microGraphicsDrawText(text->fontId, text->text, p->x, p->y,
-                            text->lineSpacing, text->alignment, color->r, color->g, color->b,
-                            color->a);
+      int originX = 0, originY = 0;
+      if (microECSEntityHasComponent(entityId, cid_transform))
+      {
+        const CTransform *transform = CmpGetTransform(entityId);
+        originX = transform->originX;
+        originY = transform->originY;
+      }
+
+      microGraphicsDrawText(text->fontId, text->text, p->x + originX,
+                            p->y + originY, text->lineSpacing, text->scale,
+                            text->alignment, text->maxLineWidth, color->r,
+                            color->g, color->b, color->a);
     }
   }
 
@@ -136,3 +162,5 @@ void renderingSystem(float dt)
   microViewSet(old_view);
   microViewApply();
 }
+
+MicroECSSystem rendering_system = {rendering_system_update, NULL, NULL};

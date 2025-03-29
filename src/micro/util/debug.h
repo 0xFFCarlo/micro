@@ -24,6 +24,9 @@ void memory_check_corruption();
 void assert_debug(int condition, char *condition_str, char *file,
                          int line);
 uint64_t memory_get_allocated();
+void abort_trace();
+void print_trace();
+char *backtrace_get();
 
 // Redefine malloc, realloc, free and assert
 #undef malloc
@@ -56,7 +59,7 @@ void _print_debug(const char *file, const int line, const char *format,
                          ...);
 
 #define debug_print(format, ...)                                               \
-  _print_debug(__FILE_NAME__, __LINE__, format, ##__VA_ARGS__)
+  _print_debug(__FILE__, __LINE__, format, ##__VA_ARGS__)
 
 #else
 

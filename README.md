@@ -51,8 +51,3 @@ cmake .
 ```bash
 make 
 ```
-4. Run the game:
-```bash
-./bin/main
-```
-

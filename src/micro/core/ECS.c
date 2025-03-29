@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#define DEBUG_MODE
+
 #define MAX_COMPONENTS 32
 #define MAX_ENTITIES 2048
 #define MAX_SYSTEMS 32
@@ -17,7 +19,6 @@
 #define ENTITY_ALIVE_MASK 0x1
 #define ENTITY_FREED_BIT 1
 #define ENTITY_FREED_MASK 0x2
-
 
 ////////////////////////////////////
 ////// 128-BIT INTEGER TYPE ////////
@@ -79,45 +80,41 @@ typedef struct
   void *data;
   void (*free_entity)(int);
 } entity_desc;
-entity_desc entities[MAX_ENTITIES];
-uint32_t entities_len = 0;
-int freed_entities[MAX_ENTITIES];
-int freed_entities_count = 0;
-int query_buf[MAX_ENTITIES];
-Vector entities_to_remove;
+static entity_desc entities[MAX_ENTITIES];
+static uint32_t entities_len = 0;
+static int freed_entities[MAX_ENTITIES];
+static int freed_entities_count = 0;
+static Vector entities_to_remove;
 
 // Component
 typedef struct
 {
   int component_size;
+  void (*freeComponent)(void *);
 } component_desc;
-component_desc components_types_desc[MAX_COMPONENTS];
-unsigned int components_types_count = 0;
-void *components[MAX_COMPONENTS];
-uint16_t components_count[MAX_COMPONENTS];
-uint16_t components_entity_ref[MAX_COMPONENTS][MAX_ENTITIES];
-int is_components_data_allocated = 0;
+static component_desc components_types_desc[MAX_COMPONENTS];
+static unsigned int components_types_count = 0;
+static void *components[MAX_COMPONENTS];
+static uint16_t components_count[MAX_COMPONENTS];
+static uint16_t components_entity_ref[MAX_COMPONENTS][MAX_ENTITIES];
+static int is_components_data_allocated = 0;
 
 // System
-typedef struct
-{
-  void (*system)(float);
-} system_desc;
-system_desc systems[MAX_SYSTEMS];
-unsigned int systems_count = 0;
+static MicroECSSystem systems[MAX_SYSTEMS];
+static unsigned int systems_count = 0;
 
 // Query
 typedef struct
 {
   ecs_entity_list entities;
   uint128_t componentsMask;
-  uint8_t updated;
   int (*compare)(int, int);
 } ecs_cached_query;
-ecs_cached_query cached_queries[MAX_QUERIES];
-unsigned int cached_queries_count = 0;
-int freed_queries[MAX_QUERIES];
-int freed_queries_count = 0;
+static ecs_cached_query cached_queries[MAX_QUERIES];
+static unsigned int cached_queries_count = 0;
+static int freed_queries[MAX_QUERIES];
+static int freed_queries_count = 0;
+static unsigned int queries_comparisons_count = 0;
 
 ////////////////////////////////////
 ////// QUERY IMPLEMENTATION ////////
@@ -130,9 +127,15 @@ void insertion_sort(int arr[], int n, int (*compare)(int, int))
     int j = i - 1;
     while (j >= 0 && compare(arr[j], key) > 0)
     {
+#ifdef DEBUG_MODE
+      queries_comparisons_count++;
+#endif
       arr[j + 1] = arr[j];
       j--;
     }
+#ifdef DEBUG_MODE
+    queries_comparisons_count++;
+#endif
     arr[j + 1] = key;
   }
 }
@@ -166,9 +169,6 @@ void microECSQueriesEntityRemoved(int entityId)
         break;
       }
     }
-
-    if (query->compare != NULL)
-      microECSQuerySort(i, query->compare);
   }
 }
 
@@ -184,12 +184,10 @@ void microECSQueriesEntityChanged(int entityId, uint128_t old_components)
     if (is_in == was_in)
       continue;
 
-    if (is_in == 1) // Add entity to query
+    if (is_in) // Add entity to query
     {
       query->entities.entityIds[query->entities.size] = entityId;
       query->entities.size++;
-      if (query->compare != NULL)
-        microECSQuerySort(i, query->compare);
     }
     else // Remove entity from query
     {
@@ -204,8 +202,6 @@ void microECSQueriesEntityChanged(int entityId, uint128_t old_components)
           break;
         }
       }
-      if (query->compare != NULL)
-        microECSQuerySort(i, query->compare);
     }
   }
 }
@@ -277,17 +273,31 @@ void microECSEntityFree(int entityId)
 
 int microECSEntityIsAlive(int entityId)
 {
-  return entities[entityId].state & ENTITY_ALIVE_MASK;
+  return entityId < (int)entities_len && entityId >= 0 &&
+         entities[entityId].state & ENTITY_ALIVE_MASK;
 }
 
-void* microECSEntityGetData(int entityId)
+void *microECSEntityGetData(int entityId)
 {
   return entities[entityId].data;
+}
+
+void microECSEntitySetData(int entityId, void *data)
+{
+  entities[entityId].data = data;
+}
+
+void microECSEntitySetFreeData(int entityId, void (*free)(int))
+{
+  entities[entityId].free_entity = free;
 }
 
 void microECSEntityAddComponent(int entityId, const int componentTypeId,
                                 void *data)
 {
+  // Does entity have component already?
+  assert(microECSEntityHasComponent(entityId, componentTypeId) == 0);
+
   // Get component description
   component_desc *cdesc = &components_types_desc[componentTypeId];
   uint128_t old_components = entities[entityId].components;
@@ -318,11 +328,15 @@ void microECSEntityRemoveComponent(int entityId, const int componentTypeId)
   uint128_t old_components = entities[entityId].components;
   uint128_set_bit(&entities[entityId].components, componentTypeId, 0);
 
+  // Free if necesary
+  void *component = microECSEntityGetComponent(entityId, componentTypeId);
+  if (components_types_desc[componentTypeId].freeComponent != NULL)
+    components_types_desc[componentTypeId].freeComponent(component);
+
   // Swap with last component to free memory
   if (entities[entityId].component_offset[componentTypeId] !=
       components_count[componentTypeId] - 1)
   {
-    void *component = microECSEntityGetComponent(entityId, componentTypeId);
     unsigned int component_size = components_types_desc[componentTypeId]
                                     .component_size;
     void *last_component = components[componentTypeId] +
@@ -368,12 +382,13 @@ void microECSEntityFreeAll()
 }
 
 // Component
-int microECSComponentRegister(int size)
+int microECSComponentRegister(int size, void (*freeComponent)(void *))
 {
   assert(components_types_count < MAX_COMPONENTS);
   int id = components_types_count;
   components_types_count++;
   components_types_desc[id].component_size = size;
+  components_types_desc[id].freeComponent = freeComponent;
   return id;
 }
 
@@ -400,20 +415,19 @@ int microECSEntitiesCount()
 ////////////////////////////////////
 ////// SYSTEM IMPLEMENTATION ///////
 ////////////////////////////////////
-int microECSSystemAdd(void (*system)(float dt))
+int microECSSystemAdd(MicroECSSystem system)
 {
   for (unsigned int i = 0; i < systems_count; i++)
   {
-    if (systems[i].system == NULL)
-    {
-      systems[i].system = system;
-      return i;
-    }
+    if (systems[i].update != NULL)
+      continue;
+    systems[i] = system;
+    return i;
   }
 
   assert(systems_count < MAX_SYSTEMS);
   int id = systems_count;
-  systems[id].system = system;
+  systems[id] = system;
   systems_count++;
 
   return id;
@@ -421,18 +435,19 @@ int microECSSystemAdd(void (*system)(float dt))
 
 void microECSSystemRemove(int systemId)
 {
-  systems[systemId].system = NULL;
+  systems[systemId].update = NULL;
 }
 
 //////////////////////////////////////////
 ////// ENTITY SYSTEM IMPLEMENTATION //////
 //////////////////////////////////////////
-void microECSInit()
+int microECSInit()
 {
   // Initialize entity system
   for (int i = 0; i < MAX_ENTITIES; i++)
     freed_entities[i] = -1;
   entities_to_remove = vector_create(sizeof(int));
+  return 0;
 }
 
 void microECSAllocateComponents()
@@ -457,7 +472,6 @@ void microECSAllocateComponents()
   memory += sizeof(freed_entities);
   memory += sizeof(systems);
   memory += sizeof(cached_queries);
-  memory += sizeof(query_buf);
   memory += sizeof(components_types_desc);
   memory += sizeof(freed_entities_count);
   memory += sizeof(entities_len);
@@ -472,10 +486,19 @@ void microECSAllocateComponents()
 
 void microECSFree()
 {
+  // Remove entities that were marked for removal
+  while (entities_to_remove.size)
+  {
+    const int eid = *(int *)vector_back(&entities_to_remove);
+    vector_pop_back(&entities_to_remove);
+    microECSEntityFree(eid);
+  }
+
   // Free entities
   microECSEntityFreeAll();
   microECSCachedQueryFreeAll();
-  vector_free(&entities_to_remove);
+  if (entities_to_remove.data != NULL)
+    vector_free(&entities_to_remove);
 
   // Free components
   if (is_components_data_allocated == 1)
@@ -495,52 +518,14 @@ void microECSRun(float dt)
   {
     const int eid = *(int *)vector_back(&entities_to_remove);
     vector_pop_back(&entities_to_remove);
-      microECSEntityFree(eid);
+    microECSEntityFree(eid);
   }
 
   // Update systems
   for (unsigned int i = 0; i < systems_count; i++)
-    if (systems[i].system != NULL)
-      systems[i].system(dt);
+    if (systems[i].update != NULL)
+      systems[i].update(dt);
 }
-
-// ecs_entity_list microECSEntityByComponent(int componentTypeId)
-// {
-//   ecs_entity_list query;
-//   query.entityIds = &query_buf[0];
-//   query.size = 0;
-//   for (int i = 0; i < entities_len; i++) {
-//     if (entities[i].alive == 1 && uint128_get_bit(&entities[i].components,
-//     componentTypeId) == 1) {
-//       query.entityIds[query.size] = i;
-//       query.size++;
-//     }
-//   }
-//   return query;
-// }
-//
-// ecs_entity_list microECSEntityByComponents(int* componentTypeIds, int size)
-// {
-//   ecs_entity_list query;
-//   query.entityIds = &query_buf[0];
-//   query.size = 0;
-//   for (int i = 0; i < entities_len; i++) {
-//     if (entities[i].alive == 0) continue;
-//     int found = 1;
-//     for (int j = 0; j < size; j++) {
-//       if (uint128_get_bit(&entities[i].components, componentTypeIds[j]) == 0)
-//       {
-//         found = 0;
-//         break;
-//       }
-//     }
-//     if (found == 1) {
-//       query.entityIds[query.size] = i;
-//       query.size++;
-//     }
-//   }
-//   return query;
-// }
 
 ///////////////////////////////////
 ////// QUERY IMPLEMENTATION ///////
@@ -566,27 +551,7 @@ int microECSCachedQueryCreate(int *componentTypeIds, int size,
     uint128_set_bit(&query->componentsMask, componentTypeIds[i], 1);
   query->entities.entityIds = malloc(sizeof(int) * MAX_ENTITIES);
   query->entities.size = 0;
-  query->updated = 0;
   query->compare = sort_compare;
-  return query_id;
-}
-
-void microECSCachedQueryFree(int queryId)
-{
-  ecs_cached_query *query = &cached_queries[queryId];
-  free(query->entities.entityIds);
-  query->entities.entityIds = NULL;
-  query->entities.size = 0;
-  query->compare = NULL;
-  freed_queries[freed_queries_count] = queryId;
-  freed_queries_count++;
-}
-
-ecs_entity_list microECSCachedQueryRun(int queryId)
-{
-  ecs_cached_query *query = &cached_queries[queryId];
-  if (query->updated)
-    return query->entities;
 
   query->entities.size = 0;
   for (unsigned int i = 0; i < entities_len; i++)
@@ -606,7 +571,25 @@ ecs_entity_list microECSCachedQueryRun(int queryId)
     insertion_sort(query->entities.entityIds, query->entities.size,
                    query->compare);
 
-  query->updated = 1;
+  return query_id;
+}
+
+void microECSCachedQueryFree(int queryId)
+{
+  ecs_cached_query *query = &cached_queries[queryId];
+  free(query->entities.entityIds);
+  query->entities.entityIds = NULL;
+  query->entities.size = 0;
+  query->compare = NULL;
+  freed_queries[freed_queries_count] = queryId;
+  freed_queries_count++;
+}
+
+ecs_entity_list microECSCachedQueryRun(int queryId)
+{
+  ecs_cached_query *query = &cached_queries[queryId];
+  if (query->compare != NULL)
+    microECSQuerySort(queryId, query->compare);
   return query->entities;
 }
 
@@ -614,4 +597,14 @@ void microECSCachedQueryFreeAll()
 {
   for (unsigned int i = 0; i < cached_queries_count; i++)
     microECSCachedQueryFree(i);
+}
+
+unsigned int microECSQueriesComparisions()
+{
+  return queries_comparisons_count;
+}
+
+void microECSQueriesResetComparisions()
+{
+  queries_comparisons_count = 0;
 }

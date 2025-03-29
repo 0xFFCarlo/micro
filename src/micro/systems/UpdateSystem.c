@@ -1,9 +1,8 @@
-#include "UpdateSystem.h"
 #include "../components/LogicComponents.h"
 #include "../core/ECS.h"
 #include <stdlib.h>
 
-void updateSystem(float dt)
+static void update_system_update(float dt)
 {
   CUpdate *components_update = (CUpdate *)microECSComponentsGet(cid_update);
   const unsigned int components_count = microECSComponentsCount(cid_update);
@@ -16,3 +15,5 @@ void updateSystem(float dt)
     components_update[i].update(entityId, dt);
   }
 }
+
+MicroECSSystem update_system = {update_system_update, NULL, NULL};

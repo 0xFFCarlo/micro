@@ -1,9 +1,8 @@
-#include "FollowSystem.h"
 #include "../components/MotionComponents.h"
 #include "../core/ECS.h"
 #include "../util/debug.h"
 
-void followSystem(float dt)
+static void follow_system_update(float dt)
 {
   (void)dt;
 
@@ -31,3 +30,5 @@ void followSystem(float dt)
     }
   }
 }
+
+MicroECSSystem follow_system = {follow_system_update, NULL, NULL};

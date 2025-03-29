@@ -8,11 +8,12 @@ typedef struct
   void (*init)();
   void (*update)(float dt);
   void (*free)();
+  double time;
 } MicroState;
 
 void microStateSet(MicroState state);
-void microStateQuit();
 void microStateUpdate(float dt);
 void microStateFree();
+double microStateGetTime();
 
 #endif // STATE_HPP

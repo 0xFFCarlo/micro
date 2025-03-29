@@ -1,8 +1,12 @@
 #include "RenderingComponents.h"
 #include "../core/ECS.h"
+#include "../core/Graphics.h"
+#include "MotionComponents.h"
+#include <assert.h>
 #include <stdlib.h>
 
 int cid_sprite = -1;
+int cid_mesh = -1;
 int cid_text = -1;
 int cid_color = -1;
 int cid_drawable = -1;
@@ -11,15 +15,17 @@ int cid_animation = -1;
 int cid_shadedCanvas = -1;
 int cid_lock_on_view = -1;
 int cid_particle_emitter = -1;
+int cid_light_source = -1;
 
 void RegisterCSprite()
 {
-  cid_sprite = microECSComponentRegister(sizeof(CSprite));
+  cid_sprite = microECSComponentRegister(sizeof(CSprite), NULL);
 }
 
-void CmpAddSprite(int entity_id, u8 textureId, float tx, float ty,
-                  float tw, float th)
+void CmpAddSprite(int entity_id, u16 textureId, float tx, float ty, float tw,
+                  float th)
 {
+  assert(cid_sprite != -1);
   microECSEntityAddComponent(entity_id, cid_sprite,
                              &(CSprite){
                                .textureId = textureId,
@@ -35,18 +41,51 @@ CSprite *CmpGetSprite(int entity_id)
   return (CSprite *)microECSEntityGetComponent(entity_id, cid_sprite);
 }
 
-void RegisterCText()
+void FreeCMesh(void *component)
 {
-  cid_text = microECSComponentRegister(sizeof(CText));
+  CMesh *mesh = (CMesh *)component;
+  microVAOFree(mesh->VAOId);
 }
 
-void CmpAddText(int entity_id, u8 fontId, f32 lineSpacing, u32 alignment, char *text)
+void RegisterCMesh()
 {
+  cid_mesh = microECSComponentRegister(sizeof(CMesh), FreeCMesh);
+}
+
+void CmpAddMesh(int entity_id, int shaderId, int textureId, int vertexCount,
+                int instanceCount, const MicroAttributeData *attributes,
+                int attributesCount)
+{
+  assert(cid_mesh != -1);
+  u32 vao_id = microVAONew(shaderId, textureId, vertexCount, instanceCount,
+                           attributes, attributesCount);
+  microECSEntityAddComponent(entity_id, cid_mesh,
+                             &(CMesh){
+                               .VAOId = vao_id,
+                             });
+}
+
+CMesh *CmpGetMesh(int entity_id)
+{
+  return (CMesh *)microECSEntityGetComponent(entity_id, cid_mesh);
+}
+
+void RegisterCText()
+{
+  cid_text = microECSComponentRegister(sizeof(CText), NULL);
+}
+
+void CmpAddText(int entity_id, u8 fontId, float scale, float lineSpacing,
+                u32 alignment, u32 maxLineWidth, char *text)
+{
+  assert(cid_text != -1);
   microECSEntityAddComponent(entity_id, cid_text,
                              &(CText){
                                .fontId = fontId,
+                               .scale = scale,
                                .lineSpacing = lineSpacing,
                                .alignment = alignment,
+                               .maxLineWidth = maxLineWidth,
                                .text = text,
                              });
 }
@@ -58,11 +97,13 @@ CText *CmpGetText(int entity_id)
 
 void RegisterCColor()
 {
-  cid_color = microECSComponentRegister(sizeof(CColor));
+  cid_color = microECSComponentRegister(sizeof(CColor), NULL);
 }
 
-void CmpAddColor(int entity_id, float r, float g, float b, float a)
+void CmpAddColor(int entity_id, unsigned char r, unsigned char g,
+                 unsigned char b, unsigned char a)
 {
+  assert(cid_color != -1);
   microECSEntityAddComponent(entity_id, cid_color,
                              &(CColor){
                                .r = r,
@@ -79,11 +120,12 @@ CColor *CmpGetColor(int entity_id)
 
 void RegisterCDrawable()
 {
-  cid_drawable = microECSComponentRegister(sizeof(CDrawable));
+  cid_drawable = microECSComponentRegister(sizeof(CDrawable), NULL);
 }
 
 void CmpAddDrawable(int entity_id, u8 layerId, bool visible)
 {
+  assert(cid_drawable != -1);
   microECSEntityAddComponent(entity_id, cid_drawable,
                              &(CDrawable){
                                .layerId = layerId,
@@ -98,11 +140,12 @@ CDrawable *CmpGetDrawable(int entity_id)
 
 void RegisterCHud()
 {
-  cid_hud = microECSComponentRegister(sizeof(CHud));
+  cid_hud = microECSComponentRegister(sizeof(CHud), NULL);
 }
 
 void CmpAddHud(int entity_id)
 {
+  assert(cid_hud != -1);
   microECSEntityAddComponent(entity_id, cid_hud, &(CHud){});
 }
 
@@ -113,13 +156,13 @@ CHud *CmpGetHud(int entity_id)
 
 void RegisterCAnimation()
 {
-  cid_animation = microECSComponentRegister(sizeof(CAnimation));
+  cid_animation = microECSComponentRegister(sizeof(CAnimation), NULL);
 }
 
-void CmpAddAnimation(int entity_id, int animationId,
-                            float duration, bool flipX, bool flipY,
-                            bool reverse)
+void CmpAddAnimation(int entity_id, int animationId, float duration, bool flipX,
+                     bool flipY, bool reverse)
 {
+  assert(cid_animation != -1);
   microECSEntityAddComponent(entity_id, cid_animation,
                              &(CAnimation){
                                .animationId = animationId,
@@ -139,12 +182,13 @@ CAnimation *CmpGetAnimation(int entity_id)
 
 void RegisterCShadedCanvas()
 {
-  cid_shadedCanvas = microECSComponentRegister(sizeof(CShadedCanvas));
+  cid_shadedCanvas = microECSComponentRegister(sizeof(CShadedCanvas), NULL);
 }
 
 void CmpAddShaderCanvas(int entity_id, int width, int height, int shaderId,
                         int canvasId)
 {
+  assert(cid_shadedCanvas != -1);
   microECSEntityAddComponent(entity_id, cid_shadedCanvas,
                              &(CShadedCanvas){
                                .width = width,
@@ -163,14 +207,21 @@ CShadedCanvas *CmpGetShadedCanvas(int entity_id)
 
 void RegisterCLockOnView()
 {
-  cid_lock_on_view = microECSComponentRegister(sizeof(CLockOnView));
+  cid_lock_on_view = microECSComponentRegister(sizeof(CLockOnView), NULL);
 }
 
-void CmpAddLockOnView(int entity_id, bool followRotation)
+void CmpAddLockOnView(int entity_id, bool followRotation, bool hasBoundaries,
+                      float minX, float minY, float maxX, float maxY)
 {
+  assert(cid_lock_on_view != -1);
   microECSEntityAddComponent(entity_id, cid_lock_on_view,
                              &(CLockOnView){
                                .followRotation = followRotation,
+                               .hasBoundaries = hasBoundaries,
+                               .minX = minX,
+                               .minY = minY,
+                               .maxX = maxX,
+                               .maxY = maxY,
                              });
 }
 
@@ -181,12 +232,14 @@ CLockOnView *CmpGetLockOnView(int entity_id)
 
 void RegisterCParticleEmitter()
 {
-  cid_particle_emitter = microECSComponentRegister(sizeof(CParticleEmitter));
+  cid_particle_emitter = microECSComponentRegister(sizeof(CParticleEmitter),
+                                                   NULL);
 }
 
 void CmpAddParticleEmitter(int entity_id, uint16_t emitterId, uint16_t offsetX,
                            uint16_t offsetY)
 {
+  assert(cid_particle_emitter != -1);
   microECSEntityAddComponent(entity_id, cid_particle_emitter,
                              &(CParticleEmitter){
                                .emitterId = emitterId,
@@ -201,6 +254,34 @@ CParticleEmitter *CmpGetParticleEmitter(int entity_id)
                                                         cid_particle_emitter);
 }
 
+void FreeCLightSource(void *component)
+{
+  CLightSource *lightSource = (CLightSource *)component;
+  microLightRemove(lightSource->lightId);
+}
+
+void RegisterCLightSource()
+{
+  cid_light_source = microECSComponentRegister(sizeof(CLightSource),
+                                               FreeCLightSource);
+}
+
+void CmpAddLightSource(int entity_id, float intensity, float radius)
+{
+  assert(cid_light_source != -1);
+  CPosition *position = CmpGetPosition(entity_id);
+  assert(position != NULL);
+  int lightId = microLightAdd(position->x, position->y, radius, intensity);
+  microECSEntityAddComponent(entity_id, cid_light_source,
+                             &(CLightSource){.lightId = lightId});
+}
+
+CLightSource *CmpGetLightSource(int entity_id)
+{
+  return (CLightSource *)microECSEntityGetComponent(entity_id,
+                                                    cid_light_source);
+}
+
 void RegisterRenderingComponents()
 {
   RegisterCSprite();
@@ -212,4 +293,6 @@ void RegisterRenderingComponents()
   RegisterCShadedCanvas();
   RegisterCLockOnView();
   RegisterCParticleEmitter();
+  RegisterCLightSource();
+  RegisterCMesh();
 }

@@ -16,19 +16,23 @@ void microECSEntityRemove(int entityId);
 int microECSEntityIsAlive(int entityId);
 
 // Get entity private data pointer.
-void* microECSEntityGetData(int entityId);
+void *microECSEntityGetData(int entityId);
+
+// Set entity private data pointer.
+void microECSEntitySetData(int entityId, void *data);
+
+// Set entity free data function.
+void microECSEntitySetFreeData(int entityId, void (*free)(int));
 
 // Add component to entity.
 void microECSEntityAddComponent(int entityId, const int componentTypeId,
-                                       void *data);
+                                void *data);
 
 // Remove component from entity.
-void microECSEntityRemoveComponent(int entityId,
-                                          const int componentTypeId);
+void microECSEntityRemoveComponent(int entityId, const int componentTypeId);
 
 // Get component owned by entity.
-void *microECSEntityGetComponent(int entityId,
-                                        const int componentTypeId);
+void *microECSEntityGetComponent(int entityId, const int componentTypeId);
 
 // Check if entity has component.
 int microECSEntityHasComponent(int entityId, const int componentTypeId);
@@ -44,7 +48,7 @@ void microECSEntityFreeAll();
 ////////////////////////////////
 
 // Register new component type and return its id.
-int microECSComponentRegister(int size);
+int microECSComponentRegister(int size, void (*freeComponent)(void *));
 
 // Get components array by component type id.
 void *microECSComponentsGet(int componentTypeId);
@@ -59,8 +63,15 @@ int microECSComponentGetEntityId(int componentTypeId, int index);
 // --- System ---
 ////////////////////////////////
 
+typedef struct MicroECSSystem
+{
+  void (*update)(float dt);
+  void (*entity_add)(int entityId);
+  void (*entity_remove)(int entityId);
+} MicroECSSystem;
+
 // Register new system and return its id.
-int microECSSystemAdd(void (*system)(float dt));
+int microECSSystemAdd(MicroECSSystem system);
 
 // Remove system by id.
 void microECSSystemRemove(int systemId);
@@ -70,7 +81,7 @@ void microECSSystemRemove(int systemId);
 ////////////////////////////////
 
 // Initialize world.
-void microECSInit();
+int microECSInit();
 
 // Allocate memory for components.
 void microECSAllocateComponents();
@@ -92,7 +103,7 @@ typedef struct
 
 // Create new query and return its id.
 int microECSCachedQueryCreate(int *componentTypeIds, int size,
-                                     int (*sort_compare)(int, int));
+                              int (*sort_compare)(int, int));
 
 // Free query.
 void microECSCachedQueryFree(int queryId);
@@ -102,5 +113,11 @@ ecs_entity_list microECSCachedQueryRun(int queryId);
 
 // Free all queries.
 void microECSCachedQueryFreeAll();
+
+// Get number of comparisions in sorting queries.
+unsigned int microECSQueriesComparisions();
+
+// Reset number of comparisions in sorting queries.
+void microECSQueriesResetComparisions();
 
 #endif /* end of include guard: ECS_H */

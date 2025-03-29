@@ -1,18 +1,14 @@
 #include "State.h"
+#include "Graphics.h"
+#include "ECS.h"
 
-MicroState currentState = {NULL, NULL, NULL};
+MicroState currentState = {NULL, NULL, NULL, 0.0};
 int stateChangeRequested = 0;
-MicroState nextState = {NULL, NULL, NULL};
+MicroState nextState = {NULL, NULL, NULL, 0.0};
 
 void microStateSet(MicroState state)
 {
   nextState = state;
-  stateChangeRequested = 1;
-}
-
-void microStateQuit()
-{
-  nextState = (MicroState){NULL, NULL, NULL};
   stateChangeRequested = 1;
 }
 
@@ -29,7 +25,13 @@ void microStateUpdate(float dt)
 
   if (currentState.update == NULL)
     return;
+
+  currentState.time += dt;
+  microGraphicsClear();
   currentState.update(dt);
+  microECSRun(dt);
+  microGraphicsDisplay();
+  microSwapBuffers();
 }
 
 void microStateFree()
@@ -39,4 +41,9 @@ void microStateFree()
   currentState.free = NULL;
   currentState.update = NULL;
   currentState.init = NULL;
+}
+
+double microStateGetTime()
+{
+  return currentState.time;
 }

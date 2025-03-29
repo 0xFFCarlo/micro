@@ -1,4 +1,3 @@
-#include "LockOnViewSystem.h"
 #include "../components/MotionComponents.h"
 #include "../components/RenderingComponents.h"
 #include "../core/ECS.h"
@@ -6,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void lockOnViewSystem(float dt)
+static void lock_on_view_system_update(float dt)
 {
   (void)(dt); // Unused parameter
 
@@ -18,6 +17,9 @@ void lockOnViewSystem(float dt)
   if (components_count > 1)
     printf("Warning: more than one entity with lock on view component\n");
 
+  float viewWidth, viewHeight;
+  microViewGetSize(&viewWidth, &viewHeight);
+
   for (unsigned int i = 0; i < components_count; i++)
   {
     const int entityId = microECSComponentGetEntityId(cid_lock_on_view, i);
@@ -25,7 +27,16 @@ void lockOnViewSystem(float dt)
     CPosition *position = (CPosition *)microECSEntityGetComponent(entityId,
                                                                   cid_position);
 
-    microViewSetCenter(position->x, position->y);
+    float viewCX = position->x;
+    float viewCY = position->y;
+    if (lockOnView->hasBoundaries)
+    {
+      viewCX = MAX(viewCX, lockOnView->minX + viewWidth / 2);
+      viewCX = MIN(viewCX, lockOnView->maxX - viewWidth / 2);
+      viewCY = MAX(viewCY, lockOnView->minY + viewHeight / 2);
+      viewCY = MIN(viewCY, lockOnView->maxY - viewHeight / 2);
+    }
+    microViewSetCenter(viewCX, viewCY);
 
     if (lockOnView->followRotation > 0)
     {
@@ -37,3 +48,5 @@ void lockOnViewSystem(float dt)
 
   microViewApply();
 }
+
+MicroECSSystem lock_on_view_system = {lock_on_view_system_update, NULL, NULL};

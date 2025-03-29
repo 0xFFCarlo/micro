@@ -1,9 +1,8 @@
 #include "../components/LogicComponents.h"
 #include "../core/ECS.h"
-#include "EventsSystem.h"
 #include <stdlib.h>
 
-void lifetimeSystem(float dt)
+static void lifetime_system_update(float dt)
 {
   CLifetime *components_lifetime = (CLifetime *)
     microECSComponentsGet(cid_lifetime);
@@ -19,3 +18,5 @@ void lifetimeSystem(float dt)
       microECSEntityRemove(entityId);
   }
 }
+
+MicroECSSystem lifetime_system = {lifetime_system_update, NULL, NULL};

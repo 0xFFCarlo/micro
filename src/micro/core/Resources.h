@@ -14,6 +14,14 @@ int microResourceLoad(const char *name, const char *filepath,
                              const char *type);
 
 /**
+ * @brief Automatically loads resources (textures, sounds, music etc) from a
+ * directory. Resources are named after their filenames.
+ * @param dirpath The path to the directory
+ * @return 1 on success, -1 on error
+ */
+int microResourceAutoLoad(const char *dirpath);
+
+/**
  * @brief Loads a font resource from a file and stores it in memory.
  * @param name The name of the resource
  * @param filepath The path to the file

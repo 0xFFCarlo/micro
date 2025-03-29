@@ -1,6 +1,5 @@
 #include "vector.h"
 #include "debug.h"
-#include <assert.h>
 #include <memory.h>
 
 Vector vector_create(unsigned int data_size)
@@ -13,13 +12,26 @@ Vector vector_create(unsigned int data_size)
   return vec;
 }
 
+Vector vector_create_with_capacity(unsigned int data_size, unsigned int capacity)
+{
+  Vector vec;
+  vec.data = malloc(data_size * capacity);
+  vec.size = 0;
+  vec.data_size = data_size;
+  vec.capacity = capacity;
+  return vec;
+}
+
 void vector_free(Vector *vec)
 {
-  free(vec->data);
+  if (vec->data)
+    free(vec->data);
+  vec->data = NULL;
+  vec->capacity = 0;
   vec->size = 0;
 }
 
-void vector_push_back(Vector *vec, void *value)
+void vector_push_back(Vector *vec, const void *value)
 {
   if ((vec->size + 1) >= vec->capacity)
   {
@@ -45,7 +57,7 @@ void vector_pop_back(Vector *vec)
 }
 
 // last element is moved to the index
-void vector_remove(Vector *vec, unsigned int index)
+void vector_remove(Vector *vec, const unsigned int index)
 {
   assert(index < (unsigned int)vec->size);
   if (index < (unsigned int)vec->size - 1)
@@ -65,7 +77,7 @@ void *vector_back(Vector *vec)
   return NULL; // Return NULL if vector is empty.
 }
 
-void *vector_at(Vector *vec, unsigned int index)
+void *vector_at(Vector *vec, const unsigned int index)
 {
   assert(index < (unsigned int)vec->size);
   return (char *)vec->data + index * vec->data_size;

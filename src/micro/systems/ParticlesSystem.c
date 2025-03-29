@@ -1,4 +1,3 @@
-#include "ParticlesSystem.h"
 #include "../components/MotionComponents.h"
 #include "../components/RenderingComponents.h"
 #include "../core/ECS.h"
@@ -7,7 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void particlesSystem(float dt)
+static void particles_system_update(float dt)
 {
   CParticleEmitter *components_emitter = (CParticleEmitter *)
     microECSComponentsGet(cid_particle_emitter);
@@ -29,3 +28,5 @@ void particlesSystem(float dt)
   // Update particles
   microParticleEmittersUpdate(dt);
 }
+
+MicroECSSystem particles_system = {particles_system_update, NULL, NULL};

@@ -1,10 +1,9 @@
-#include "ShadedCanvasSystem.h"
 #include "../components/RenderingComponents.h"
 #include "../core/ECS.h"
 #include "../core/Graphics.h"
 #include <stdlib.h>
 
-void shadedCanvasSystem(float dt)
+static void shaded_canvas_system_update(float dt)
 {
   (void)(dt); // Unused parameter
 
@@ -12,6 +11,9 @@ void shadedCanvasSystem(float dt)
     microECSComponentsGet(cid_shadedCanvas);
   const unsigned int
     components_count = microECSComponentsCount(cid_shadedCanvas);
+
+  if (components_count == 0)
+    return;
 
   // Store old view and set canvas view full window
   int old_shader = microShaderGetCurrent();
@@ -40,8 +42,9 @@ void shadedCanvasSystem(float dt)
     int textureId = microCanvasGetTextureId(scanvas->canvasId);
     int texWidth, texHeight;
     microTextureGetSize(textureId, &texWidth, &texHeight);
-    microGraphicsDrawRect(textureId, 0, 0, texWidth, texHeight, 0, 0,
-                          scanvas->width, scanvas->height, 1.0, 1.0, 1.0, 1.0);
+    microGraphicsDrawSprite(textureId, 0, 0, texWidth, texHeight, 0, 0,
+                            scanvas->width, scanvas->height, 0.0, 0.0, 0.0, 1.0,
+                            1.0, 1.0, 1.0);
     microGraphicsDisplay();
     scanvas->needsUpdate = 0;
   }
@@ -52,3 +55,5 @@ void shadedCanvasSystem(float dt)
   microViewSet(old_view);
   microViewApply();
 }
+
+MicroECSSystem shaded_canvas_system = {shaded_canvas_system_update, NULL, NULL};

@@ -1,8 +1,9 @@
 #include "Resources.h"
+#include "../util/debug.h"
 #include "Audio.h"
 #include "Graphics.h"
 #include <assert.h>
-#include "../util/debug.h"
+#include <dirent.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -10,9 +11,8 @@
 #define MICRO_RESOURCES_NAME_MAX_LEN 32
 #define MICRO_TYPE_TEXTURE 0
 #define MICRO_TYPE_SOUND 1
-#define MICRO_TYPE_MUSIC 2
-#define MICRO_TYPE_ATLAS 3
-#define MICRO_TYPE_FONT 4
+#define MICRO_TYPE_ATLAS 2
+#define MICRO_TYPE_FONT 3
 
 typedef struct Resource
 {
@@ -48,7 +48,7 @@ int strcompare(const char *stra, const char *strb)
   return -1;
 }
 
-int microResourceGetIDFromName(const char *name)
+int microResourceGetKeyFromName(const char *name)
 {
   // Binary search
   int min = 0;
@@ -65,7 +65,7 @@ int microResourceGetIDFromName(const char *name)
     else
       min = mid + 1;
   }
-  return 0;
+  return -1;
 }
 
 int microResourceLoad(const char *name, const char *filepath, const char *type)
@@ -76,27 +76,34 @@ int microResourceLoad(const char *name, const char *filepath, const char *type)
   int resourceType = -1;
   if (strcompare(type, "texture") == CMP_EQUAL)
   {
-    resourceId = microTextureLoadFromFile(filepath);
+    resourceId = microTextureLoadFromFile(name, filepath);
+    if (resourceId == -1) {
+      debug_print("Error: could not load texture at %s\n", filepath);
+      abort();
+    }
     resourceType = MICRO_TYPE_TEXTURE;
   }
   else if (strcompare(type, "atlas") == CMP_EQUAL)
   {
-    resourceId = microTextureAtlasLoadFromPath(filepath);
+    resourceId = microAtlasLoadFromPath(name, filepath);
+    if (resourceId == -1) {
+      debug_print("Error: could not load atlas at %s\n", filepath);
+      abort();
+    }
     resourceType = MICRO_TYPE_ATLAS;
   }
   else if (strcompare(type, "sound") == CMP_EQUAL)
   {
-    resourceId = microSoundLoadFromFile(filepath, MICRO_SOUNDTYPE_SOUNDEFFECT);
+    resourceId = microSoundLoadFromFile(filepath);
+    if (resourceId == -1) {
+      debug_print("Error: could not load sound at %s\n", filepath);
+      abort();
+    }
     resourceType = MICRO_TYPE_SOUND;
-  }
-  else if (strcompare(type, "music") == CMP_EQUAL)
-  {
-    resourceId = microSoundLoadFromFile(filepath, MICRO_SOUNDTYPE_MUSIC);
-    resourceType = MICRO_TYPE_MUSIC;
   }
   else
   {
-    printf("Error: resource type %s not supported\n", type);
+    debug_print("Error: resource type %s not supported\n", type);
     return -1;
   }
 
@@ -116,12 +123,83 @@ int microResourceLoad(const char *name, const char *filepath, const char *type)
   return resourceId;
 }
 
+const char *get_file_extension(const char *filename)
+{
+  const char *dot = strrchr(filename, '.');
+  if (!dot || dot == filename)
+    return "";
+  return dot + 1;
+}
+
+const char *get_resource_type_from_ext(const char *ext)
+{
+  if (strcompare(ext, "png") == CMP_EQUAL ||
+      strcompare(ext, "jpeg") == CMP_EQUAL ||
+      strcompare(ext, "jpg") == CMP_EQUAL ||
+      strcompare(ext, "bmp") == CMP_EQUAL)
+    return "texture";
+  if (strcompare(ext, "wav") == CMP_EQUAL ||
+      strcompare(ext, "mp3") == CMP_EQUAL)
+    return "sound";
+  if (strcompare(ext, "ttf") == CMP_EQUAL)
+    return "font";
+  return "";
+}
+
+// extract file name without extension
+char *get_file_name(const char *filename)
+{
+  char *dot = strrchr(filename, '.');
+  if (!dot || dot == filename)
+    return "";
+  int len = strlen(filename) - strlen(dot);
+  char *name = malloc(len + 1);
+  strncpy(name, filename, len);
+  name[len] = '\0';
+  return name;
+}
+
+int microResourceAutoLoad(const char *dirpath)
+{
+  DIR *d;
+  struct dirent *dir;
+  d = opendir(dirpath);
+  if (d)
+  {
+    while ((dir = readdir(d)) != NULL)
+    {
+      if (dir->d_type == DT_REG)
+      {
+        const char *format = get_file_extension(dir->d_name);
+        const char *resource_type = get_resource_type_from_ext(format);
+        if (strcompare(resource_type, "") == CMP_EQUAL)
+        {
+          debug_print("Error: resource type not supported for file %s\n",
+                      dir->d_name);
+          continue;
+        }
+        char *name = get_file_name(dir->d_name);
+        char filepath[256];
+        sprintf(filepath, "%s%s", dirpath, dir->d_name);
+        debug_print("Loading %-48s with type %-8s\n", filepath, resource_type);
+        microResourceLoad(name, filepath, resource_type);
+        free(name);
+      }
+    }
+    closedir(d);
+    return 1;
+  }
+
+  debug_print("Error: could not open directory %s\n", dirpath);
+  return -1;
+}
+
 int microResourceLoadFont(const char *name, const char *filepath,
                           unsigned int font_size, unsigned int filter)
 {
   assert(resourcesCount + 1 < MICRO_RESOURCES_MAX);
 
-  int resourceId = microFontLoadFromFile(filepath, font_size, filter);
+  int resourceId = microFontTTFLoad(name, filepath, font_size, filter);
   if (resourceId == -1)
     return -1;
 
@@ -143,26 +221,27 @@ int microResourceLoadFont(const char *name, const char *filepath,
 
 int microResourceGet(const char *name)
 {
-  int id = microResourceGetIDFromName(name);
-  if (id == -1)
+  int key = microResourceGetKeyFromName(name);
+  if (key == -1)
     return -1;
-  return resources[id].resourceId;
+  return resources[key].resourceId;
 }
 
 int microResourceFree(const char *name)
 {
-  int id = microResourceGetIDFromName(name);
-  if (id == -1)
+  int key = microResourceGetKeyFromName(name);
+  if (key == -1)
     return -1;
 
-  Resource *res = &resources[id];
+  Resource *res = &resources[key];
   if (res->resourceType == MICRO_TYPE_TEXTURE)
     microTextureFree(res->resourceId);
-  else if (res->resourceType == MICRO_TYPE_SOUND ||
-           res->resourceType == MICRO_TYPE_MUSIC)
+  else if (res->resourceType == MICRO_TYPE_SOUND)
     microSoundFree(res->resourceId);
   else if (res->resourceType == MICRO_TYPE_ATLAS)
-    microTextureAtlasFree(res->resourceId);
+    microAtlasFree(res->resourceId);
+  else if (res->resourceType == MICRO_TYPE_FONT)
+    microFontFree(res->resourceId);
 
   return 1;
 }
@@ -172,18 +251,20 @@ void microResourceFreeAll()
   for (int i = 0; i < resourcesCount; i++)
   {
     Resource *res = &resources[i];
-    if (res->resourceType == MICRO_TYPE_TEXTURE)
+    switch (res->resourceType)
     {
+    case MICRO_TYPE_TEXTURE:
       microTextureFree(res->resourceId);
-    }
-    else if (res->resourceType == MICRO_TYPE_SOUND ||
-             res->resourceType == MICRO_TYPE_MUSIC)
-    {
+      break;
+    case MICRO_TYPE_SOUND:
       microSoundFree(res->resourceId);
-    }
-    else if (res->resourceType == MICRO_TYPE_ATLAS)
-    {
-      microTextureAtlasFree(res->resourceId);
+      break;
+    case MICRO_TYPE_ATLAS:
+      microAtlasFree(res->resourceId);
+      break;
+    case MICRO_TYPE_FONT:
+      microFontFree(res->resourceId);
+      break;
     }
   }
 }

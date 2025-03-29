@@ -1,11 +1,10 @@
-#include "AnimationSystem.h"
 #include "../components/RenderingComponents.h"
 #include "../core/ECS.h"
 #include "../core/Graphics.h"
-#include <stdlib.h>
 #include <math.h>
+#include <stdlib.h>
 
-void animationSystem(float dt)
+static void animation_system_update(float dt)
 {
 
   CAnimation *components_animation = (CAnimation *)
@@ -16,6 +15,8 @@ void animationSystem(float dt)
   {
     const int entityId = microECSComponentGetEntityId(cid_animation, i);
     CAnimation *animation = &components_animation[i];
+    if (animation->animationId < 0)
+      continue;
     CSprite *sprite = (CSprite *)microECSEntityGetComponent(entityId,
                                                             cid_sprite);
     int framesCount = microAnimationGetFramesCount(animation->animationId);
@@ -31,12 +32,12 @@ void animationSystem(float dt)
       animation->animationTime -= animation->duration;
     else if (animation->animationTime < 0)
       animation->animationTime += animation->duration;
-    
+
     // Update animation frame
-    animation->frameId = (int)floorf(animation->animationTime / frameDuration); 
-    
+    animation->frameId = (int)floorf(animation->animationTime / frameDuration);
+
     // Update texture source
-    MicroTextureSource source = microAnimationGetFrame(animation->animationId,
+    MicroTextureRegion source = microAnimationGetFrame(animation->animationId,
                                                        animation->frameId,
                                                        animation->flipX,
                                                        animation->flipY);
@@ -46,3 +47,5 @@ void animationSystem(float dt)
     sprite->th = source.h;
   }
 }
+
+MicroECSSystem animation_system = {animation_system_update, NULL, NULL};

@@ -1,16 +1,12 @@
-#include "PhysicsSystem.h"
 #include "../components/MotionComponents.h"
 #include "../core/ECS.h"
 #include "../core/Physics.h"
 #include <math.h>
 #include <stdlib.h>
 
-int world_id = 0;
-
-void physicsSystem(float dt)
+static void physics_system_update(float dt)
 {
-  CBody *components_body = microECSComponentsGet(cid_body);
-  const unsigned int components_count = microECSComponentsCount(cid_body);
+  CBody *components_body = microECSComponentsGet(cid_body); const unsigned int components_count = microECSComponentsCount(cid_body);
 
   // Update physics worlds and bodies
   int worlds_count = microPhysicsWorldsCount();
@@ -32,3 +28,5 @@ void physicsSystem(float dt)
     pos->y = y;
   }
 }
+
+MicroECSSystem physics_system = {physics_system_update, NULL, NULL};

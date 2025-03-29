@@ -1,10 +1,9 @@
-#include "EventsSystem.h"
 #include "../components/LogicComponents.h"
 #include "../core/ECS.h"
 #include "../util/debug.h"
 #include <stdlib.h>
 
-void eventsSystem(float dt)
+static void event_system_update(float dt)
 {
   (void)(dt); // Unused parameter
 
@@ -25,3 +24,5 @@ void eventsSystem(float dt)
     }
   }
 }
+
+MicroECSSystem events_system = {event_system_update, NULL, NULL};

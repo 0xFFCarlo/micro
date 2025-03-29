@@ -1,4 +1,5 @@
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,6 +11,7 @@
 #define GUARD_LENGTH 4
 #define FILENAME_MAX_LENGTH 64
 #define MULTITHREAD // Comment this line to disable multithreading
+#define BACKTRACE_LOG_MAX_LEN 1024
 // locks
 
 // Settings
@@ -44,8 +46,8 @@ typedef struct LOCATION_INFO
   struct LOCATION_INFO *next;
 } LOCATION_INFO;
 
-LOCATION_INFO *location_hashmap[HASHMAP_SIZE] = {NULL};
-uint16_t location_ids = 0;
+static LOCATION_INFO *location_hashmap[HASHMAP_SIZE] = {NULL};
+static uint16_t location_ids = 0;
 
 typedef struct MEM_INFO
 {
@@ -56,101 +58,59 @@ typedef struct MEM_INFO
   struct MEM_INFO *next;
 } MEM_INFO;
 
-MEM_INFO *allocations_hashmap[HASHMAP_SIZE] = {NULL};
+static MEM_INFO *allocations_hashmap[HASHMAP_SIZE] = {NULL};
 
-uint64_t memory_allocated = 0;
+static uint64_t memory_allocated = 0;
+static char backtrace_log[BACKTRACE_LOG_MAX_LEN];
 
 #ifdef MULTITHREAD
-pthread_mutex_t memory_mutex;
-uint8_t memory_mutex_initialized = 0;
+static pthread_mutex_t memory_mutex;
+static uint8_t memory_mutex_initialized = 0;
 #endif
 
 #ifdef USE_BACKTRACE
 
-void print_trace()
+void backtrace_get(char *buffer, uint32_t buffer_len, int skip_n_lines)
 {
-  void *array[5];
-  size_t size;
-  char **strings;
-  size_t i;
-
-  size = backtrace(array, 5);
-  strings = backtrace_symbols(array, size);
-
-  for (i = 0; i < size; i++)
-    printf("%s\n", strings[i]);
-
-  free(strings);
-}
-
-char *backtrace_get()
-{
-  void *buffer[5];
+  void *bt_buffer[10];
   char **symbols;
   int nptrs;
+  char *buf_ptr = buffer;
+  char *buf_end = buffer + buffer_len;
+  int ret;
 
-  nptrs = backtrace(buffer, 5);
-  symbols = backtrace_symbols(buffer, nptrs);
+  nptrs = backtrace(bt_buffer, 10);
+  symbols = backtrace_symbols(bt_buffer, nptrs);
   if (symbols == NULL)
   {
     perror("backtrace_symbols");
-    exit(EXIT_FAILURE);
+    return;
   }
 
-  // get function names
-  char **fun_names = malloc(sizeof(char *) * nptrs);
-  for (int j = 0; j < nptrs; j++)
+  for (int j = skip_n_lines; j < nptrs; j++)
   {
-    char *line = strdup(symbols[j]);
-    char *token = strtok(line, " "); // Get the first token
-    token = strtok(NULL, " ");       // Get the second token (library name)
-    token = strtok(NULL, " ");       // Get the third token (the address)
-    token = strtok(NULL, " ");       // Get the fourth token (the function name)
+    ret = sprintf(buf_ptr, "%s\n", symbols[j]);
+    if (ret < 0 || buf_ptr + ret >= buf_end)
+      break;
 
-    fun_names[j] = NULL;
-    if (token == NULL)
-      continue;
-
-    fun_names[j] = strdup(token);
-    free(line);
+    buf_ptr += ret;
   }
-
-  // compute description size
-  int description_size = 3; // '[' + ']' + '\0'
-  for (int j = 0; j < nptrs; j++)
-  {
-    if (fun_names[j] == NULL)
-      continue;
-    description_size += strlen(fun_names[j]) + 3;
-  }
-
-  // build description
-  char *call_description = malloc(sizeof(char) * description_size);
-  call_description[0] = '[';
-  call_description[1] = '\0';
-  int skip_first = 2;
-  for (int j = 0; j < nptrs; j++)
-  {
-    if (skip_first > 0)
-    {
-      skip_first--;
-      if (fun_names[j] != NULL)
-        free(fun_names[j]);
-      continue;
-    }
-    if (fun_names[j] == NULL)
-      continue;
-    strcat(call_description, fun_names[j]);
-    if (j != nptrs - 1)
-      strcat(call_description, " < ");
-    free(fun_names[j]);
-  }
-  strcat(call_description, "]\0");
-
-  free(fun_names);
   free(symbols);
+}
 
-  return call_description;
+void print_trace()
+{
+  backtrace_get(backtrace_log, BACKTRACE_LOG_MAX_LEN, 2);
+  printf("%s", COLOR_LIGHT_CYAN);
+  printf("%s\n", backtrace_log);
+  printf("%s", COLOR_DEFAULT);
+}
+
+#else
+
+void print_trace()
+{
+  printf("Backtrace not supported on this platform.\n");
 }
 
 #endif
@@ -296,6 +256,7 @@ void *malloc_debug(const size_t size, char *file, const int line)
   {
     MEM_INFO *info = (MEM_INFO *)(ptr + size); // Shift MEM_INFO to the end of
                                                // the allocated block
+    info->next = NULL;
     info->address = ptr;
     info->size = size;
     memset(info->guard, GUARD_CONTENT, GUARD_LENGTH); // Set guard bytes
@@ -308,29 +269,11 @@ void *malloc_debug(const size_t size, char *file, const int line)
       last_slash++;
     char *loc_name = last_slash;
 
-#ifdef USE_BACKTRACE
-    char *call_description = backtrace_get();
-    loc_name = call_description;
-    loc_name = malloc(strlen(call_description) + strlen(last_slash) + 2);
-    strcpy(loc_name, last_slash);
-    strcat(loc_name, " ");
-    strcat(loc_name, call_description);
-    strcat(loc_name, "\0");
-    free(call_description);
-#endif
-
     info->symbol = loc_hashmap_add(loc_name, line);
 
-#ifdef USE_BACKTRACE
-    free(loc_name);
-    if (VERBOSE)
-      printf("Allocated %zu bytes at %p, file %s %s, line %d\n", size,
-             info->address, file, info->symbol->filename, line);
-#else
     if (VERBOSE)
       printf("Allocated %zu bytes at %p, file %s, line %d\n", size,
              info->address, file, line);
-#endif
 
     alloc_hashmap_add(ptr, info);
 
@@ -415,6 +358,7 @@ void *realloc_debug(void *ptr, const size_t size, char *file, const int line)
                                             // the allocated block
       memory_allocated += size;
 
+      info->next = NULL;
       info->address = address;
       info->size = size;
       memset(info->guard, GUARD_CONTENT, GUARD_LENGTH); // Set guard bytes
@@ -427,22 +371,7 @@ void *realloc_debug(void *ptr, const size_t size, char *file, const int line)
         last_slash++;
       char *loc_name = last_slash;
 
-#ifdef USE_BACKTRACE
-      char *call_description = backtrace_get();
-      loc_name = call_description;
-      loc_name = malloc(strlen(call_description) + strlen(last_slash) + 2);
-      strcpy(loc_name, last_slash);
-      strcat(loc_name, " ");
-      strcat(loc_name, call_description);
-      strcat(loc_name, "\0");
-      free(call_description);
-#endif
-
       info->symbol = loc_hashmap_add(loc_name, line);
-
-#ifdef USE_BACKTRACE
-      free(loc_name);
-#endif
 
       alloc_hashmap_add(address, info);
 
@@ -501,6 +430,7 @@ void *realloc_debug(void *ptr, const size_t size, char *file, const int line)
       *info = (MEM_INFO *)(address + size); // Shift MEM_INFO to the end of
                                             // the allocated block
       info->address = address;
+      info->next = NULL;
       info->size = size;
       memset(info->guard, GUARD_CONTENT, GUARD_LENGTH); // Set guard bytes
 
@@ -512,22 +442,7 @@ void *realloc_debug(void *ptr, const size_t size, char *file, const int line)
         last_slash++;
       char *loc_name = last_slash;
 
-#ifdef USE_BACKTRACE
-      char *call_description = backtrace_get();
-      loc_name = call_description;
-      loc_name = malloc(strlen(call_description) + strlen(last_slash) + 2);
-      strcpy(loc_name, last_slash);
-      strcat(loc_name, " ");
-      strcat(loc_name, call_description);
-      strcat(loc_name, "\0");
-      free(call_description);
-#endif
-
       info->symbol = loc_hashmap_add(loc_name, line);
-
-#ifdef USE_BACKTRACE
-      free(loc_name);
-#endif
 
       alloc_hashmap_add(address, info);
 
@@ -626,6 +541,15 @@ void memory_check_corruption()
   // printf("No memory corruption detected.\n");
 }
 
+void abort_trace()
+{
+  printf("%sAborting...%s\n", COLOR_RED, COLOR_DEFAULT);
+#ifdef USE_BACKTRACE
+  print_trace();
+#endif
+  abort();
+}
+
 void assert_debug(int condition, char *condition_str, char *file, int line)
 {
   if (!condition)
@@ -636,13 +560,10 @@ void assert_debug(int condition, char *condition_str, char *file, int line)
 
     // Print stack trace
 #ifdef USE_BACKTRACE
-    char *call_description = backtrace_get();
-    printf("%sCall stack: %s%s\n", COLOR_YELLOW, call_description,
-           COLOR_DEFAULT);
-    free(call_description);
+    abort_trace();
 #endif
 
-    exit(1);
+    abort();
   }
 }
 
