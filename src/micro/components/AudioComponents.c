@@ -49,4 +49,5 @@ CSoundSource *CmpGetSoundSource(int entity_id)
 void RegisterAudioComponents()
 {
   RegisterCListener();
+  RegisterCSoundSource();
 }

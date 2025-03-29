@@ -40,91 +40,69 @@ ffi.cdef([[
 
     // Allocate memory for components.
     void microECSAllocateComponents();
+
+    // Get number of deleted entities in the last frame.
+    int microECSGetDeletedEntitiesCount();
+
+    // Return the entities ids that were deleted in the last frame.
+    void microECSGetDeletedEntities(int *entities, int *size);
 ]])
 
 ---@class ECSModule
 local ECS = {}
 
-local tableRegistry = {}
-local nextKey = 1LL -- Use a 64-bit integer for the key
-
---- Registers a Lua table and returns a unique 64-bit key.
----@param tbl table
----@return number key A unique 64-bit key.
-local function registerTable(tbl)
-  local key = nextKey
-  nextKey = nextKey + 1
-  tableRegistry[key] = tbl
-  return key
-end
-
---- Unregisters a table using its key.
----@param key number
-local function unregisterTable(key)
-  if key == nil then
-    return
-  end
-  tableRegistry[key] = nil
-end
-
---- Frees the entity data.
----@param entityId number
-local function entityFree(entityId)
-  local dataKey = ECS.getData(entityId)
-  unregisterTable(dataKey)
-end
+local entitiesData = {}
 
 --- Creates a new entity.
---- @param data any Table with the entity data.
+--- @param data any|nil Table with the entity data.
+--- @param freeCb fun(entityId: number)|nil Callback to free the entity data.
 --- @return number Entity id.
-function ECS.newEntity(data)
-  -- Cast the Lua free callback to a C function pointer.
-  local free_cb = ffi.cast("void (*)(int)", entityFree)
-  local dataKey
-  if data == nil then
-    dataKey = nil
-  else
-    dataKey = registerTable(data)
+function ECS.newEntity(data, freeCb)
+	local id = lib.microECSEntityNew(nil, nil)
+  if data or freeCb then
+	  entitiesData[id] = { data = data, free = freeCb }
   end
-  local id = lib.microECSEntityNew(dataKey, free_cb)
-  return id
+	return id
 end
 
 --- Removes an entity from the world.
 --- @param entityId number The id of the entity to remove.
 function ECS.removeEntity(entityId)
-  lib.microECSEntityRemove(entityId)
+	lib.microECSEntityRemove(entityId)
 end
 
 --- Checks if an entity is alive.
 --- @param entityId number The entity id.
 --- @return boolean True if the entity is alive, false otherwise.
 function ECS.isAlive(entityId)
-  return lib.microECSEntityIsAlive(entityId) ~= 0
+	return lib.microECSEntityIsAlive(entityId) ~= 0
 end
 
 --- Gets the private data pointer for an entity.
 --- @param entityId number The entity id.
---- @return number to the entity data.
+--- @return any Pointer to the entity data.
 function ECS.getData(entityId)
-  return lib.microECSEntityGetData(entityId)
+	if entitiesData[entityId] == nil then
+		return nil
+	end
+	return entitiesData[entityId].data
 end
 
 --- Sets the private data pointer for an entity.
 --- @param entityId number The entity id.
 --- @param data any Pointer to the new data.
 function ECS.setData(entityId, data)
-  lib.microECSEntitySetData(entityId, data)
+  entitiesData[entityId].data = data
 end
 
 --- Sets the free data callback for an entity.
 --- @param entityId number The entity id.
 --- @param free fun(entityId: number) Callback to free the entity data.
 function ECS.setFreeData(entityId, free)
-  local free_cb = ffi.cast("void (*)(int)", free)
-  lib.microECSEntitySetFreeData(entityId, free_cb)
-  ECS._freeCallbacks = ECS._freeCallbacks or {}
-  ECS._freeCallbacks[entityId] = free_cb
+	local free_cb = ffi.cast("void (*)(int)", free)
+	lib.microECSEntitySetFreeData(entityId, free_cb)
+	ECS._freeCallbacks = ECS._freeCallbacks or {}
+	ECS._freeCallbacks[entityId] = free_cb
 end
 
 --- Adds a component to an entity.
@@ -132,14 +110,14 @@ end
 --- @param componentTypeId number The component type identifier.
 --- @param data any Pointer to the component data.
 function ECS.addComponent(entityId, componentTypeId, data)
-  lib.microECSEntityAddComponent(entityId, componentTypeId, data)
+	lib.microECSEntityAddComponent(entityId, componentTypeId, data)
 end
 
 --- Removes a component from an entity.
 --- @param entityId number The entity id.
 --- @param componentTypeId number The component type identifier.
 function ECS.removeComponent(entityId, componentTypeId)
-  lib.microECSEntityRemoveComponent(entityId, componentTypeId)
+	lib.microECSEntityRemoveComponent(entityId, componentTypeId)
 end
 
 --- Gets a component from an entity.
@@ -147,7 +125,7 @@ end
 --- @param componentTypeId number The component type identifier.
 --- @return userdata Pointer to the component data.
 function ECS.getComponent(entityId, componentTypeId)
-  return lib.microECSEntityGetComponent(entityId, componentTypeId)
+	return lib.microECSEntityGetComponent(entityId, componentTypeId)
 end
 
 --- Checks if an entity has a specific component.
@@ -155,23 +133,48 @@ end
 --- @param componentTypeId number The component type identifier.
 --- @return boolean True if the entity has the component, false otherwise.
 function ECS.hasComponent(entityId, componentTypeId)
-  return lib.microECSEntityHasComponent(entityId, componentTypeId) ~= 0
+	return lib.microECSEntityHasComponent(entityId, componentTypeId) ~= 0
 end
 
 --- Returns the total number of entities in the world.
 --- @return number Entity count.
 function ECS.getEntitiesCount()
-  return lib.microECSEntitiesCount()
+	return lib.microECSEntitiesCount()
 end
 
 --- Frees all entities.
 function ECS.freeAll()
-  lib.microECSEntityFreeAll()
+	lib.microECSEntityFreeAll()
 end
 
 --- Allocates memory for components.
 function ECS.allocateComponents()
-  lib.microECSAllocateComponents()
+	lib.microECSAllocateComponents()
+end
+
+function ECS.getDeletedEntitiesCount()
+	return lib.microECSGetDeletedEntitiesCount()
+end
+
+function ECS.getDeletedEntities()
+	local entities = ffi.new("int[?]", ECS.getDeletedEntitiesCount())
+	local size = ffi.new("int[1]", ECS.getDeletedEntitiesCount())
+	lib.microECSGetDeletedEntities(entities, size)
+	return entities, size[0]
+end
+
+function ECS.handleCleanupEntities()
+	local entities, size = ECS.getDeletedEntities()
+	for i = 0, size - 1 do
+		local entityId = entities[i]
+    if entitiesData[entityId] then
+      local freeCb = entitiesData[entityId].free
+      if freeCb then
+        freeCb(entityId)
+      end
+      entitiesData[entityId] = nil
+    end
+	end
 end
 
 return ECS

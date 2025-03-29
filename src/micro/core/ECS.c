@@ -527,6 +527,17 @@ void microECSRun(float dt)
       systems[i].update(dt);
 }
 
+int microECSGetDeletedEntitiesCount()
+{
+  return entities_to_remove.size;
+}
+
+void microECSGetDeletedEntities(int *entities, int *size)
+{
+  *size = entities_to_remove.size;
+  memcpy(entities, entities_to_remove.data, entities_to_remove.size);
+}
+
 ///////////////////////////////////
 ////// QUERY IMPLEMENTATION ///////
 ///////////////////////////////////

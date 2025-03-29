@@ -92,6 +92,12 @@ void microECSFree();
 // Run all systems.
 void microECSRun(float dt);
 
+// Get number of deleted entities in the last frame.
+int microECSGetDeletedEntitiesCount();
+
+// Return the entities ids that were deleted in the last frame.
+void microECSGetDeletedEntities(int *entities, int *size);
+
 ////////////////////////////////
 // --- Query ---
 ////////////////////////////////
