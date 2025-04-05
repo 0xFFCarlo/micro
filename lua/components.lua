@@ -6,6 +6,7 @@
 
 local ffi = require("ffi")
 local lib = require("micro/lua/libmicro")
+local ECS = require("micro/lua/ecs")
 
 ffi.cdef([[
   typedef struct
@@ -247,7 +248,9 @@ function Cmp.addSprite(entity_id, textureId, tx, ty, tw, th)
 end
 
 function Cmp.getSprite(entity_id)
-	return lib.CmpGetSprite(entity_id)
+	local cmp = lib.CmpGetSprite(entity_id)
+  assert(cmp ~= nil, "Sprite component not found")
+  return cmp
 end
 
 function Cmp.addMesh(entity_id, shaderId, textureId, vertexCount, instanceCount, attributes, attributesCount)
@@ -368,7 +371,9 @@ function Cmp.addPosition(entity_id, x, y)
 end
 
 function Cmp.getPosition(entity_id)
-	return lib.CmpGetPosition(entity_id)
+	local cmp = lib.CmpGetPosition(entity_id)
+  assert(cmp ~= nil, "Position component not found")
+  return cmp
 end
 
 --- Add a transform component to an entity.
@@ -413,7 +418,9 @@ end
 --- @param entity_id number The entity identifier.
 --- @param update fun(entity_id:number, delta: number) The update callback.
 function Cmp.addUpdate(entity_id, update)
-	lib.CmpAddUpdate(entity_id, update)
+  assert(type(update) == "function", "update must be a function")
+  assert(ECS.isAlive(entity_id), "Entity is not alive")
+	ECS.updateComponents[entity_id + 1] = update
 end
 
 --- @class CUpdate
@@ -427,7 +434,7 @@ end
 --- @param entity_id number The entity identifier.
 --- @return CUpdate A pointer to the update component.
 function Cmp.getUpdate(entity_id)
-	return lib.CmpGetUpdate(entity_id)
+	return ECS.updateComponents[entity_id + 1]
 end
 
 --- Adds a lifetime component to an entity.
@@ -441,7 +448,9 @@ end
 --- @param entity_id number The entity identifier.
 --- @return CLifetime A pointer to the lifetime component.
 function Cmp.getLifetime(entity_id)
-	return lib.CmpGetLifetime(entity_id)
+	local cmp = lib.CmpGetLifetime(entity_id)
+  assert(cmp ~= nil, "Lifetime component not found")
+  return cmp
 end
 
 --- Adds an entity category component.

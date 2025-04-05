@@ -51,7 +51,8 @@ ffi.cdef([[
 ---@class ECSModule
 local ECS = {}
 
-local entitiesData = {}
+ECS.entitiesData = {}
+ECS.updateComponents = {}
 
 --- Creates a new entity.
 --- @param data any|nil Table with the entity data.
@@ -59,9 +60,7 @@ local entitiesData = {}
 --- @return number Entity id.
 function ECS.newEntity(data, freeCb)
 	local id = lib.microECSEntityNew(nil, nil)
-  if data or freeCb then
-	  entitiesData[id] = { data = data, free = freeCb }
-  end
+	ECS.entitiesData[id + 1] = { data = data, free = freeCb }
 	return id
 end
 
@@ -82,17 +81,17 @@ end
 --- @param entityId number The entity id.
 --- @return any Pointer to the entity data.
 function ECS.getData(entityId)
-	if entitiesData[entityId] == nil then
+	if ECS.entitiesData[entityId + 1] == nil then
 		return nil
 	end
-	return entitiesData[entityId].data
+	return ECS.entitiesData[entityId + 1].data
 end
 
 --- Sets the private data pointer for an entity.
 --- @param entityId number The entity id.
 --- @param data any Pointer to the new data.
 function ECS.setData(entityId, data)
-  entitiesData[entityId].data = data
+	ECS.entitiesData[entityId + 1].data = data
 end
 
 --- Sets the free data callback for an entity.
@@ -158,7 +157,7 @@ end
 
 function ECS.getDeletedEntities()
 	local entities = ffi.new("int[?]", ECS.getDeletedEntitiesCount())
-	local size = ffi.new("int[1]", ECS.getDeletedEntitiesCount())
+	local size = ffi.new("int[1]")
 	lib.microECSGetDeletedEntities(entities, size)
 	return entities, size[0]
 end
@@ -167,13 +166,14 @@ function ECS.handleCleanupEntities()
 	local entities, size = ECS.getDeletedEntities()
 	for i = 0, size - 1 do
 		local entityId = entities[i]
-    if entitiesData[entityId] then
-      local freeCb = entitiesData[entityId].free
-      if freeCb then
-        freeCb(entityId)
-      end
-      entitiesData[entityId] = nil
-    end
+		if ECS.entitiesData[entityId + 1] ~= nil then
+			local freeCb = ECS.entitiesData[entityId + 1].free
+			if freeCb then
+				freeCb(entityId)
+			end
+			ECS.entitiesData[entityId + 1] = nil
+		end
+		ECS.updateComponents[entityId + 1] = nil
 	end
 end
 

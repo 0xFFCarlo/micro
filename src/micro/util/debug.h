@@ -7,6 +7,7 @@
 #ifndef DEBUG_H
 #define DEBUG_H
 
+#define DEBUG_MODE 1
 #define DEBUG_MEMORY 1
 #define DEBUG_PRINTS 1
 #define DEBUG_ASSERT 1
@@ -16,13 +17,11 @@
 
 #if DEBUG_MEMORY == 1
 void *malloc_debug(const size_t size, char *file, const int line);
-void *realloc_debug(void *ptr, const size_t size, char *file,
-                           const int line);
+void *realloc_debug(void *ptr, const size_t size, char *file, const int line);
 void free_debug(void *ptr, const char *file, const int line);
 void memory_check_leaks();
 void memory_check_corruption();
-void assert_debug(int condition, char *condition_str, char *file,
-                         int line);
+void assert_debug(int condition, char *condition_str, char *file, int line);
 uint64_t memory_get_allocated();
 void abort_trace();
 void print_trace();
@@ -38,6 +37,12 @@ char *backtrace_get();
 #define free(ptr) free_debug(ptr, __FILE__, __LINE__)
 #define assert(condition)                                                      \
   assert_debug(condition, #condition, __FILE__, __LINE__)
+#define assert_log(condition, format, ...)                                        \
+  if (!(condition))                                                            \
+  {                                                                            \
+    printf(format, ##__VA_ARGS__);                                             \
+  }                                                                            \
+  assert_debug(condition, #condition, __FILE__, __LINE__);
 
 #else
 
@@ -55,8 +60,7 @@ char *backtrace_get();
 #endif // DEBUG_MEMORY
 
 #if DEBUG_PRINTS == 1
-void _print_debug(const char *file, const int line, const char *format,
-                         ...);
+void _print_debug(const char *file, const int line, const char *format, ...);
 
 #define debug_print(format, ...)                                               \
   _print_debug(__FILE__, __LINE__, format, ##__VA_ARGS__)

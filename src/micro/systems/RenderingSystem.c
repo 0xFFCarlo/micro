@@ -54,14 +54,12 @@ void rendering_system_update(float dt)
   for (int i = 0; i < entities.size; i++)
   {
     const int entityId = entities.entityIds[i];
-    if (microECSEntityIsAlive(entityId) == 0)
-      continue;
-    const CPosition *p = CmpGetPosition(entityId);
-    const CDrawable *drawable = CmpGetDrawable(entityId);
-
+    
     // Check if the entity was removed during the game loop
     if (microECSEntityIsAlive(entityId) == false)
       continue;
+    const CPosition *p = CmpGetPosition(entityId);
+    const CDrawable *drawable = CmpGetDrawable(entityId);
 
     // Should the entity be drawn?
     if (drawable->visible == false)

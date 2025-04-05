@@ -28,8 +28,8 @@ void microStateUpdate(float dt)
 
   currentState.time += dt;
   microGraphicsClear();
-  currentState.update(dt);
   microECSRun(dt);
+  currentState.update(dt);
   microGraphicsDisplay();
   microSwapBuffers();
 }

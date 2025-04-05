@@ -5,19 +5,15 @@
 #include <stdio.h>
 #include <string.h>
 
-#define DEBUG_MODE
-
 #define MAX_COMPONENTS 32
 #define MAX_ENTITIES 2048
 #define MAX_SYSTEMS 32
 #define MAX_QUERIES 32
 
-#define SETBIT(x, n) x |= (1 << n)
-#define CLEARBIT(x, n) x &= ~(1 << n)
+#define SETBITS(x, n) x |= n
+#define CLEARBITS(x, n) x &= ~n
 #define GETBIT(x, n) ((x >> n) & 1)
-#define ENTITY_ALIVE_BIT 0
 #define ENTITY_ALIVE_MASK 0x1
-#define ENTITY_FREED_BIT 1
 #define ENTITY_FREED_MASK 0x2
 
 ////////////////////////////////////
@@ -225,8 +221,8 @@ int microECSEntityNew(void *data, void (*free)(int))
   }
 
   entities[id].id = id;
-  SETBIT(entities[id].state, ENTITY_ALIVE_BIT);
-  CLEARBIT(entities[id].state, ENTITY_FREED_BIT);
+  SETBITS(entities[id].state, ENTITY_ALIVE_MASK);
+  CLEARBITS(entities[id].state, ENTITY_FREED_MASK);
   entities[id].free_entity = free;
   entities[id].data = data;
   entities[id].components = uint128(0); // No components enabled
@@ -238,7 +234,7 @@ int microECSEntityNew(void *data, void (*free)(int))
 
 void microECSEntityRemove(int entityId)
 {
-  CLEARBIT(entities[entityId].state, ENTITY_ALIVE_BIT);
+  CLEARBITS(entities[entityId].state, ENTITY_ALIVE_MASK);
   vector_push_back(&entities_to_remove, &entityId);
 }
 
@@ -246,7 +242,6 @@ void microECSEntityFree(int entityId)
 {
   if (entities[entityId].state & ENTITY_FREED_MASK)
     return;
-  SETBIT(entities[entityId].state, ENTITY_FREED_BIT);
 
   // Remove from queries
   microECSQueriesEntityRemoved(entityId);
@@ -264,6 +259,7 @@ void microECSEntityFree(int entityId)
 
   // Free memory
   free(entities[entityId].component_offset);
+  SETBITS(entities[entityId].state, ENTITY_FREED_MASK);
 
   // Add to freed entities
   freed_entities[freed_entities_count] = entityId;
@@ -273,8 +269,7 @@ void microECSEntityFree(int entityId)
 
 int microECSEntityIsAlive(int entityId)
 {
-  return entityId < (int)entities_len && entityId >= 0 &&
-         entities[entityId].state & ENTITY_ALIVE_MASK;
+  return (entities[entityId].state & ENTITY_ALIVE_MASK) != 0;
 }
 
 void *microECSEntityGetData(int entityId)
@@ -290,6 +285,17 @@ void microECSEntitySetData(int entityId, void *data)
 void microECSEntitySetFreeData(int entityId, void (*free)(int))
 {
   entities[entityId].free_entity = free;
+}
+
+// Get component memory address of entity, without checking if it has it
+// or if it is alive
+static inline void *microECSEntityIndexComponent(int entityId,
+                                                 const int componentTypeId)
+{
+  component_desc *cdesc = &components_types_desc[componentTypeId];
+  const uint16_t component_offset = entities[entityId]
+                                      .component_offset[componentTypeId];
+  return components[componentTypeId] + component_offset * cdesc->component_size;
 }
 
 void microECSEntityAddComponent(int entityId, const int componentTypeId,
@@ -310,7 +316,7 @@ void microECSEntityAddComponent(int entityId, const int componentTypeId,
 
   // Store component and update entity reference
   components_count[componentTypeId]++;
-  void *component = microECSEntityGetComponent(entityId, componentTypeId);
+  void *component = microECSEntityIndexComponent(entityId, componentTypeId);
   memcpy(component, data, cdesc->component_size);
   components_entity_ref[componentTypeId]
                        [components_count[componentTypeId] - 1] = entityId;
@@ -329,7 +335,7 @@ void microECSEntityRemoveComponent(int entityId, const int componentTypeId)
   uint128_set_bit(&entities[entityId].components, componentTypeId, 0);
 
   // Free if necesary
-  void *component = microECSEntityGetComponent(entityId, componentTypeId);
+  void *component = microECSEntityIndexComponent(entityId, componentTypeId);
   if (components_types_desc[componentTypeId].freeComponent != NULL)
     components_types_desc[componentTypeId].freeComponent(component);
 
@@ -363,10 +369,18 @@ void microECSEntityRemoveComponent(int entityId, const int componentTypeId)
 
 void *microECSEntityGetComponent(int entityId, const int componentTypeId)
 {
-  component_desc *cdesc = &components_types_desc[componentTypeId];
-  const uint16_t component_offset = entities[entityId]
-                                      .component_offset[componentTypeId];
-  return components[componentTypeId] + component_offset * cdesc->component_size;
+#ifdef DEBUG_MODE
+  if (microECSEntityHasComponent(entityId, componentTypeId) == 0 ||
+      (entities[entityId].state & ENTITY_FREED_MASK) != 0 ||
+      componentTypeId < 0 || componentTypeId >= MAX_COMPONENTS ||
+      entityId < 0 || entityId >= MAX_ENTITIES)
+  {
+    debug_print("Something went wrong with entity %d and component %d\n",
+                entityId, componentTypeId);
+    return NULL;
+  }
+#endif
+  return microECSEntityIndexComponent(entityId, componentTypeId);
 }
 
 int microECSEntityHasComponent(int entityId, const int componentTypeId)
@@ -535,7 +549,7 @@ int microECSGetDeletedEntitiesCount()
 void microECSGetDeletedEntities(int *entities, int *size)
 {
   *size = entities_to_remove.size;
-  memcpy(entities, entities_to_remove.data, entities_to_remove.size);
+  memcpy(entities, entities_to_remove.data, sizeof(int) * entities_to_remove.size);
 }
 
 ///////////////////////////////////
