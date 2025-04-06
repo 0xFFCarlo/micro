@@ -168,7 +168,7 @@ function ECS.handleCleanupEntities()
 		local entityId = entities[i]
 		if ECS.entitiesData[entityId + 1] ~= nil then
 			local freeCb = ECS.entitiesData[entityId + 1].free
-			if freeCb then
+			if freeCb ~= nil then
 				freeCb(entityId)
 			end
 			ECS.entitiesData[entityId + 1] = nil

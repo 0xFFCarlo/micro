@@ -837,7 +837,8 @@ void microTilemapApplyChanges(int tilemapId)
   // Apply tile id changes, if any
   if (tm->startChangeBufTileId != tm->width * tm->height)
   {
-    microVAOSubmit(mesh->VAOId, "tileId", tm->bufTileId,
+    microVAOSubmit(mesh->VAOId, "tileId",
+                   &tm->bufTileId[tm->startChangeBufTileId],
                    tm->startChangeBufTileId,
                    tm->endChangeBufTileId - tm->startChangeBufTileId);
     tm->startChangeBufTileId = tm->width * tm->height;
@@ -847,7 +848,8 @@ void microTilemapApplyChanges(int tilemapId)
   // Apply tile animation changes, if any
   if (tm->startChangeAnimInfo != tm->width * tm->height)
   {
-    microVAOSubmit(mesh->VAOId, "animationInfo", tm->bufAnimInfo,
+    microVAOSubmit(mesh->VAOId, "animationInfo",
+                   &tm->bufAnimInfo[tm->startChangeAnimInfo],
                    tm->startChangeAnimInfo,
                    tm->endChangeAnimInfo - tm->startChangeAnimInfo);
     tm->startChangeAnimInfo = tm->width * tm->height;
