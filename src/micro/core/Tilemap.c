@@ -581,7 +581,7 @@ MicroTilemap tilemaps[MAX_TILEMAPS];
 static MicroAttributeData tile_shader_attrs[] = {
   {0, true, "vpos", 2, MICRO_FLOAT, 0, 0, NULL, false},
   {0, true, "tilemapTransform", 4, MICRO_INT, 0, 1, NULL, false},
-  {0, true, "textureInfo", 2, MICRO_INT, 0, 1, NULL, false},
+  {0, true, "textureInfo", 4, MICRO_INT, 0, 1, NULL, false},
   {0, true, "tileSize", 1, MICRO_INT, 0, 1, NULL, false},
   {0, true, "tileId", 1, MICRO_INT, 0, 1, NULL, false},
   {0, true, "animationInfo", 1, MICRO_UNSIGNED_INT, 0, 1, NULL, false},
@@ -596,15 +596,16 @@ static const char
   *tilemap_shader_frag = "#version 330 core\n"
                          "in vec2 TexCoord;\n"
                          "flat in int TileID;\n"
-                         "flat in ivec2 TextureInfo;\n"
+                         "flat in ivec4 TextureInfo;\n"
                          "out vec4 FragColor;\n"
                          "uniform sampler2D u_texture;\n"
                          "void main() {\n"
-                         "    int tileCol = TileID % TextureInfo.x;\n"
-                         "    int tileRow = TileID / TextureInfo.x;\n"
-                         "    vec2 tileSize = 1.0 / vec2(TextureInfo);\n"
-                         "    vec2 tileBaseCoord = vec2(tileCol, tileRow) * "
-                         "tileSize;\n"
+                         "    int tileCol = TileID % TextureInfo.z;\n"
+                         "    int tileRow = TileID / TextureInfo.z;\n"
+                         "    vec2 texSize = vec2(textureSize(u_texture, 0));"
+                         "    vec2 tilesetOrigin = vec2(TextureInfo.x, TextureInfo.y) / texSize;\n"
+                         "    vec2 tileSize = float(TextureInfo.w) / texSize;\n"
+                         "    vec2 tileBaseCoord = tilesetOrigin + vec2(tileCol, tileRow) * tileSize;\n"
                          "    vec2 finalTexCoord = tileBaseCoord + TexCoord * "
                          "tileSize;\n"
                          "    FragColor = texture(u_texture, finalTexCoord);\n"
@@ -614,18 +615,18 @@ static const char *
   tilemap_shader_vert = "#version 330 core\n"
                         "layout(location = 0) in vec2 vpos;\n"
                         "layout(location = 1) in ivec4 tilemapTransform;\n"
-                        "layout(location = 2) in ivec2 textureInfo;\n"
+                        "layout(location = 2) in ivec4 textureInfo;\n"
                         "layout(location = 3) in int tileSize;\n"
                         "layout(location = 4) in int tileId;\n"
                         "layout(location = 5) in int animationInfo;\n"
                         "out vec2 TexCoord;\n"
-                        "flat out ivec2 TextureInfo;\n"
+                        "flat out ivec4 TextureInfo;\n"
                         "flat out int TileID;\n"
                         "uniform mat4 u_view;\n"
                         "uniform float time;\n"
                         "void main() {\n"
                         "    if (tileId == -1) {\n"
-                        "        gl_Position = vec4(0.0, 0.0, 0.0, 0.0);\n"
+                        "        gl_Position = vec4(9999.0, 9999.0, 0.0, 1.0);\n"
                         "        return;\n"
                         "    }\n"
                         "    vec2 tilePos = vec2(gl_InstanceID % "
@@ -647,8 +648,9 @@ static const char *
                         "    TextureInfo = textureInfo;\n"
                         "}";
 
-int microTilemapNew(int textureId, int tileTexSize, int tileSize, int x, int y,
-                    int width, int height, int drawLayer, bool visible)
+int microTilemapNew(int textureId, float tx, float ty, float tw,
+                    int tileTexSize, int tileSize, int x, int y, int width,
+                    int height, int drawLayer, bool visible)
 {
   assert(tileSize > 0);
   assert(width > 0);
@@ -706,7 +708,7 @@ int microTilemapNew(int textureId, int tileTexSize, int tileSize, int x, int y,
                                             NULL);
   // Use same tilemapTransform for all tiles
   tile_shader_attrs[1].divisor = width * height;
-  tile_shader_attrs[2].vbo_id = microVBONew(2 * sizeof(int), MICRO_STATIC_DRAW,
+  tile_shader_attrs[2].vbo_id = microVBONew(4 * sizeof(int), MICRO_STATIC_DRAW,
                                             NULL);
   tile_shader_attrs[2].divisor = width * height;
   tile_shader_attrs[3].vbo_id = microVBONew(1 * sizeof(int), MICRO_STATIC_DRAW,
@@ -728,7 +730,7 @@ int microTilemapNew(int textureId, int tileTexSize, int tileSize, int x, int y,
   debug_print("Created tilemap at %d, %d\n", tm->x, tm->y);
   int texWidth, texHeight;
   microTextureGetSize(textureId, &texWidth, &texHeight);
-  int textureInfo[2] = {texWidth / tileTexSize, texHeight / tileTexSize};
+  int textureInfo[4] = {tx, ty, tw / tileTexSize, tileTexSize};
   microVAOSubmit(mesh->VAOId, "textureInfo", textureInfo, 0, 1);
   microVAOSubmit(mesh->VAOId, "tileSize", &tileSize, 0, 1);
   microVAOSetDrawRange(mesh->VAOId, 0, 6, tm->width * tm->height, 0);

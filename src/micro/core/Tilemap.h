@@ -179,8 +179,9 @@ typedef struct MicroTileAnimation
   uint8_t animationOffset;
   uint8_t animationStride;
 } MicroTileAnimation;
-int microTilemapNew(int textureId, int tileTexSize, int tileSize, int x, int y,
-                    int width, int height, int drawLayer, bool visible);
+int microTilemapNew(int textureId, float tx, float ty, float tw,
+                    int tileTexSize, int tileSize, int x, int y, int width,
+                    int height, int drawLayer, bool visible);
 void microTilemapSetVisible(int tilemapId, bool isVisible);
 bool microTilemapIsvisible(int tilemapId);
 void microTilemapSetPosition(int tilemapId, int x, int y);

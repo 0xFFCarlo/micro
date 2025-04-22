@@ -524,6 +524,10 @@ int microTextureLoadFromMemory(const char *resName, const unsigned char *data,
 
   if (resName != NULL)
     microResourceStore(resName, RESOURCE_TEXTURE, spot);
+
+  debug_print("Texture %d loaded from %s (%dx%d)\n", spot, resName, width,
+              height);
+
   return spot;
 }
 

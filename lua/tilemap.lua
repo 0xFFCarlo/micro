@@ -1,7 +1,7 @@
 local ffi = require("ffi")
 local lib = require("micro/lua/libmicro")
 
-ffi.cdef[[
+ffi.cdef([[
 typedef struct MicroTileAnimation {
   uint8_t framesCount;
   uint8_t animationSpeed;
@@ -16,7 +16,7 @@ typedef struct TileAnimation {
   uint8_t animationStride;
 } TileAnimation;
 
-int microTilemapNew(int textureId, int tileTexSize, int tileSize, int x, int y,
+int microTilemapNew(int textureId, float tx, float ty, float tw, int tileTexSize, int tileSize, int x, int y,
                     int width, int height, int drawLayer, bool visible);
 
 void microTilemapSetVisible(int tilemapId, bool isVisible);
@@ -46,13 +46,16 @@ void microTilemapFree(int tilemapId);
 void microTilemapFreeAll();
 
 void microTilemapsUpdate(float dt);
-]]
+]])
 
 local Tilemap = {}
 
 --[[
 Creates a new tilemap.
 @param textureId number
+@param tx number
+@param ty number
+@param tw number
 @param tileTexSize number
 @param tileSize number
 @param x number
@@ -63,8 +66,8 @@ Creates a new tilemap.
 @param visible boolean
 @return number tilemapId
 ]]
-Tilemap.new = function(textureId, tileTexSize, tileSize, x, y, width, height, drawLayer, visible)
-  return lib.microTilemapNew(textureId, tileTexSize, tileSize, x, y, width, height, drawLayer, visible)
+Tilemap.new = function(textureId, tx, ty, tw, tileTexSize, tileSize, x, y, width, height, drawLayer, visible)
+	return lib.microTilemapNew(textureId, tx, ty, tw, tileTexSize, tileSize, x, y, width, height, drawLayer, visible)
 end
 
 --[[
@@ -73,7 +76,7 @@ Sets tilemap visibility.
 @param isVisible boolean
 ]]
 Tilemap.setVisible = function(tilemapId, isVisible)
-  lib.microTilemapSetVisible(tilemapId, isVisible)
+	lib.microTilemapSetVisible(tilemapId, isVisible)
 end
 
 --[[
@@ -82,7 +85,7 @@ Checks if tilemap is visible.
 @return boolean
 ]]
 Tilemap.isVisible = function(tilemapId)
-  return lib.microTilemapIsvisible(tilemapId)
+	return lib.microTilemapIsvisible(tilemapId)
 end
 
 --[[
@@ -92,7 +95,7 @@ end
 -- @param y number
 -- ]]
 Tilemap.setPosition = function(tilemapId, x, y)
-  lib.microTilemapSetPosition(tilemapId, x, y)
+	lib.microTilemapSetPosition(tilemapId, x, y)
 end
 
 --[[
@@ -102,10 +105,10 @@ end
 -- @return number y
 -- ]]
 Tilemap.getPosition = function(tilemapId)
-  local x = ffi.new("int[1]")
-  local y = ffi.new("int[1]")
-  lib.microTilemapGetPosition(tilemapId, x, y)
-  return x[0], y[0]
+	local x = ffi.new("int[1]")
+	local y = ffi.new("int[1]")
+	lib.microTilemapGetPosition(tilemapId, x, y)
+	return x[0], y[0]
 end
 
 --[[
@@ -116,7 +119,7 @@ Sets tile at (x,y).
 @param tileId number
 ]]
 Tilemap.setTile = function(tilemapId, x, y, tileId)
-  lib.microTilemapSetTile(tilemapId, x, y, tileId)
+	lib.microTilemapSetTile(tilemapId, x, y, tileId)
 end
 
 --[[
@@ -127,7 +130,7 @@ Sets multiple tiles.
 @param tiles_count number
 ]]
 Tilemap.setTiles = function(tilemapId, tile_ids, tile_start_idx, tiles_count)
-  lib.microTilemapSetTiles(tilemapId, tile_ids, tile_start_idx, tiles_count)
+	lib.microTilemapSetTiles(tilemapId, tile_ids, tile_start_idx, tiles_count)
 end
 
 --[[
@@ -138,7 +141,7 @@ Gets tile at (x,y).
 @return number tileId
 ]]
 Tilemap.getTile = function(tilemapId, x, y)
-  return lib.microTilemapGetTile(tilemapId, x, y)
+	return lib.microTilemapGetTile(tilemapId, x, y)
 end
 
 --[[
@@ -152,7 +155,7 @@ Sets tile animation at (x,y).
 @param animStride number (uint8)
 ]]
 Tilemap.setTileAnimation = function(tilemapId, x, y, framesCount, animSpeed, animOffset, animStride)
-  lib.microTilemapSetTileAnimation(tilemapId, x, y, framesCount, animSpeed, animOffset, animStride)
+	lib.microTilemapSetTileAnimation(tilemapId, x, y, framesCount, animSpeed, animOffset, animStride)
 end
 
 --[[
@@ -163,7 +166,7 @@ Sets animations for multiple tiles.
 @param tiles_count number
 ]]
 Tilemap.setTilesAnimation = function(tilemapId, tile_anim_infos, start_idx, tiles_count)
-  lib.microTilemapSetTilesAnimation(tilemapId, tile_anim_infos, start_idx, tiles_count)
+	lib.microTilemapSetTilesAnimation(tilemapId, tile_anim_infos, start_idx, tiles_count)
 end
 
 --[[
@@ -174,7 +177,7 @@ Gets tile animation at (x,y).
 @return TileAnimation
 ]]
 Tilemap.getTileAnimation = function(tilemapId, x, y)
-  return lib.microTilemapGetTileAnimation(tilemapId, x, y)
+	return lib.microTilemapGetTileAnimation(tilemapId, x, y)
 end
 
 --[[
@@ -182,7 +185,7 @@ Applies changes to the tilemap.
 @param tilemapId number
 ]]
 Tilemap.applyChanges = function(tilemapId)
-  lib.microTilemapApplyChanges(tilemapId)
+	lib.microTilemapApplyChanges(tilemapId)
 end
 
 --[[
@@ -190,14 +193,14 @@ Frees tilemap.
 @param tilemapId number
 ]]
 Tilemap.free = function(tilemapId)
-  lib.microTilemapFree(tilemapId)
+	lib.microTilemapFree(tilemapId)
 end
 
 --[[
 Frees all tilemaps.
 ]]
 Tilemap.freeAll = function()
-  lib.microTilemapFreeAll()
+	lib.microTilemapFreeAll()
 end
 
 --[[
@@ -207,4 +210,3 @@ Updates all tilemaps.
 Tilemap.update = lib.microTilemapsUpdate
 
 return Tilemap
-
