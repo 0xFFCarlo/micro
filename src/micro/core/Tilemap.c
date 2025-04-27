@@ -567,7 +567,6 @@ typedef struct MicroTilemap
   int x, y;
   int width, height;
 
-  float *bufInstancePos;
   int32_t *bufTileId;
   uint32_t *bufAnimInfo;
   int startChangeBufTileId;
@@ -691,7 +690,6 @@ int microTilemapNew(int textureId, float tx, float ty, float tw,
   tm->y = y;
   tm->width = width;
   tm->height = height;
-  tm->bufInstancePos = malloc(sizeof(float) * width * height * 2);
   tm->bufTileId = malloc(sizeof(int32_t) * width * height);
   tm->bufAnimInfo = malloc(sizeof(uint32_t) * width * height);
   tm->startChangeBufTileId = 0;
@@ -762,7 +760,7 @@ void microTilemapSetPosition(int tilemapId, int x, int y)
   microVAOSubmit(mesh->VAOId, "tilemapTransform", tilemapTransform, 0, 1);
 }
 
-void microTilemaoGetPosition(int tilemapId, int *x, int *y)
+void microTilemapGetPosition(int tilemapId, int *x, int *y)
 {
   MicroTilemap *tm = &tilemaps[tilemapId];
   CPosition *pos = CmpGetPosition(tm->entityId);
@@ -865,7 +863,6 @@ void microTilemapFree(int tilemapId)
   MicroTilemap *tm = &tilemaps[tilemapId];
   tm->width = 0;
   free(tm->bufTileId);
-  free(tm->bufInstancePos);
   free(tm->bufAnimInfo);
   microECSEntityRemove(tm->entityId);
 }

@@ -185,7 +185,7 @@ int microTilemapNew(int textureId, float tx, float ty, float tw,
 void microTilemapSetVisible(int tilemapId, bool isVisible);
 bool microTilemapIsvisible(int tilemapId);
 void microTilemapSetPosition(int tilemapId, int x, int y);
-void microTilemaoGetPosition(int tilemapId, int *x, int *y);
+void microTilemapGetPosition(int tilemapId, int *x, int *y);
 void microTilemapSetTile(int tilemapId, int x, int y, int tileId);
 void microTilemapSetTiles(int tilemapId, int *tile_ids, int tile_start_idx,
                           int tiles_count);
