@@ -14,6 +14,7 @@ typedef struct
 void microStateSet(MicroState state);
 void microStateUpdate(float dt);
 void microStateFree();
+double microStateGetLastBusyTime();
 double microStateGetTime();
 
 #endif // STATE_HPP

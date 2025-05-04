@@ -13,6 +13,7 @@ void microStateSet(MicroState state);
 void microStateQuit();
 void microStateUpdate(float dt);
 void microStateFree();
+double microStateGetLastBusyTime();
 double microStateGetTime();
 ]])
 
@@ -46,6 +47,12 @@ end
 --- Frees the resources associated with the current state.
 function State.free()
 	lib.microStateFree()
+end
+
+--- Returns the last busy time of the current state.
+--- @return number @The last busy time in seconds.
+function State.getLastBusyTime()
+  return lib.microStateGetLastBusyTime()
 end
 
 --- Returns the current state's time.

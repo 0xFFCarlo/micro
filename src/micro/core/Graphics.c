@@ -3165,24 +3165,42 @@ void microSwapBuffers()
   SDL_GL_SwapWindow(window);
 }
 
-Uint32 lastTime = 0;
+static uint64_t lastTime = 0;
+static uint64_t frequency = 0;
+
 float microGraphicsDelayToNextFrame(float target_fps)
 {
-  // If frame finished early
-  int frame_time = SDL_GetTicks() - lastTime;
-  if (1000 / target_fps > frame_time)
+  if (frequency == 0)
   {
-    // Wait the remaining time
-    SDL_Delay(1000 / target_fps - frame_time);
+    frequency = SDL_GetPerformanceFrequency();
+    lastTime = SDL_GetPerformanceCounter();
   }
 
-  // Calculate delta time
-  frame_time = SDL_GetTicks() - lastTime;
-  float deltaTime = (float)frame_time / 1000.0;
-  lastTime = SDL_GetTicks();
-  deltaTime = fmin(deltaTime, 2.f / target_fps);
+  uint64_t currentTime = SDL_GetPerformanceCounter();
+  float frame_time = (float)(currentTime - lastTime) / frequency;
 
-  return deltaTime;
+  // If frame finished early
+  float target_frame_time = 1.0f / target_fps;
+  if (target_frame_time > frame_time)
+  {
+    // Calculate remaining time in milliseconds and delay
+    uint32_t delay_ms = (uint32_t)((target_frame_time - frame_time) * 1000.0f);
+    if (delay_ms > 0)
+    {
+      SDL_Delay(delay_ms);
+    }
+
+    // Update current time after delay
+    currentTime = SDL_GetPerformanceCounter();
+    frame_time = (float)(currentTime - lastTime) / frequency;
+  }
+
+  lastTime = currentTime;
+
+  // Clamp deltaTime to avoid huge spikes
+  frame_time = fminf(frame_time, 2.0f / target_fps);
+
+  return frame_time;
 }
 
 ////////////////////////////

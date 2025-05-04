@@ -1,10 +1,12 @@
 #include "State.h"
-#include "Graphics.h"
 #include "ECS.h"
+#include "Graphics.h"
+#include <SDL2/SDL.h>
 
-MicroState currentState = {NULL, NULL, NULL, 0.0};
-int stateChangeRequested = 0;
-MicroState nextState = {NULL, NULL, NULL, 0.0};
+static MicroState currentState = {NULL, NULL, NULL, 0.0};
+static int stateChangeRequested = 0;
+static MicroState nextState = {NULL, NULL, NULL, 0.0};
+static double lastBusyTime = 0.0;
 
 void microStateSet(MicroState state)
 {
@@ -14,6 +16,9 @@ void microStateSet(MicroState state)
 
 void microStateUpdate(float dt)
 {
+  uint64_t freq = SDL_GetPerformanceFrequency();
+  uint64_t start, end;
+
   if (stateChangeRequested)
   {
     microStateFree();
@@ -28,8 +33,11 @@ void microStateUpdate(float dt)
 
   currentState.time += dt;
   microGraphicsClear();
+  start = SDL_GetPerformanceCounter();
   microECSRun(dt);
   currentState.update(dt);
+  end = SDL_GetPerformanceCounter();
+  lastBusyTime = (double)(end - start) / freq;
   microGraphicsDisplay();
   microSwapBuffers();
 }
@@ -41,6 +49,11 @@ void microStateFree()
   currentState.free = NULL;
   currentState.update = NULL;
   currentState.init = NULL;
+}
+
+double microStateGetLastBusyTime()
+{
+  return lastBusyTime;
 }
 
 double microStateGetTime()

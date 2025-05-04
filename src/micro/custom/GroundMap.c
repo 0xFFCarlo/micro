@@ -46,50 +46,66 @@ static const float quad_verts[2 * 6] = {0,   0,   1.0, 0,   0,   1.0,
                                         1.0, 0.0, 1.0, 1.0, 0.0, 1.0};
 static int tilemap_shader_id = -1;
 
-static const char *
-  tilemap_shader_frag = "#version 330 core\n"
-                        "in vec2 TexCoord;\n"
-                        "flat in ivec4 TileOrientations;\n"
-                        "flat in vec3 TileColor0;\n"
-                        "flat in vec3 TileColor1;\n"
-                        "flat in vec3 TileColor2;\n"
-                        "flat in vec3 TileColor3;\n"
-                        "flat in ivec4 TextureInfo;\n"
-                        "out vec4 FragColor;\n"
-                        "uniform sampler2D u_texture;\n"
-                        "void main() {\n"
-                        "  vec2 texSize = vec2(textureSize(u_texture, 0));\n"
-                        "  vec2 tileSize = float(TextureInfo.w) / texSize;\n"
-                        "  vec2 pixelOrigin =\n"
-                        "      vec2(TextureInfo.x, TextureInfo.y) / texSize + "
-                        "TexCoord * tileSize;\n"
-                        " \n"
-                        "  int tileIdx = TileOrientations[0] % TextureInfo.z;\n"
-                        "  vec2 texCoord = pixelOrigin + vec2(tileIdx, 0) * "
-                        "tileSize;\n"
-                        "  vec4 color = texture(u_texture, texCoord) * "
-                        "vec4(TileColor0, 1.0);\n"
-                        " \n"
-                        "  tileIdx = TileOrientations[1] % TextureInfo.z;\n"
-                        "  texCoord = pixelOrigin + vec2(tileIdx, 0) * "
-                        "tileSize;\n"
-                        "  color += texture(u_texture, texCoord) * "
-                        "vec4(TileColor1, 1.0);\n"
-                        " \n"
-                        "  tileIdx = TileOrientations[2] % TextureInfo.z;\n"
-                        "  texCoord = pixelOrigin + vec2(tileIdx, 0) * "
-                        "tileSize;\n"
-                        "  color += texture(u_texture, texCoord) * "
-                        "vec4(TileColor2, 1.0);\n"
-                        " \n"
-                        "  tileIdx = TileOrientations[3] % TextureInfo.z;\n"
-                        "  texCoord = pixelOrigin + vec2(tileIdx, 0) * "
-                        "tileSize;\n"
-                        "  color += texture(u_texture, texCoord) * "
-                        "vec4(TileColor3, 1.0);\n"
-                        " \n"
-                        "  FragColor = color;\n"
-                        "}";
+static const char
+  *tilemap_shader_frag = "#version 330 core\n"
+                         "in vec2 TexCoord;\n"
+                         "flat in ivec4 TileOrientations;\n"
+                         "flat in vec3 TileColor0;\n"
+                         "flat in vec3 TileColor1;\n"
+                         "flat in vec3 TileColor2;\n"
+                         "flat in vec3 TileColor3;\n"
+                         "flat in ivec4 TextureInfo;\n"
+                         "out vec4 FragColor;\n"
+                         "uniform sampler2D u_texture;\n"
+                         "void main() {\n"
+                         "  vec2 texSize = vec2(textureSize(u_texture, 0));\n"
+                         "  vec2 tileSize = float(TextureInfo.w) / texSize;\n"
+                         "  vec2 pixelOrigin = vec2(TextureInfo.x, "
+                         "TextureInfo.y) / texSize + TexCoord * tileSize;\n"
+                         "\n"
+                         "  // accumulate all 4 tile layers into 'color'\n"
+                         "  vec4 color = vec4(0.0);\n"
+                         "  int tileIdx;\n"
+                         "  vec2 texCoord;\n"
+                         "\n"
+                         "  tileIdx = TileOrientations[0] % TextureInfo.z;\n"
+                         "  texCoord = pixelOrigin + vec2(tileIdx, 0) * "
+                         "tileSize;\n"
+                         "  color += texture(u_texture, texCoord) * "
+                         "vec4(TileColor0, 1.0);\n"
+                         "\n"
+                         "  tileIdx = TileOrientations[1] % TextureInfo.z;\n"
+                         "  texCoord = pixelOrigin + vec2(tileIdx, 0) * "
+                         "tileSize;\n"
+                         "  color += texture(u_texture, texCoord) * "
+                         "vec4(TileColor1, 1.0);\n"
+                         "\n"
+                         "  tileIdx = TileOrientations[2] % TextureInfo.z;\n"
+                         "  texCoord = pixelOrigin + vec2(tileIdx, 0) * "
+                         "tileSize;\n"
+                         "  color += texture(u_texture, texCoord) * "
+                         "vec4(TileColor2, 1.0);\n"
+                         "\n"
+                         "  tileIdx = TileOrientations[3] % TextureInfo.z;\n"
+                         "  texCoord = pixelOrigin + vec2(tileIdx, 0) * "
+                         "tileSize;\n"
+                         "  color += texture(u_texture, texCoord) * "
+                         "vec4(TileColor3, 1.0);\n"
+                         "\n"
+                         "  // branchless fallback: sign(dot)==0 only if "
+                         "color.rgb is exactly (0,0,0)\n"
+                         "  float fallback = 1.0 - sign(dot(color.rgb, "
+                         "color.rgb));\n"
+                         "  // when fallback==1 → pick pure red; when 0 → keep "
+                         "'color'\n"
+                         "  color = mix(\n"
+                         "      color,\n"
+                         "      vec4(5.0/255.0, 46.0/255.0, 50.0/255.0, 1.0),\n"
+                         "      fallback\n"
+                         "  );\n"
+                         "\n"
+                         "  FragColor = color;\n"
+                         "}\n";
 
 static const char
   *tilemap_shader_vert = "#version 330 core\n"
@@ -122,16 +138,20 @@ static const char
                          "  TileOrientations = tileOrientations;\n"
                          "  TileColor0 = vec3(tileColors[0] & 0xFF, "
                          "(tileColors[0] >> 8) & 0xFF,\n"
-                         "                    (tileColors[0] >> 16) & 0xFF);\n"
+                         "                    (tileColors[0] >> 16) & 0xFF) / "
+                         "255.0;\n"
                          "  TileColor1 = vec3(tileColors[1] & 0xFF, "
                          "(tileColors[1] >> 8) & 0xFF,\n"
-                         "                    (tileColors[1] >> 16) & 0xFF);\n"
+                         "                    (tileColors[1] >> 16) & 0xFF) / "
+                         "255.0;\n"
                          "  TileColor2 = vec3(tileColors[2] & 0xFF, "
                          "(tileColors[2] >> 8) & 0xFF,\n"
-                         "                    (tileColors[2] >> 16) & 0xFF);\n"
+                         "                    (tileColors[2] >> 16) & 0xFF) / "
+                         "255.0;\n"
                          "  TileColor3 = vec3(tileColors[3] & 0xFF, "
                          "(tileColors[3] >> 8) & 0xFF,\n"
-                         "                    (tileColors[3] >> 16) & 0xFF);\n"
+                         "                    (tileColors[3] >> 16) & 0xFF) / "
+                         "255.0;\n"
                          "}";
 
 int GroundMapNew(int textureId, float tx, float ty, float tw, int tileTexSize,
@@ -255,25 +275,37 @@ void GroundMapGetPosition(int tilemapId, int *x, int *y)
   *y = pos->y;
 }
 
-void GroundMapSetColors(int tilemapId, int x, int y, unsigned char r0,
-                        unsigned char g0, unsigned char b0, unsigned char r1,
-                        unsigned char g1, unsigned char b1, unsigned char r2,
-                        unsigned char g2, unsigned char b2, unsigned char r3,
-                        unsigned char g3, unsigned char b3)
+void GroundMapSetTileColors(int tilemapId, int x, int y, unsigned char r0,
+                            unsigned char g0, unsigned char b0,
+                            unsigned char r1, unsigned char g1,
+                            unsigned char b1, unsigned char r2,
+                            unsigned char g2, unsigned char b2,
+                            unsigned char r3, unsigned char g3,
+                            unsigned char b3)
 {
   GroundTilemap *tm = &tilemaps[tilemapId];
   tm->bufTileColors[(x + y * tm->width) * 4 + 0] = r0 | (g0 << 8) | (b0 << 16);
   tm->bufTileColors[(x + y * tm->width) * 4 + 1] = r1 | (g1 << 8) | (b1 << 16);
   tm->bufTileColors[(x + y * tm->width) * 4 + 2] = r2 | (g2 << 8) | (b2 << 16);
   tm->bufTileColors[(x + y * tm->width) * 4 + 3] = r3 | (g3 << 8) | (b3 << 16);
-  tm->startChangeBufColors = MIN(tm->startChangeBufColors,
-                                 x + y * tm->width);
-  tm->endChangeBufColors = MAX(tm->endChangeBufColors,
-                               x + y * tm->width + 1);
+  tm->startChangeBufColors = MIN(tm->startChangeBufColors, x + y * tm->width);
+  tm->endChangeBufColors = MAX(tm->endChangeBufColors, x + y * tm->width + 1);
 }
 
-void GroundMapSetOrientations(int tilemapId, int x, int y, int o0, int o1,
-                              int o2, int o3)
+void GroundMapSetTilesColors(int tilemapId, const GroundTileColors *tilesColors,
+                             int tile_start_idx, int tiles_count)
+{
+  GroundTilemap *tm = &tilemaps[tilemapId];
+  assert(tile_start_idx + tiles_count <= tm->width * tm->height);
+  memcpy(&tm->bufTileColors[tile_start_idx * sizeof(GroundTileColors)],
+         tilesColors, sizeof(GroundTileColors) * tiles_count);
+  tm->startChangeBufColors = MIN(tm->startChangeBufColors, tile_start_idx);
+  tm->endChangeBufColors = MAX(tm->endChangeBufColors,
+                               tile_start_idx + tiles_count);
+}
+
+void GroundMapSetTileOrientations(int tilemapId, int x, int y, int o0, int o1,
+                                  int o2, int o3)
 {
   GroundTilemap *tm = &tilemaps[tilemapId];
   tm->bufTileOrientations[(x + y * tm->width) * 4 + 0] = o0;
@@ -284,6 +316,21 @@ void GroundMapSetOrientations(int tilemapId, int x, int y, int o0, int o1,
                                     x + y * tm->width);
   tm->endChangeOrientations = MAX(tm->endChangeOrientations,
                                   x + y * tm->width + 1);
+}
+
+void GroundMapSetTilesOrientations(int tilemapId,
+                                   const GroundTileOrientations
+                                     *tilesOrientations,
+                                   int tile_start_idx, int tiles_count)
+{
+  GroundTilemap *tm = &tilemaps[tilemapId];
+  assert(tile_start_idx + tiles_count <= tm->width * tm->height);
+  memcpy(&tm->bufTileOrientations[tile_start_idx * sizeof(GroundTileColors)],
+         tilesOrientations, sizeof(GroundTileOrientations) * tiles_count);
+  tm->startChangeOrientations = MIN(tm->startChangeOrientations,
+                                    tile_start_idx);
+  tm->endChangeOrientations = MAX(tm->endChangeOrientations,
+                                  tile_start_idx + tiles_count);
 }
 
 void GroundMapApplyChanges(int tilemapId)
