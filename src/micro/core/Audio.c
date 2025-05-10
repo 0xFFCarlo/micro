@@ -38,7 +38,7 @@ static uint32_t sound_count = 0;
 static void _check_al_error(const char *file, int line)
 {
   ALenum error = alGetError();
-  const char* errorMsg = NULL;
+  const char *errorMsg = NULL;
   switch (error)
   {
   case AL_NO_ERROR:
@@ -63,7 +63,8 @@ static void _check_al_error(const char *file, int line)
     break;
   }
   if (error != AL_NO_ERROR)
-    debug_print("OpenAL error: %s (%d) at %s:%d\n", errorMsg, error, file, line);
+    debug_print("OpenAL error: %s (%d) at %s:%d\n", errorMsg, error, file,
+                line);
 }
 
 #define check_al_error() _check_al_error(__FILE__, __LINE__)
@@ -282,6 +283,7 @@ int microSoundLoadFromFile(const char *filepath)
 
   // load sound
   alGenBuffers(1, &buffer);
+  check_al_error();
 
   // Load sound data based on file extension
   if (strstr(filepath, ".wav") != NULL)
@@ -355,6 +357,7 @@ void microSoundPlay(const uint32_t soundId, const float gain)
   alSource3f(sources_static[source_id], AL_POSITION, 0.f, 0.f, 0.f);
 
   alSourcePlay(sources_static[source_id]);
+  check_al_error();
 }
 
 void microSoundPlayAt(const uint32_t soundId, const float gain, const float x,
@@ -380,6 +383,7 @@ void microSoundPlayAt(const uint32_t soundId, const float gain, const float x,
   alSource3f(sources_static[source_id], AL_POSITION, x, y, 0.f);
 
   alSourcePlay(sources_static[source_id]);
+  check_al_error();
 }
 
 static int32_t microSoundSrcGetChannel(const uint32_t sourceId,
@@ -402,8 +406,12 @@ void microSoundPlayAtSource(const uint32_t soundId, const uint32_t sourceId,
   if (alSourceId == -1)
     return;
   const ALuint buffer = sounds[soundId];
+  // Stop the source before reassigning buffer
+  alSourceStop(alSourceId);
+  check_al_error();
   alSourcei(alSourceId, AL_BUFFER, buffer);
   alSourcePlay(alSourceId);
+  check_al_error();
 }
 
 uint32_t microSoundSrcNewChannel(const uint32_t sourceId,
@@ -464,6 +472,7 @@ uint32_t microSoundSrcFreeChannel(const uint32_t sourceId,
     if (strcmp(mcs->channelTag[i], channelTag) != 0)
       continue;
     alDeleteSources(1, &mcs->sourceId[i]);
+    check_al_error();
     mcs->sourceId[i] = mcs->sourceId[mcs->channelCount - 1];
     mcs->channelTag[i] = mcs->channelTag[mcs->channelCount - 1];
     mcs->channelCount--;
@@ -511,25 +520,57 @@ void microSoundSrcStop(const uint32_t sourceId, const char *channelTag)
   int32_t alSourceId = microSoundSrcGetChannel(sourceId, channelTag);
   if (alSourceId == -1)
     return;
-  alSourceStop(alSourceId);
-  alSourcei(alSourceId, AL_BUFFER, 0);
+
+  ALint state;
+  alGetSourcei(alSourceId, AL_SOURCE_STATE, &state);
   check_al_error();
+  if (state == AL_STOPPED || state == AL_INITIAL)
+    return;
+
+  alSourceStop(alSourceId);
+  check_al_error();
+
+  ALint attachedBuffer = 0;
+  alGetSourcei(alSourceId, AL_BUFFER, &attachedBuffer);
+  check_al_error();
+  if (attachedBuffer != 0)
+  {
+    alSourcei(alSourceId, AL_BUFFER, 0);
+    check_al_error();
+  }
 }
 
 void microSoundSrcStopAll()
 {
   for (int i = 0; i < MICRO_MAX_SOURCES_STATIC; i++)
   {
+    ALint srcId = sources_static[i];
     alSourceStop(sources_static[i]);
-    alSourcei(sources_static[i], AL_BUFFER, 0);
+    check_al_error();
+    ALint attachedBuffer = 0;
+    alGetSourcei(srcId, AL_BUFFER, &attachedBuffer);
+    if (attachedBuffer != 0)
+    {
+      alSourcei(sources_static[i], AL_BUFFER, 0);
+      check_al_error();
+    }
   }
 
   for (int i = 0; i < MICRO_MAX_SOURCES_DYNAMIC; i++)
   {
     for (int j = 0; j < (int)sources_dynamic[i].channelCount; j++)
     {
+      ALint srcId = sources_dynamic[i].sourceId[j];
       alSourceStop(sources_dynamic[i].sourceId[j]);
-      alSourcei(sources_dynamic[i].sourceId[j], AL_BUFFER, 0);
+      check_al_error();
+      ALint attachedBuffer = 0;
+      alGetSourcei(srcId, AL_BUFFER, &attachedBuffer);
+      check_al_error();
+      if (attachedBuffer != 0)
+      {
+        alSourcei(sources_dynamic[i].sourceId[j], AL_BUFFER, 0);
+        check_al_error();
+      }
     }
   }
 }
