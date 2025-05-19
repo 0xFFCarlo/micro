@@ -6,7 +6,7 @@ ffi.cdef([[
     int microECSEntityNew(void *data, void (*free)(int));
 
     // Request to remove entity from the world.
-    void microECSEntityRemove(int entityId);
+    void microECSEntityQueueFree(int entityId);
 
     // Check if entity is alive.
     int microECSEntityIsAlive(int entityId);
@@ -67,7 +67,7 @@ end
 --- Removes an entity from the world.
 --- @param entityId number The id of the entity to remove.
 function ECS.removeEntity(entityId)
-	lib.microECSEntityRemove(entityId)
+	lib.microECSEntityQueueFree(entityId)
 end
 
 --- Checks if an entity is alive.

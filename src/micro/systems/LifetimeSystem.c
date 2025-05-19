@@ -15,7 +15,7 @@ static void lifetime_system_update(float dt)
 
     lifetime->lifetime -= dt;
     if (lifetime->lifetime <= 0)
-      microECSEntityRemove(entityId);
+      microECSEntityQueueFree(entityId);
   }
 }
 

@@ -545,7 +545,7 @@ TilemapDynamic *microTilemapDynamicNew(uint32_t chunk_width,
 
 void microTilemapDynamicFree(TilemapDynamic *tm)
 {
-  microECSEntityRemove(tm->eid);
+  microECSEntityQueueFree(tm->eid);
   hashmap_free(&tm->chunks);
   vector_free(&tm->chunks_active);
   free(tm);
@@ -602,11 +602,13 @@ static const char
                          "    int tileCol = TileID % TextureInfo.z;\n"
                          "    int tileRow = TileID / TextureInfo.z;\n"
                          "    vec2 texSize = vec2(textureSize(u_texture, 0));"
-                         "    vec2 tilesetOrigin = vec2(TextureInfo.x, TextureInfo.y) / texSize;\n"
+                         "    vec2 tilesetOrigin = vec2(TextureInfo.x, "
+                         "TextureInfo.y) / texSize;\n"
                          "    vec2 tileSize = float(TextureInfo.w) / texSize;\n"
-                         "    vec2 tileBaseCoord = tilesetOrigin + vec2(tileCol, tileRow) * tileSize;\n"
+                         "    vec2 tileBaseCoord = tilesetOrigin + "
+                         "vec2(tileCol, tileRow) * tileSize;\n"
                          "    vec2 finalTexCoord = tileBaseCoord + TexCoord * "
-                         "tileSize;\n"
+                         "tileSize;"
                          "    FragColor = texture(u_texture, finalTexCoord);\n"
                          "}";
 
@@ -625,14 +627,17 @@ static const char *
                         "uniform float time;\n"
                         "void main() {\n"
                         "    if (tileId == -1) {\n"
-                        "        gl_Position = vec4(9999.0, 9999.0, 0.0, 1.0);\n"
+                        "        gl_Position = vec4(9999.0, 9999.0, 0.0, "
+                        "1.0);\n"
                         "        return;\n"
                         "    }\n"
                         "    vec2 tilePos = vec2(gl_InstanceID % "
                         "tilemapTransform.z, gl_InstanceID / "
-                        "tilemapTransform.z) * tileSize;\n"
-                        "    vec2 worldPos = vpos * tileSize + tilePos + "
+                        "tilemapTransform.z) * float(tileSize);\n"
+                        "    vec2 worldPos = vpos * float(tileSize) + tilePos "
+                        "+ "
                         "tilemapTransform.xy;\n"
+                        "    worldPos = floor(worldPos);"
                         "    gl_Position = u_view * vec4(worldPos, 0.0, 1.0);\n"
                         "    int animFrames = animationInfo & 0xFF;\n"
                         "    float animSpeed = float((animationInfo >> 8) & "
@@ -864,7 +869,7 @@ void microTilemapFree(int tilemapId)
   tm->width = 0;
   free(tm->bufTileId);
   free(tm->bufAnimInfo);
-  microECSEntityRemove(tm->entityId);
+  microECSEntityQueueFree(tm->entityId);
 }
 
 void microTilemapFreeAll()

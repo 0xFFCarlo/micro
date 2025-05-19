@@ -251,13 +251,15 @@ static const char baseVertexShaderSrc
        "uniform mat4 u_view;\n"
        "void main()\n"
        "{\n"
-       "  vec2 vertPos = vpos * size- origin;\n"
+       "  vec2 vertPos = vpos * size - origin;\n"
        "  vec2 rotatedVertPos = vec2(vertPos.x * cos(rotation) - vertPos.y * "
        "sin(rotation),\n"
        "                             vertPos.x * sin(rotation) + vertPos.y * "
        "cos(rotation));\n"
        "  rotatedVertPos = rotatedVertPos;\n"
-       "  gl_Position = u_view * vec4(position + rotatedVertPos, 0.0, 1.0);\n"
+       "  vec2 worldPos = position + rotatedVertPos;\n"
+       "  worldPos = floor(worldPos);\n"
+       "  gl_Position = u_view * vec4(worldPos, 0.0, 1.0);\n"
        "  o_uv = vpos;\n"
        "  o_color = color;\n"
        "  o_texcoord = texcoord;\n"
@@ -2234,7 +2236,7 @@ int microGraphicsInit()
 
   // Set OpenGL version
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
   // Initilize Opengl

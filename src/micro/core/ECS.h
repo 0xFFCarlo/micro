@@ -10,7 +10,7 @@ int microECSEntityNew(void *data, void (*free)(int));
 
 // Request to remove entity from the world.
 // It will be removed at the next iteration of microECSRun().
-void microECSEntityRemove(int entityId);
+void microECSEntityQueueFree(int entityId);
 
 // Check if entity is alive.
 int microECSEntityIsAlive(int entityId);

@@ -16,7 +16,6 @@ extern const MicroECSSystem physics_system;
 extern const MicroECSSystem rendering_system;
 extern const MicroECSSystem shaded_canvas_system;
 extern const MicroECSSystem update_system;
-extern const MicroECSSystem ui_system;
 extern const MicroECSSystem tilemap_system;
 
 int microSystemsUseAll();

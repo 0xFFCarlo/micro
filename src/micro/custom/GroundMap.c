@@ -132,6 +132,7 @@ static const char
                          "                 tileSize;\n"
                          "  vec2 worldPos = vpos * tileSize + tilePos + "
                          "tilemapTransform.xy;\n"
+                         "    worldPos = floor(worldPos);\n"
                          "  gl_Position = u_view * vec4(worldPos, 0.0, 1.0);\n"
                          "  TexCoord = vpos;\n"
                          "  TextureInfo = textureInfo;\n"
@@ -367,7 +368,7 @@ void GroundMapFree(int tilemapId)
   tm->width = 0;
   free(tm->bufTileColors);
   free(tm->bufTileOrientations);
-  microECSEntityRemove(tm->entityId);
+  microECSEntityQueueFree(tm->entityId);
 }
 
 void GroundMapFreeAll()

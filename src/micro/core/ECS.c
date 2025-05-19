@@ -232,8 +232,11 @@ int microECSEntityNew(void *data, void (*free)(int))
   return id;
 }
 
-void microECSEntityRemove(int entityId)
+void microECSEntityQueueFree(int entityId)
 {
+  // Prevent queuing twice
+  if ((entities[entityId].state & ENTITY_ALIVE_MASK) == 0)
+    return;
   CLEARBITS(entities[entityId].state, ENTITY_ALIVE_MASK);
   vector_push_back(&entities_to_remove, &entityId);
 }
@@ -549,7 +552,8 @@ int microECSGetDeletedEntitiesCount()
 void microECSGetDeletedEntities(int *entities, int *size)
 {
   *size = entities_to_remove.size;
-  memcpy(entities, entities_to_remove.data, sizeof(int) * entities_to_remove.size);
+  memcpy(entities, entities_to_remove.data,
+         sizeof(int) * entities_to_remove.size);
 }
 
 ///////////////////////////////////
