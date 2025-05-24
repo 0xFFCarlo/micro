@@ -12,6 +12,7 @@ int microSystemsUseAll()
   microECSSystemAdd(lock_on_view_system);
   microECSSystemAdd(particles_system);
   microECSSystemAdd(physics_system);
+  microECSSystemAdd(parent_system);
   microECSSystemAdd(tilemap_system);
   microECSSystemAdd(rendering_system);
   microECSSystemAdd(shaded_canvas_system);

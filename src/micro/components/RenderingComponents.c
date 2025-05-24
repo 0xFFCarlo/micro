@@ -22,8 +22,8 @@ void RegisterCSprite()
   cid_sprite = microECSComponentRegister(sizeof(CSprite), NULL);
 }
 
-void CmpAddSprite(int entity_id, u16 textureId, float tx, float ty, float tw,
-                  float th)
+void CmpAddSprite(int entity_id, int textureId, int tx, int ty, int tw,
+                  int th)
 {
   assert(cid_sprite != -1);
   microECSEntityAddComponent(entity_id, cid_sprite,

@@ -7,14 +7,14 @@
 // Sprite
 typedef struct
 {
-  u16 textureId;
-  float tx, ty, tw, th;
+  uint16_t textureId;
+  int16_t tx, ty, tw, th;
 } CSprite;
 
 extern int cid_sprite;
 void RegisterCSprite();
-void CmpAddSprite(int entity_id, u16 textureId, float tx, float ty, float tw,
-                  float th);
+void CmpAddSprite(int entity_id, int textureId, int tx, int ty, int tw,
+                  int th);
 CSprite *CmpGetSprite(int entity_id);
 
 // Sprite buffer

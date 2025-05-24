@@ -37,7 +37,7 @@ char *backtrace_get();
 #define free(ptr) free_debug(ptr, __FILE__, __LINE__)
 #define assert(condition)                                                      \
   assert_debug(condition, #condition, __FILE__, __LINE__)
-#define assert_log(condition, format, ...)                                        \
+#define assert_log(condition, format, ...)                                     \
   if (!(condition))                                                            \
   {                                                                            \
     printf(format, ##__VA_ARGS__);                                             \

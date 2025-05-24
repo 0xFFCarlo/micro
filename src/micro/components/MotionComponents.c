@@ -2,6 +2,7 @@
 #include "../core/ECS.h"
 #include "../core/Physics.h"
 #include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #define WORLD_ID_MAIN 0
@@ -69,6 +70,8 @@ void FreeCChildrens(void *childrens)
   {
     int child_id = *(int *)vector_back(&cchildrens->childrens);
     vector_pop_back(&cchildrens->childrens);
+    CParent *parent_cmp = CmpGetParent(child_id);
+    parent_cmp->parent_eid = -1; // Clear parent component
     microECSEntityQueueFree(child_id);
   }
 
@@ -103,9 +106,11 @@ void CmpAddChildrens(int entity_id)
 void FreeCParent(void *parent)
 {
   _CParent *cparent = (_CParent *)parent;
+  if (cparent->parent_eid == -1)
+    return; // No parent to free
   _CChildrens *childrens = CmpGetChildrens(cparent->parent_eid);
   assert(childrens != NULL);
-  vector_remove_val(&childrens->childrens, &cparent->parent_eid);
+  vector_remove_val(&childrens->childrens, &cparent->entity_id);
 }
 
 void RegisterCParent()
@@ -122,6 +127,7 @@ void CmpAddParent(int entity_id, int parent_eid)
   microECSEntityAddComponent(entity_id, cid_parent,
                              &(_CParent){
                                .parent_eid = parent_eid,
+                               .entity_id = entity_id,
                              });
   _CChildrens *childrens = CmpGetChildrens(parent_eid);
   if (childrens == NULL)

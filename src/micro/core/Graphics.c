@@ -287,6 +287,7 @@ static const char lightFragmentShaderSrc
        "out vec4 fragColor;\n"
        "void main()\n"
        "{\n"
+       "vec4 _unused = o_texcoord * 0.0;\n"
        "vec2 d = o_uv - vec2(0.5f);\n"
        "float distance = length(d) * 2.0;\n"
        "float lightLevel = 1.0 - smoothstep(1.0, 0.0, distance);\n"

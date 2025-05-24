@@ -54,16 +54,27 @@ void rendering_system_update(float dt)
   for (int i = 0; i < entities.size; i++)
   {
     const int entityId = entities.entityIds[i];
-    
+
     // Check if the entity was removed during the game loop
     if (microECSEntityIsAlive(entityId) == false)
       continue;
-    const CPosition *p = CmpGetPosition(entityId);
+
     const CDrawable *drawable = CmpGetDrawable(entityId);
 
     // Should the entity be drawn?
     if (drawable->visible == false)
       continue;
+
+    const CPosition *p = CmpGetPosition(entityId);
+    double posX = p->x;
+    double posY = p->y;
+
+    if (microECSEntityHasComponent(entityId, cid_parent))
+    {
+      _CParent *parent = (_CParent *)CmpGetParent(entityId);
+      posX += parent->cumulative_x;
+      posY += parent->cumulative_y;
+    }
 
     // Determine if entity is HUD
     const unsigned int entity_hud = microECSEntityHasComponent(entityId,
@@ -110,7 +121,7 @@ void rendering_system_update(float dt)
         color = &(CColor){.r = 255, .g = 255, .b = 255, .a = 255};
 
       microGraphicsDrawSprite(sprite->textureId, sprite->tx, sprite->ty,
-                              sprite->tw, sprite->th, p->x, p->y, t->width,
+                              sprite->tw, sprite->th, posX, posY, t->width,
                               t->height, t->originX, t->originY, t->rotation,
                               color->r, color->g, color->b, color->a);
     }
@@ -149,8 +160,8 @@ void rendering_system_update(float dt)
         originY = transform->originY;
       }
 
-      microGraphicsDrawText(text->fontId, text->text, p->x + originX,
-                            p->y + originY, text->lineSpacing, text->scale,
+      microGraphicsDrawText(text->fontId, text->text, posX + originX,
+                            posY + originY, text->lineSpacing, text->scale,
                             text->alignment, text->maxLineWidth, color->r,
                             color->g, color->b, color->a);
     }

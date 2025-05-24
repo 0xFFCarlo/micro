@@ -321,9 +321,10 @@ void microECSEntityRemoveComponent(int entityId, const int componentTypeId)
 
 void *microECSEntityGetComponent(int entityId, const int componentTypeId)
 {
+  if (microECSEntityHasComponent(entityId, componentTypeId) == 0)
+    return NULL;
 #ifdef DEBUG_MODE
-  if (microECSEntityHasComponent(entityId, componentTypeId) == 0 ||
-      (entities[entityId].state & ENTITY_FREED_MASK) != 0 ||
+  if ((entities[entityId].state & ENTITY_FREED_MASK) != 0 ||
       componentTypeId < 0 || componentTypeId >= MAX_COMPONENTS ||
       entityId < 0 || entityId >= MAX_ENTITIES)
   {
@@ -343,8 +344,7 @@ int microECSEntityHasComponent(int entityId, const int componentTypeId)
 void microECSEntityFreeAll()
 {
   for (unsigned int i = 0; i < entities_len; i++)
-    if (entities[i].state & ENTITY_ALIVE_MASK)
-      microECSEntityFree(i);
+    microECSEntityFree(i);
 }
 
 int microECSComponentRegister(int size, void (*freeComponent)(void *))

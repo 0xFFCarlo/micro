@@ -13,6 +13,7 @@ extern const MicroECSSystem listener_system;
 extern const MicroECSSystem lock_on_view_system;
 extern const MicroECSSystem particles_system;
 extern const MicroECSSystem physics_system;
+extern const MicroECSSystem parent_system;
 extern const MicroECSSystem rendering_system;
 extern const MicroECSSystem shaded_canvas_system;
 extern const MicroECSSystem update_system;

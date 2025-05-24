@@ -576,7 +576,9 @@ void _print_debug(const char *file, const int line, const char *format, ...)
 {
   va_list args;
   va_start(args, format);
-  printf("%s--> %-16s line %-5d   %s", COLOR_CYAN, file, line,
+  const char *filename = strrchr(file, '/');
+  filename = filename ? filename + 1 : file;
+  printf("%s--> %-16s line %-5d   %s", COLOR_CYAN, filename, line,
          COLOR_LIGHT_CYAN);
   vprintf(format, args);
   printf("%s", COLOR_DEFAULT);

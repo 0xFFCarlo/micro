@@ -41,6 +41,7 @@ typedef struct
   int parent_eid;
 
   bool updated;
+  int entity_id;
   double cumulative_x, cumulative_y;
 } _CParent;
 
@@ -56,6 +57,7 @@ typedef struct
 } _CChildrens;
 extern int cid_childrens;
 void RegisterCChildrens();
+_CChildrens *CmpGetChildrens(int entity_id);
 
 // Body
 typedef struct
