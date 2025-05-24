@@ -2,6 +2,7 @@
 #define MOTION_COMPONENTS_H
 
 #include "../util/Types.h"
+#include "../util/vector.h"
 
 // Position
 typedef struct
@@ -27,6 +28,34 @@ void RegisterCTransform();
 void CmpAddTransform(int entity_id, int width, int height, float originX,
                      float originY, float rotation);
 CTransform *CmpGetTransform(int entity_id);
+
+// Parent
+typedef struct
+{
+  int parent_eid;
+} CParent;
+
+// Internal Parent
+typedef struct
+{
+  int parent_eid;
+
+  bool updated;
+  double cumulative_x, cumulative_y;
+} _CParent;
+
+extern int cid_parent;
+void RegisterCParent();
+void CmpAddParent(int entity_id, int parent_eid);
+CParent *CmpGetParent(int entity_id);
+
+// Internal Childrens
+typedef struct
+{
+  Vector childrens;
+} _CChildrens;
+extern int cid_childrens;
+void RegisterCChildrens();
 
 // Body
 typedef struct
@@ -62,21 +91,6 @@ void CmpAddInteractableRect(int entity_id, bool isActor, float width,
                             bool isStatic, bool (*interact)(int, int),
                             void (*on_in_range)(int, int));
 CInteractable *CmpGetInteractable(int entity_id);
-
-// Follow an entity
-typedef struct
-{
-  uint32_t target_entity_id;
-  uint8_t lock_rot;
-  int32_t offset_x;
-  int32_t offset_y;
-} CFollow;
-
-extern int cid_follow;
-void RegisterCFollow();
-void CmpAddFollow(int entity_id, uint32_t target_entity_id, uint8_t lock_rot,
-                  int32_t offset_x, int32_t offset_y);
-CFollow *CmpGetFollow(int entity_id);
 
 void RegisterMotionComponents();
 

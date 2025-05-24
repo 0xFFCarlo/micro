@@ -17,61 +17,12 @@
 #define ENTITY_FREED_MASK 0x2
 
 ////////////////////////////////////
-////// 128-BIT INTEGER TYPE ////////
-////////////////////////////////////
-typedef struct
-{
-  uint64_t low;
-  uint64_t high;
-} uint128_t;
-
-uint128_t uint128_and_op(uint128_t a, uint128_t b)
-{
-  uint128_t result;
-  result.low = a.low & b.low;
-  result.high = a.high & b.high;
-  return result;
-}
-
-void uint128_set_bit(uint128_t *a, int bit_pos, int value)
-{
-  if (bit_pos < 64)
-  {
-    a->low = a->low | (value << bit_pos);
-    return;
-  }
-  a->high = a->high | (value << (bit_pos - 64));
-}
-
-int uint128_get_bit(uint128_t *a, int bit_pos)
-{
-  if (bit_pos < 64)
-    return (a->low >> bit_pos) & 1;
-  return (a->high >> (bit_pos - 64)) & 1;
-}
-
-int uint128_are_bits_set(uint128_t *a, uint128_t *mask)
-{
-  return (a->low & mask->low) == mask->low &&
-         (a->high & mask->high) == mask->high;
-}
-
-uint128_t uint128(unsigned long long val)
-{
-  uint128_t result;
-  result.low = val;
-  result.high = 0;
-  return result;
-}
-
-////////////////////////////////////
 ////// DATA STRUCTURES /////////////
 ////////////////////////////////////
 typedef struct
 {
-  int id;
   uint8_t state;
-  uint128_t components;
+  uint64_t components;
   uint16_t *component_offset;
   void *data;
   void (*free_entity)(int);
@@ -91,9 +42,10 @@ typedef struct
 static component_desc components_types_desc[MAX_COMPONENTS];
 static unsigned int components_types_count = 0;
 static void *components[MAX_COMPONENTS];
+// NOTE: this bounds the number of possibel entities to 2^16 - 1
 static uint16_t components_count[MAX_COMPONENTS];
 static uint16_t components_entity_ref[MAX_COMPONENTS][MAX_ENTITIES];
-static int is_components_data_allocated = 0;
+static bool is_components_data_allocated = false;
 
 // System
 static MicroECSSystem systems[MAX_SYSTEMS];
@@ -103,7 +55,7 @@ static unsigned int systems_count = 0;
 typedef struct
 {
   ecs_entity_list entities;
-  uint128_t componentsMask;
+  uint64_t componentsMask;
   int (*compare)(int, int);
 } ecs_cached_query;
 static ecs_cached_query cached_queries[MAX_QUERIES];
@@ -150,8 +102,7 @@ void microECSQueriesEntityRemoved(int entityId)
   {
     ecs_cached_query *query = &cached_queries[i];
 
-    if (uint128_are_bits_set(&entities[entityId].components,
-                             &query->componentsMask) == 0)
+    if ((entities[entityId].components & query->componentsMask) == 0)
       continue;
 
     for (int j = 0; j < query->entities.size; j++)
@@ -168,15 +119,14 @@ void microECSQueriesEntityRemoved(int entityId)
   }
 }
 
-void microECSQueriesEntityChanged(int entityId, uint128_t old_components)
+static void microECSQueriesEntityChanged(int entityId, uint64_t old_components)
 {
   for (unsigned int i = 0; i < cached_queries_count; i++)
   {
     ecs_cached_query *query = &cached_queries[i];
 
-    int is_in = uint128_are_bits_set(&entities[entityId].components,
-                                     &query->componentsMask);
-    int was_in = uint128_are_bits_set(&old_components, &query->componentsMask);
+    bool is_in = (entities[entityId].components & query->componentsMask) != 0;
+    bool was_in = (old_components & query->componentsMask) != 0;
     if (is_in == was_in)
       continue;
 
@@ -220,12 +170,11 @@ int microECSEntityNew(void *data, void (*free)(int))
     entities_len++;
   }
 
-  entities[id].id = id;
   SETBITS(entities[id].state, ENTITY_ALIVE_MASK);
   CLEARBITS(entities[id].state, ENTITY_FREED_MASK);
   entities[id].free_entity = free;
   entities[id].data = data;
-  entities[id].components = uint128(0); // No components enabled
+  entities[id].components = 0; // No components enabled
   entities[id].component_offset = malloc(sizeof(uint16_t) *
                                          components_types_count);
 
@@ -309,10 +258,10 @@ void microECSEntityAddComponent(int entityId, const int componentTypeId,
 
   // Get component description
   component_desc *cdesc = &components_types_desc[componentTypeId];
-  uint128_t old_components = entities[entityId].components;
+  uint64_t old_components = entities[entityId].components;
 
   // Update entity flags and offsets
-  uint128_set_bit(&entities[entityId].components, componentTypeId, 1);
+  entities[entityId].components |= (1ULL << componentTypeId);
   entities[entityId]
     .component_offset[componentTypeId] = components_count[componentTypeId];
   assert(components_count[componentTypeId] < MAX_ENTITIES);
@@ -334,8 +283,8 @@ void microECSEntityRemoveComponent(int entityId, const int componentTypeId)
   assert(componentTypeId >= 0 && componentTypeId < MAX_COMPONENTS);
 
   // Upadte entity flags
-  uint128_t old_components = entities[entityId].components;
-  uint128_set_bit(&entities[entityId].components, componentTypeId, 0);
+  uint64_t old_components = entities[entityId].components;
+  entities[entityId].components &= ~(1ULL << componentTypeId);
 
   // Free if necesary
   void *component = microECSEntityIndexComponent(entityId, componentTypeId);
@@ -388,7 +337,7 @@ void *microECSEntityGetComponent(int entityId, const int componentTypeId)
 
 int microECSEntityHasComponent(int entityId, const int componentTypeId)
 {
-  return uint128_get_bit(&entities[entityId].components, componentTypeId);
+  return (entities[entityId].components & (1ULL << componentTypeId)) != 0;
 }
 
 void microECSEntityFreeAll()
@@ -398,7 +347,6 @@ void microECSEntityFreeAll()
       microECSEntityFree(i);
 }
 
-// Component
 int microECSComponentRegister(int size, void (*freeComponent)(void *))
 {
   assert(components_types_count < MAX_COMPONENTS);
@@ -469,7 +417,7 @@ int microECSInit()
 
 void microECSAllocateComponents()
 {
-  assert(is_components_data_allocated == 0);
+  assert(is_components_data_allocated == false);
 
   // allocate components vectors
   unsigned int memory_used = 0;
@@ -480,7 +428,7 @@ void microECSAllocateComponents()
     components_count[i] = 0;
     memory_used += component_size * MAX_ENTITIES;
   }
-  is_components_data_allocated = 1;
+  is_components_data_allocated = true;
 
   unsigned long memory = memory_used;
   memory += sizeof(components_count);
@@ -518,25 +466,22 @@ void microECSFree()
     vector_free(&entities_to_remove);
 
   // Free components
-  if (is_components_data_allocated == 1)
+  if (is_components_data_allocated)
   {
     // Free components vectors
     for (unsigned int i = 0; i < components_types_count; i++)
       free(components[i]);
 
-    is_components_data_allocated = 0;
+    is_components_data_allocated = false;
   }
 }
 
 void microECSRun(float dt)
 {
-  // Remove entities that were marked for removal
-  while (entities_to_remove.size)
-  {
-    const int eid = *(int *)vector_back(&entities_to_remove);
-    vector_pop_back(&entities_to_remove);
-    microECSEntityFree(eid);
-  }
+  // Remove entities that were marked for removal, in order
+  for (uint32_t i = 0; i < entities_to_remove.size; i++)
+    microECSEntityFree(*(int *)vector_at(&entities_to_remove, i));
+  vector_clear(&entities_to_remove);
 
   // Update systems
   for (unsigned int i = 0; i < systems_count; i++)
@@ -575,9 +520,12 @@ int microECSCachedQueryCreate(int *componentTypeIds, int size,
     cached_queries_count++;
   }
   ecs_cached_query *query = &cached_queries[query_id];
-  query->componentsMask = uint128(0);
+
+  // Set up mask
+  query->componentsMask = 0;
   for (int i = 0; i < size; i++)
-    uint128_set_bit(&query->componentsMask, componentTypeIds[i], 1);
+    query->componentsMask |= (1ULL << componentTypeIds[i]);
+
   query->entities.entityIds = malloc(sizeof(int) * MAX_ENTITIES);
   query->entities.size = 0;
   query->compare = sort_compare;
@@ -588,7 +536,9 @@ int microECSCachedQueryCreate(int *componentTypeIds, int size,
     if ((entities[i].state & ENTITY_ALIVE_MASK) == 0)
       continue;
 
-    if (uint128_are_bits_set(&entities[i].components, &query->componentsMask))
+    // Check if entity has all components required by the query
+    if ((entities[i].components & query->componentsMask) ==
+        query->componentsMask)
     {
       query->entities.entityIds[query->entities.size] = i;
       query->entities.size++;

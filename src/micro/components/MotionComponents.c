@@ -9,6 +9,8 @@
 
 int cid_position = -1;
 int cid_transform = -1;
+int cid_parent = -1;
+int cid_childrens = -1;
 int cid_body = -1;
 int cid_follow = -1;
 int cid_interactable = -1;
@@ -57,6 +59,82 @@ void CmpAddTransform(int entity_id, int width, int height, float originX,
 CTransform *CmpGetTransform(int entity_id)
 {
   return (CTransform *)microECSEntityGetComponent(entity_id, cid_transform);
+}
+
+void FreeCChildrens(void *childrens)
+{
+  _CChildrens *cchildrens = (_CChildrens *)childrens;
+  // Remove all children entities
+  while (cchildrens->childrens.size > 0)
+  {
+    int child_id = *(int *)vector_back(&cchildrens->childrens);
+    vector_pop_back(&cchildrens->childrens);
+    microECSEntityQueueFree(child_id);
+  }
+
+  // Free vector
+  vector_free(&cchildrens->childrens);
+}
+
+void RegisterCChildrens()
+{
+  cid_childrens = microECSComponentRegister(sizeof(_CChildrens),
+                                            FreeCChildrens);
+}
+
+_CChildrens *CmpGetChildrens(int entity_id)
+{
+  _CChildrens *childrens = (_CChildrens *)
+    microECSEntityGetComponent(entity_id, cid_childrens);
+  return childrens;
+}
+
+void CmpAddChildrens(int entity_id)
+{
+  assert(cid_childrens != -1);
+  _CChildrens *childrens = CmpGetChildrens(entity_id);
+  assert(childrens == NULL);
+  microECSEntityAddComponent(entity_id, cid_childrens,
+                             &(_CChildrens){
+                               .childrens = vector_create(sizeof(int)),
+                             });
+}
+
+void FreeCParent(void *parent)
+{
+  _CParent *cparent = (_CParent *)parent;
+  _CChildrens *childrens = CmpGetChildrens(cparent->parent_eid);
+  assert(childrens != NULL);
+  vector_remove_val(&childrens->childrens, &cparent->parent_eid);
+}
+
+void RegisterCParent()
+{
+  cid_parent = microECSComponentRegister(sizeof(_CParent), FreeCParent);
+}
+
+void CmpAddParent(int entity_id, int parent_eid)
+{
+  assert(entity_id != -1);
+  assert(parent_eid != -1);
+  CParent *parent_cmp = CmpGetParent(entity_id);
+  assert(parent_cmp == NULL);
+  microECSEntityAddComponent(entity_id, cid_parent,
+                             &(_CParent){
+                               .parent_eid = parent_eid,
+                             });
+  _CChildrens *childrens = CmpGetChildrens(parent_eid);
+  if (childrens == NULL)
+  {
+    CmpAddChildrens(parent_eid);
+    childrens = CmpGetChildrens(parent_eid);
+  }
+  vector_push_back(&childrens->childrens, &entity_id);
+}
+
+CParent *CmpGetParent(int entity_id)
+{
+  return (CParent *)microECSEntityGetComponent(entity_id, cid_parent);
 }
 
 void FreeCBody(void *body)
@@ -191,34 +269,12 @@ CInteractable *CmpGetInteractable(int entity_id)
                                                      cid_interactable);
 }
 
-void RegisterCFollow()
-{
-  cid_follow = microECSComponentRegister(sizeof(CFollow), NULL);
-}
-
-void CmpAddFollow(int entity_id, uint32_t target_entity_id, uint8_t lock_rot,
-                  int32_t offset_x, int32_t offset_y)
-{
-  assert(cid_follow != -1);
-  microECSEntityAddComponent(entity_id, cid_follow,
-                             &(CFollow){
-                               .target_entity_id = target_entity_id,
-                               .lock_rot = lock_rot,
-                               .offset_x = offset_x,
-                               .offset_y = offset_y,
-                             });
-}
-
-CFollow *CmpGetFollow(int entity_id)
-{
-  return (CFollow *)microECSEntityGetComponent(entity_id, cid_follow);
-}
-
 void RegisterMotionComponents()
 {
   RegisterCPosition();
   RegisterCTransform();
+  RegisterCParent();
+  RegisterCChildrens();
   RegisterCBody();
   RegisterCInteractable();
-  RegisterCFollow();
 }

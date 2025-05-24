@@ -34,7 +34,11 @@ void vector_pop_back(Vector *vec);
 
 // remove the element at the specified index
 // last element is moved to the position of the removed element
-void vector_remove(Vector *vec, const unsigned int index);
+void vector_remove_at(Vector *vec, const unsigned int index);
+
+// remove the element with the specified value
+// the first occurrence of the value is removed
+void vector_remove_val(Vector *vec, const void *value);
 
 // return the first element
 void *vector_back(Vector *vec);

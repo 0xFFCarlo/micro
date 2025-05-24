@@ -12,7 +12,8 @@ Vector vector_create(unsigned int data_size)
   return vec;
 }
 
-Vector vector_create_with_capacity(unsigned int data_size, unsigned int capacity)
+Vector vector_create_with_capacity(unsigned int data_size,
+                                   unsigned int capacity)
 {
   Vector vec;
   vec.data = malloc(data_size * capacity);
@@ -57,7 +58,7 @@ void vector_pop_back(Vector *vec)
 }
 
 // last element is moved to the index
-void vector_remove(Vector *vec, const unsigned int index)
+void vector_remove_at(Vector *vec, const unsigned int index)
 {
   assert(index < (unsigned int)vec->size);
   if (index < (unsigned int)vec->size - 1)
@@ -68,6 +69,25 @@ void vector_remove(Vector *vec, const unsigned int index)
            vec->data_size);
   }
   vec->size--;
+
+  if (vec->size <= vec->capacity / 4)
+  {
+    // We need to decrease the capacity
+    vec->capacity /= 2;
+    vec->data = realloc(vec->data, vec->data_size * vec->capacity);
+  }
+}
+
+void vector_remove_val(Vector *vec, const void *value)
+{
+  for (unsigned int i = 0; i < vec->size; i++)
+  {
+    if (memcmp((char *)vec->data + i * vec->data_size, value, vec->data_size) !=
+        0)
+      continue;
+    vector_remove_at(vec, i);
+    return; // Remove only the first occurrence
+  }
 }
 
 void *vector_back(Vector *vec)

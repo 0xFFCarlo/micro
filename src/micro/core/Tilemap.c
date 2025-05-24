@@ -501,7 +501,7 @@ static void microTilemapDynamicUpdate(int eid, float dt)
     if (chunk->active_timer <= 0)
     {
       debug_print("Removing chunk: %d, %d\n", chunk->x, chunk->y);
-      vector_remove(&tm->chunks_active, i);
+      vector_remove_at(&tm->chunks_active, i);
       continue;
     }
 

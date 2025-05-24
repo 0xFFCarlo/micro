@@ -5,7 +5,6 @@ int microSystemsUseAll()
 {
   microECSSystemAdd(animation_system);
   microECSSystemAdd(events_system);
-  microECSSystemAdd(follow_system);
   microECSSystemAdd(interaction_system);
   microECSSystemAdd(lifetime_system);
   microECSSystemAdd(light_system);
