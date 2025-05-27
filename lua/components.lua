@@ -26,12 +26,13 @@ ffi.cdef([[
   CSoundSource *CmpGetSoundSource(int entity_id);
 
   // Sprite
-  typedef struct {
+  typedef struct
+  {
     uint16_t textureId;
-    float tx, ty, tw, th;
+    int16_t tx, ty, tw, th;
   } CSprite;
-
-  void CmpAddSprite(int entity_id, uint16_t textureId, float tx, float ty, float tw, float th);
+  void CmpAddSprite(int entity_id, int textureId, int tx, int ty, int tw,
+                    int th);
   CSprite *CmpGetSprite(int entity_id);
 
   // Sprite buffer (Mesh)
