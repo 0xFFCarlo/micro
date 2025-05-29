@@ -489,16 +489,14 @@ void microECSRun(float dt)
       systems[i].update(dt);
 }
 
-int microECSGetDeletedEntitiesCount()
+int microECSGetNextDeletedEntity()
 {
-  return entities_to_remove.size;
-}
+  if (entities_to_remove.size == 0)
+    return -1;
 
-void microECSGetDeletedEntities(int *entities, int *size)
-{
-  *size = entities_to_remove.size;
-  memcpy(entities, entities_to_remove.data,
-         sizeof(int) * entities_to_remove.size);
+  int entityId = *(int *)vector_back(&entities_to_remove);
+  vector_pop_back(&entities_to_remove);
+  return entityId;
 }
 
 ///////////////////////////////////
