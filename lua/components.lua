@@ -181,6 +181,15 @@ ffi.cdef([[
 
   typedef struct
   {
+  } CScriptedUpdate;
+
+  void CmpAddScriptedUpdate(int entity_id);
+  CScriptedUpdate *CmpGetScriptedUpdate(int entity_id);
+  typedef void (*UpdateHandlerType)(int* eids, int count, float dt);
+  void CmpSetScriptedUpdateCb(UpdateHandlerType cb);
+
+  typedef struct
+  {
     float lifetime;
     float max_lifetime;
   } CLifetime;
@@ -418,11 +427,47 @@ end
 --- Adds an update component to an entity.
 --- @param entity_id number The entity identifier.
 --- @param update fun(entity_id:number, delta: number) The update callback.
+Cmp.updateComponents = {}
 function Cmp.addUpdate(entity_id, update)
   assert(type(update) == "function", "update must be a function")
   assert(ECS.isAlive(entity_id), "Entity is not alive")
-	ECS.updateComponents[entity_id + 1] = update
+	Cmp.updateComponents[entity_id] = {}
+	Cmp.updateComponents[entity_id].update = update
+  lib.CmpAddScriptedUpdate(entity_id)
 end
+
+-- Wrap the Lua function in ffi.cast
+local function ScriptedUpdateHandler(eids, count, dt)
+  local eid_array = ffi.cast("int*", eids)
+
+  for _, updateComponent in pairs(Cmp.updateComponents) do
+    updateComponent.is_in_use = false
+  end
+
+  for i = 0, count - 1 do
+    local eid = eid_array[i]
+    local updateComponent = Cmp.updateComponents[eid]
+    updateComponent.is_in_use = true
+    if updateComponent then
+      if ECS.isAlive(eid) and updateComponent.update ~= nil then
+        updateComponent.update(eid, dt)
+        -- print("Updated entity: " .. eid .. " with dt: " .. dt)
+      end
+    end
+  end
+
+  for eid, updateComponent in pairs(Cmp.updateComponents) do
+    if Cmp.updateComponents[eid].is_in_use == false then
+      Cmp.updateComponents[eid] = nil
+    end
+  end
+end
+
+-- Cast Lua function to C function pointer
+Cmp._update_cb = ffi.cast("UpdateHandlerType", ScriptedUpdateHandler)
+
+-- Pass it to C
+lib.CmpSetScriptedUpdateCb(Cmp._update_cb)
 
 --- @class CUpdate
 --- @field update fun()
@@ -435,7 +480,7 @@ end
 --- @param entity_id number The entity identifier.
 --- @return CUpdate A pointer to the update component.
 function Cmp.getUpdate(entity_id)
-	return ECS.updateComponents[entity_id + 1]
+	return Cmp.updateComponents[entity_id]
 end
 
 --- Adds a lifetime component to an entity.

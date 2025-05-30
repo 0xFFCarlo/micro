@@ -46,6 +46,7 @@ static void *components[MAX_COMPONENTS];
 static uint16_t components_count[MAX_COMPONENTS];
 static uint16_t components_entity_ref[MAX_COMPONENTS][MAX_ENTITIES];
 static bool is_components_data_allocated = false;
+static MicroECSNotifyFreedEntitiesCb notify_freed_entities_cb = NULL;
 
 // System
 static MicroECSSystem systems[MAX_SYSTEMS];
@@ -478,7 +479,12 @@ void microECSFree()
 
 void microECSRun(float dt)
 {
-  // Remove entities that were marked for removal, in order
+  // Notify of queue to be freed entities
+  if (notify_freed_entities_cb != NULL && entities_to_remove.size)
+    notify_freed_entities_cb((int *)entities_to_remove.data,
+                             entities_to_remove.size);
+
+  // Remove entities that were marked for removal, fifo
   for (uint32_t i = 0; i < entities_to_remove.size; i++)
     microECSEntityFree(*(int *)vector_at(&entities_to_remove, i));
   vector_clear(&entities_to_remove);
@@ -489,14 +495,9 @@ void microECSRun(float dt)
       systems[i].update(dt);
 }
 
-int microECSGetNextDeletedEntity()
+void microECSSetNotifyFreedEntitiesCb(MicroECSNotifyFreedEntitiesCb cb)
 {
-  if (entities_to_remove.size == 0)
-    return -1;
-
-  int entityId = *(int *)vector_back(&entities_to_remove);
-  vector_pop_back(&entities_to_remove);
-  return entityId;
+  notify_freed_entities_cb = cb;
 }
 
 ///////////////////////////////////

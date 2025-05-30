@@ -3,7 +3,10 @@
 #include <assert.h>
 #include <stdlib.h>
 
+extern void (*scripted_update_callback)(int *eids, int count, float dt);
+
 int cid_update = -1;
+int cid_scripted_update = -1;
 int cid_event_listener = -1;
 int cid_lifetime = -1;
 int cid_entity_category = -1;
@@ -28,6 +31,30 @@ void CmpAddUpdate(int entity_id, void (*update)(int, float))
 CUpdate *CmpGetUpdate(int entity_id)
 {
   return (CUpdate *)microECSEntityGetComponent(entity_id, cid_update);
+}
+
+void RegisterCScriptedUpdate()
+{
+  cid_scripted_update = microECSComponentRegister(sizeof(CScriptedUpdate),
+                                                   NULL);
+}
+
+void CmpAddScriptedUpdate(int entity_id)
+{
+  assert(cid_scripted_update != -1);
+  microECSEntityAddComponent(entity_id, cid_scripted_update,
+                             &(CScriptedUpdate){});
+}
+
+CScriptedUpdate *CmpGetScriptedUpdate(int entity_id)
+{
+  return (CScriptedUpdate *)microECSEntityGetComponent(entity_id,
+                                                       cid_scripted_update);
+}
+
+void CmpSetScriptedUpdateCb(UpdateHandlerType update_callback)
+{
+  scripted_update_callback = update_callback;
 }
 
 void RegisterCEventListener()
@@ -119,11 +146,8 @@ void RegisterCHealth()
 void CmpAddHealth(int eid, unsigned int max, unsigned int current)
 {
   assert(cid_health != -1);
-  microECSEntityAddComponent(eid, cid_health, 
-      &(CHealth){
-      .max = max,
-      .current = current
-      });
+  microECSEntityAddComponent(eid, cid_health,
+                             &(CHealth){.max = max, .current = current});
 }
 
 CHealth *CmpGetHealth(int eid)
@@ -158,6 +182,7 @@ CInteractiveDesc *CmpGetInteractiveDesc(int entity_id)
 void RegisterLogicComponents()
 {
   RegisterCUpdate();
+  RegisterCScriptedUpdate();
   RegisterCEventListener();
   RegisterCLifetime();
   RegisterCEntityCategory();

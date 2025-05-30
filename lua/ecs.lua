@@ -41,16 +41,25 @@ ffi.cdef([[
     // Allocate memory for components.
     void microECSAllocateComponents();
 
-    // Get deleted entity id from last frame, one by one.
-    // Returns -1 if there are no deleted entities.
-    int microECSGetNextDeletedEntity();
+    // Get number of deleted entities
+    int microECSGetDeletedEntitiesCount();
+
+    // Get the list of deleted entities
+    void microECSGetDeletedEntities(int *entities, int* size);
+
+    // Notify freed entities callback type.
+    typedef void (*MicroECSNotifyFreedEntitiesCb)(const int *entities, int entities_count);
+
+    // Set callback to notify which entities where freed
+    // this frame. Can be used from scripting language to
+    // garbage collect extra data.
+    void microECSSetNotifyFreedEntitiesCb(MicroECSNotifyFreedEntitiesCb cb);
 ]])
 
 ---@class ECSModule
 local ECS = {}
 
 ECS.entitiesData = {}
-ECS.updateComponents = {}
 
 --- Creates a new entity.
 --- @param data any|nil Table with the entity data.
@@ -149,27 +158,29 @@ function ECS.allocateComponents()
 	lib.microECSAllocateComponents()
 end
 
-function ECS.getNextDeletedEntity()
-	local eid = lib.microECSGetNextDeletedEntity()
-	if eid == -1 then
-		return nil
-	end
-	return eid
+function ECS.getDeletedEntitiesCount()
+	return lib.microECSGetDeletedEntitiesCount()
 end
 
-function ECS.handleCleanupEntities()
-	local eid = ECS.getNextDeletedEntity()
-	while eid ~= nil do
-		if ECS.entitiesData[eid + 1] ~= nil then
-			local freeCb = ECS.entitiesData[eid + 1].free
-			if freeCb ~= nil then
-				freeCb(eid)
+function ECS.getDeletedEntities()
+	local entities = ffi.new("int[?]", ECS.getDeletedEntitiesCount())
+	local size = ffi.new("int[1]")
+	lib.microECSGetDeletedEntities(entities, size)
+	return entities, size[0]
+end
+
+function ECS._handleCleanupEntities(entities, entities_count)
+	for i = 0, entities_count - 1 do
+		local entityId = entities[i]
+		if ECS.entitiesData[entityId + 1] ~= nil then
+			local freeCb = ECS.entitiesData[entityId + 1].free
+			if freeCb then
+				freeCb(entityId)
 			end
-			ECS.entitiesData[eid + 1] = nil
+			ECS.entitiesData[entityId + 1] = nil
 		end
-		ECS.updateComponents[eid + 1] = nil
-		eid = ECS.getNextDeletedEntity()
 	end
 end
+lib.microECSSetNotifyFreedEntitiesCb(ffi.cast("MicroECSNotifyFreedEntitiesCb", ECS._handleCleanupEntities))
 
 return ECS

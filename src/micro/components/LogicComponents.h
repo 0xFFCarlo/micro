@@ -14,6 +14,18 @@ void RegisterCUpdate();
 void CmpAddUpdate(int entity_id, void (*update)(int, float));
 CUpdate *CmpGetUpdate(int entity_id);
 
+// Scripted Update
+typedef struct
+{
+} CScriptedUpdate;
+
+extern int cid_scripted_update;
+void RegisterCScriptedUpdate();
+void CmpAddScriptedUpdate(int entity_id);
+CScriptedUpdate *CmpGetScriptedUpdate(int entity_id);
+typedef void (*UpdateHandlerType)(int* eids, int count, float dt);
+void CmpSetScriptedUpdateCb(UpdateHandlerType cb);
+
 // EventListener
 typedef struct
 {
@@ -57,14 +69,15 @@ void RegisterCName();
 void CmpAddName(int entity_id, const char *name);
 CName *CmpGetName(int entity_id);
 
-typedef struct CHealth {
-    unsigned int max;
-    unsigned int current;
+typedef struct CHealth
+{
+  unsigned int max;
+  unsigned int current;
 } CHealth;
 extern int cid_health;
 void RegisterCHealth();
 void CmpAddHealth(int eid, unsigned int max, unsigned int current);
-CHealth* CmpGetHealth(int eid);
+CHealth *CmpGetHealth(int eid);
 
 typedef struct
 {

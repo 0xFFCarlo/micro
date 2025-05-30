@@ -94,9 +94,13 @@ void microECSFree();
 // Run all systems.
 void microECSRun(float dt);
 
-// Get deleted entity id from last frame, one by one.
-// Returns -1 if there are no deleted entities.
-int microECSGetNextDeletedEntity();
+// Notify freed entities callback type.
+typedef void (*MicroECSNotifyFreedEntitiesCb)(const int *entities, int entities_count);
+
+// Set callback to notify which entities where freed
+// this frame. Can be used from scripting language to
+// garbage collect extra data.
+void microECSSetNotifyFreedEntitiesCb(MicroECSNotifyFreedEntitiesCb cb);
 
 ////////////////////////////////
 // --- Query ---

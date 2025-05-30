@@ -17,5 +17,6 @@ int microSystemsUseAll()
   microECSSystemAdd(rendering_system);
   microECSSystemAdd(shaded_canvas_system);
   microECSSystemAdd(update_system);
+  microECSSystemAdd(scripted_update_system);
   return 0;
 }
