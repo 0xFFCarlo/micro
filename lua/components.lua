@@ -132,6 +132,15 @@ ffi.cdef([[
   void CmpAddPosition(int entity_id, double x, double y);
   CPosition *CmpGetPosition(int entity_id);
 
+  // Parent
+  typedef struct
+  {
+    int parent_eid;
+  } CParent;
+
+  void CmpAddParent(int entity_id, int parent_eid);
+  CParent *CmpGetParent(int entity_id);
+
   // Transform
   typedef struct
   {
@@ -383,6 +392,16 @@ end
 function Cmp.getPosition(entity_id)
 	local cmp = lib.CmpGetPosition(entity_id)
 	assert(cmp ~= nil, "Position component not found")
+	return cmp
+end
+
+function Cmp.addParent(entity_id, parent_eid)
+	lib.CmpAddParent(entity_id, parent_eid)
+end
+
+function Cmp.getParent(entity_id)
+	local cmp = lib.CmpGetParent(entity_id)
+	assert(cmp ~= nil, "Parent component not found")
 	return cmp
 end
 

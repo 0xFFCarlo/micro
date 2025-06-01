@@ -22,6 +22,10 @@ typedef struct
   int is_simulating;
   Vector to_add;
   Vector to_remove;
+  Vector collision_begins;
+  Vector collision_updates;
+  MicroWorldCollisionsCb collision_callback;
+  MicroWorldBodiesRemovedCb bodies_removed_callback;
   CollisionTileMap collision_maps[COLLISION_MAPS_MAX];
 } World;
 
@@ -49,6 +53,12 @@ cpBool microPhysicsCollisionBegin(cpArbiter *arb, cpSpace *space,
   BodyData *data2 = (BodyData *)cpBodyGetUserData(body2);
   assert(data2 != NULL);
 
+  // Store collision pair
+  const MicroCollisionPair pair = {data1->entityId, data2->entityId};
+  const int worldId = data1->entityId >> WORLD_ID_BIT_SHIFT;
+  World *world = (World *)vector_at(&worlds, worldId);
+  vector_push_back(&world->collision_begins, &pair);
+
   if (data1->collisionBegin)
     data1->collisionBegin(data1->entityId, data2->entityId);
 
@@ -71,6 +81,12 @@ cpBool microPhysicsCollisionUpdate(cpArbiter *arb, cpSpace *space,
   BodyData *data2 = (BodyData *)cpBodyGetUserData(body2);
   assert(data2 != NULL);
 
+  // Store collision pair
+  const MicroCollisionPair pair = {data1->entityId, data2->entityId};
+  const int worldId = data1->entityId >> WORLD_ID_BIT_SHIFT;
+  World *world = (World *)vector_at(&worlds, worldId);
+  vector_push_back(&world->collision_updates, &pair);
+
   if (data1->collisionUpdate)
     data1->collisionUpdate(data1->entityId, data2->entityId);
 
@@ -80,7 +96,8 @@ cpBool microPhysicsCollisionUpdate(cpArbiter *arb, cpSpace *space,
   return cpTrue;
 }
 
-int microPhysicsWorldNew()
+int microPhysicsWorldNew(MicroWorldCollisionsCb collisions_callback,
+                         MicroWorldBodiesRemovedCb bodies_removed_callback)
 {
   if (!worlds_initialized)
   {
@@ -94,6 +111,10 @@ int microPhysicsWorldNew()
     .freed_shapes_id = vector_create(sizeof(int)),
     .to_remove = vector_create(sizeof(int)),
     .to_add = vector_create(sizeof(int)),
+    .collision_begins = vector_create(sizeof(MicroCollisionPair)),
+    .collision_updates = vector_create(sizeof(MicroCollisionPair)),
+    .collision_callback = collisions_callback,
+    .bodies_removed_callback = bodies_removed_callback,
   };
   cpSpaceSetGravity(world.space, cpv(0, 0));
 
@@ -125,6 +146,17 @@ static inline int divfloor(int n, int d)
 void microPhysicsWorldStep(int worldId, float dt)
 {
   World *world = vector_at(&worlds, worldId);
+
+  // Clear collision pairs
+  vector_clear(&world->collision_begins);
+  vector_clear(&world->collision_updates);
+
+  if (world->bodies_removed_callback && world->to_remove.size)
+  {
+    // Call bodies removed callback
+    world->bodies_removed_callback((int *)world->to_remove.data,
+                                   world->to_remove.size);
+  }
 
   // Remove queued shapes
   while (world->to_remove.size)
@@ -233,6 +265,17 @@ void microPhysicsWorldStep(int worldId, float dt)
   cpSpaceStep(world->space, dt);
 
   world->is_simulating = false;
+
+  if (world->collision_callback &&
+      (world->collision_begins.size || world->collision_updates.size))
+  {
+    // Call collision callback
+    world
+      ->collision_callback((MicroCollisionPair *)world->collision_begins.data,
+                           world->collision_begins.size,
+                           (MicroCollisionPair *)world->collision_updates.data,
+                           world->collision_updates.size);
+  }
 }
 
 int microPhysicsWorldsCount()
@@ -243,11 +286,12 @@ int microPhysicsWorldsCount()
 int microPhysicsWorldGetBodyCount(int worldId)
 {
   World *world = vector_at(&worlds, worldId);
-  return world->shapes.size;
+  return world->shapes.size - world->freed_shapes_id.size;
 }
 
 int microPhysicsWorldNewCollisionTilemap(int worldId,
-                                         bool (*is_solid)(const int px, const int py),
+                                         bool (*is_solid)(const int px,
+                                                          const int py),
                                          int tile_size)
 {
   World *world = vector_at(&worlds, worldId);
@@ -290,6 +334,8 @@ void microPhysicsWorldFree(int worldId)
   vector_free(&world->freed_shapes_id);
   vector_free(&world->to_add);
   vector_free(&world->to_remove);
+  vector_free(&world->collision_begins);
+  vector_free(&world->collision_updates);
   World **ws = (World **)worlds.data;
   ws[worldId] = NULL;
 }
@@ -304,7 +350,8 @@ void microPhysicsWorldFreeAll()
 
 int microPhysicsBodyNewCircle(int entityId, int worldId, float cx, float cy,
                               float radius, float mass, uint8_t isStatic,
-                              uint8_t canRotate, float elasticity, float friction)
+                              uint8_t canRotate, float elasticity,
+                              float friction)
 {
   assert(mass != 0.f);
   World *world = vector_at(&worlds, worldId);
@@ -370,8 +417,9 @@ int microPhysicsBodyNewCircle(int entityId, int worldId, float cx, float cy,
 }
 
 int microPhysicsBodyNewRect(int entityId, int worldId, float cx, float cy,
-                            float width, float height, float mass, uint8_t isStatic,
-                            uint8_t canRotate, float elasticity, float friction)
+                            float width, float height, float mass,
+                            uint8_t isStatic, uint8_t canRotate,
+                            float elasticity, float friction)
 {
   assert(mass != 0.f);
   World *world = vector_at(&worlds, worldId);

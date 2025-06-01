@@ -10,8 +10,21 @@ ffi.cdef([[
         float height;
     } MicroAABB;
 
+    typedef struct
+    {
+      int eid_a, eid_b;
+    } MicroCollisionPair;
+
+    typedef void (*MicroWorldCollisionsCb)(MicroCollisionPair *begins,
+                                           int begins_count,
+                                           MicroCollisionPair *updates,
+                                           int updates_count);
+
+    typedef void (*MicroWorldBodiesRemovedCb)(const int *bodyIds, int bodyCount);
+
     // Physics world functions
-    int microPhysicsWorldNew();
+    int microPhysicsWorldNew(MicroWorldCollisionsCb collisions_callback,
+                             MicroWorldBodiesRemovedCb bodies_removed_callback);
     int microPhysicsWorldUseSpatialHash(int worldId, int cell_size, int cell_count);
     void microPhysicsWorldStep(int worldId, float dt);
     int microPhysicsWorldsCount();
@@ -56,10 +69,45 @@ local Physics = {}
 
 -- WORLD FUNCTIONS
 
+function HandleCollisionsCallback(begins, begins_count, updates, updates_count)
+	for i = 0, begins_count - 1 do
+		local pair = begins[i]
+		if Physics._bodies_collision_begin_cb[pair.eid_a] then
+			Physics._bodies_collision_begin_cb[pair.eid_a](pair.eid_b, pair.eid_a)
+		end
+		if Physics._bodies_collision_begin_cb[pair.eid_b] then
+			Physics._bodies_collision_begin_cb[pair.eid_b](pair.eid_a, pair.eid_b)
+		end
+	end
+
+	for i = 0, updates_count - 1 do
+		local pair = updates[i]
+		if Physics._bodies_collision_update_cb[pair.eid_a] then
+			Physics._bodies_collision_update_cb[pair.eid_a](pair.eid_a, pair.eid_b)
+		end
+		if Physics._bodies_collision_update_cb[pair.eid_b] then
+			Physics._bodies_collision_update_cb[pair.eid_b](pair.eid_b, pair.eid_a)
+		end
+	end
+end
+
+function HandleBodiesRemovedCallback(bodyIds, bodyCount)
+	for i = 0, bodyCount - 1 do
+		local bodyId = bodyIds[i]
+		Physics._bodies_collision_begin_cb[bodyId] = nil
+		Physics._bodies_collision_update_cb[bodyId] = nil
+	end
+end
+
+Physics._HandleCollisionsCallback = ffi.cast("MicroWorldCollisionsCb", HandleCollisionsCallback)
+Physics._HandleBodiesRemovedCallback = ffi.cast("MicroWorldBodiesRemovedCb", HandleBodiesRemovedCallback)
+Physics._bodies_collision_begin_cb = {}
+Physics._bodies_collision_update_cb = {}
+
 --- Creates a new physics world.
 --- @return number worldId
 function Physics.worldNew()
-	return lib.microPhysicsWorldNew()
+	return lib.microPhysicsWorldNew(Physics._HandleCollisionsCallback, Physics._HandleBodiesRemovedCallback)
 end
 
 --- Creates a new physics world with a spatial hash.
@@ -181,18 +229,15 @@ end
 --- Sets the collision begin callback for a physics body.
 --- @param bodyId number
 --- @param callback function Callback function: function(body1: number, body2: number):void
-function Physics.bodySetCollisionBeginCallback(bodyId, callback)
-	local c_callback = ffi.cast("void (*)(int, int)", callback)
-	lib.microPhysicsBodySetCollisionBeginCallback(bodyId, c_callback)
-	-- Optionally store c_callback to avoid garbage collection.
+function Physics.bodySetCollisionBeginCallback(entityId, collisionBeginCb)
+	Physics._bodies_collision_begin_cb[entityId] = collisionBeginCb
 end
 
 --- Sets the collision update callback for a physics body.
 --- @param bodyId number
 --- @param callback function Callback function: function(body1: number, body2: number):void
-function Physics.bodySetCollisionUpdateCallback(bodyId, callback)
-	local c_callback = ffi.cast("void (*)(int, int)", callback)
-	lib.microPhysicsBodySetCollisionUpdateCallback(bodyId, c_callback)
+function Physics.bodySetCollisionUpdateCallback(entityId, collisionUpdateCb)
+	Physics._bodies_collision_update_cb[entityId] = collisionUpdateCb
 end
 
 --- Sets the collision tilemap for a physics body.

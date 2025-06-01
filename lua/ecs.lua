@@ -67,6 +67,13 @@ ECS.entitiesData = {}
 --- @return number Entity id.
 function ECS.newEntity(data, freeCb)
 	local id = lib.microECSEntityNew(nil, nil)
+	-- Clean up the previous entity data if it exists.
+	if ECS.entitiesData[id + 1] ~= nil then
+		local existingData = ECS.entitiesData[id + 1].data
+		if existingData and ECS.entitiesData[id + 1].free then
+			ECS.entitiesData[id + 1].free(id)
+		end
+	end
 	ECS.entitiesData[id + 1] = { data = data, free = freeCb }
 	return id
 end

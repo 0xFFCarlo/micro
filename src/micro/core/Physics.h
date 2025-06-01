@@ -3,8 +3,21 @@
 
 #include "../util/Types.h"
 
+typedef struct
+{
+  int eid_a, eid_b;
+} MicroCollisionPair;
+
+typedef void (*MicroWorldCollisionsCb)(MicroCollisionPair *begins,
+                                       int begins_count,
+                                       MicroCollisionPair *updates,
+                                       int updates_count);
+
+typedef void (*MicroWorldBodiesRemovedCb)(const int *bodyIds, int bodyCount);
+
 // Create a new physics world
-int microPhysicsWorldNew();
+int microPhysicsWorldNew(MicroWorldCollisionsCb collisions_callback,
+                         MicroWorldBodiesRemovedCb bodies_removed_callback);
 
 // Create a new physics world with a spatial hash
 int microPhysicsWorldUseSpatialHash(int worldId, int cell_size, int cell_count);
@@ -20,7 +33,8 @@ int microPhysicsWorldGetBodyCount(int worldId);
 
 // Create a new collision tilemap in a physics world
 int microPhysicsWorldNewCollisionTilemap(int worldId,
-                                         bool (*is_solid)(const int px, const int py),
+                                         bool (*is_solid)(const int px,
+                                                          const int py),
                                          int tile_size);
 
 // Free World
@@ -32,12 +46,14 @@ void microPhysicsWorldFreeAll();
 // Create a new physics body with a circle shape and add it to a world
 int microPhysicsBodyNewCircle(int entityId, int worldId, float cx, float cy,
                               float radius, float mass, uint8_t isStatic,
-                              uint8_t canRotate, float elasticity, float friction);
+                              uint8_t canRotate, float elasticity,
+                              float friction);
 
 // Create a new physics body with a rectangle shape and add it to a world
 int microPhysicsBodyNewRect(int entityId, int worldId, float cx, float cy,
-                            float width, float height, float mass, uint8_t isStatic,
-                            uint8_t canRotate, float elasticity, float friction);
+                            float width, float height, float mass,
+                            uint8_t isStatic, uint8_t canRotate,
+                            float elasticity, float friction);
 
 // Set the collision filter of a physics body.
 // Each bit of mask is a category id that the body will collide with.
