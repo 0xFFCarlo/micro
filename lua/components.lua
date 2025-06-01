@@ -259,8 +259,8 @@ end
 
 function Cmp.getSprite(entity_id)
 	local cmp = lib.CmpGetSprite(entity_id)
-  assert(cmp ~= nil, "Sprite component not found")
-  return cmp
+	assert(cmp ~= nil, "Sprite component not found")
+	return cmp
 end
 
 function Cmp.addMesh(entity_id, shaderId, textureId, vertexCount, instanceCount, attributes, attributesCount)
@@ -382,8 +382,8 @@ end
 
 function Cmp.getPosition(entity_id)
 	local cmp = lib.CmpGetPosition(entity_id)
-  assert(cmp ~= nil, "Position component not found")
-  return cmp
+	assert(cmp ~= nil, "Position component not found")
+	return cmp
 end
 
 --- Add a transform component to an entity.
@@ -429,38 +429,38 @@ end
 --- @param update fun(entity_id:number, delta: number) The update callback.
 Cmp.updateComponents = {}
 function Cmp.addUpdate(entity_id, update)
-  assert(type(update) == "function", "update must be a function")
-  assert(ECS.isAlive(entity_id), "Entity is not alive")
+	assert(type(update) == "function", "update must be a function")
+	assert(ECS.isAlive(entity_id), "Entity is not alive")
 	Cmp.updateComponents[entity_id] = {}
 	Cmp.updateComponents[entity_id].update = update
-  lib.CmpAddScriptedUpdate(entity_id)
+	lib.CmpAddScriptedUpdate(entity_id)
 end
 
 -- Wrap the Lua function in ffi.cast
 local function ScriptedUpdateHandler(eids, count, dt)
-  local eid_array = ffi.cast("int*", eids)
+	local eid_array = ffi.cast("int*", eids)
 
-  for _, updateComponent in pairs(Cmp.updateComponents) do
-    updateComponent.is_in_use = false
-  end
+	for _, updateComponent in pairs(Cmp.updateComponents) do
+		updateComponent.is_in_use = false
+	end
 
-  for i = 0, count - 1 do
-    local eid = eid_array[i]
-    local updateComponent = Cmp.updateComponents[eid]
-    updateComponent.is_in_use = true
-    if updateComponent then
-      if ECS.isAlive(eid) and updateComponent.update ~= nil then
-        updateComponent.update(eid, dt)
-        -- print("Updated entity: " .. eid .. " with dt: " .. dt)
-      end
-    end
-  end
+	for i = 0, count - 1 do
+		local eid = eid_array[i]
+		local updateComponent = Cmp.updateComponents[eid]
+		updateComponent.is_in_use = true
+		if updateComponent then
+			if ECS.isAlive(eid) and updateComponent.update ~= nil then
+				updateComponent.update(eid, dt)
+				-- print("Updated entity: " .. eid .. " with dt: " .. dt)
+			end
+		end
+	end
 
-  for eid, updateComponent in pairs(Cmp.updateComponents) do
-    if Cmp.updateComponents[eid].is_in_use == false then
-      Cmp.updateComponents[eid] = nil
-    end
-  end
+	for eid, updateComponent in pairs(Cmp.updateComponents) do
+		if Cmp.updateComponents[eid].is_in_use == false then
+			Cmp.updateComponents[eid] = nil
+		end
+	end
 end
 
 -- Cast Lua function to C function pointer
@@ -495,8 +495,8 @@ end
 --- @return CLifetime A pointer to the lifetime component.
 function Cmp.getLifetime(entity_id)
 	local cmp = lib.CmpGetLifetime(entity_id)
-  assert(cmp ~= nil, "Lifetime component not found")
-  return cmp
+	assert(cmp ~= nil, "Lifetime component not found")
+	return cmp
 end
 
 --- Adds an entity category component.

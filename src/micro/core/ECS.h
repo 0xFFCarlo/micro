@@ -95,7 +95,8 @@ void microECSFree();
 void microECSRun(float dt);
 
 // Notify freed entities callback type.
-typedef void (*MicroECSNotifyFreedEntitiesCb)(const int *entities, int entities_count);
+typedef void (*MicroECSNotifyFreedEntitiesCb)(const int *entities,
+                                              int entities_count);
 
 // Set callback to notify which entities where freed
 // this frame. Can be used from scripting language to
