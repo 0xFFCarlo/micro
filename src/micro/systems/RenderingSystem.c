@@ -129,6 +129,9 @@ void rendering_system_update(float dt)
     // Draw sprite buffer
     if (microECSEntityHasComponent(entityId, cid_mesh))
     {
+      // Draw pending sprites first
+      microGraphicsDisplay();
+
       const CMesh *mesh = CmpGetMesh(entityId);
       microVAODraw(mesh->VAOId);
     }
