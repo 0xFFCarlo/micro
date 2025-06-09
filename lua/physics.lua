@@ -73,10 +73,10 @@ function HandleCollisionsCallback(begins, begins_count, updates, updates_count)
 	for i = 0, begins_count - 1 do
 		local pair = begins[i]
 		if Physics._bodies_collision_begin_cb[pair.eid_a] then
-			Physics._bodies_collision_begin_cb[pair.eid_a](pair.eid_b, pair.eid_a)
+			Physics._bodies_collision_begin_cb[pair.eid_a](pair.eid_a, pair.eid_b)
 		end
 		if Physics._bodies_collision_begin_cb[pair.eid_b] then
-			Physics._bodies_collision_begin_cb[pair.eid_b](pair.eid_a, pair.eid_b)
+			Physics._bodies_collision_begin_cb[pair.eid_b](pair.eid_b, pair.eid_a)
 		end
 	end
 
