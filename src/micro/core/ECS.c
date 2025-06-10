@@ -126,8 +126,11 @@ static void microECSQueriesEntityChanged(int entityId, uint64_t old_components)
   {
     ecs_cached_query *query = &cached_queries[i];
 
-    bool is_in = (entities[entityId].components & query->componentsMask) != 0;
-    bool was_in = (old_components & query->componentsMask) != 0;
+    const bool is_in = (entities[entityId].components &
+                        query->componentsMask) == query->componentsMask;
+    const bool was_in = (old_components & query->componentsMask) ==
+                        query->componentsMask;
+
     if (is_in == was_in)
       continue;
 
