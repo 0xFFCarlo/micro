@@ -11,7 +11,17 @@ static int sprite_system_query = -1;
 static int shader_id = 0;
 static int hud_mode = 0;
 
-int sort_drawables(int a, int b)
+typedef struct
+{
+  Vector entities;
+  bool is_sorted;
+  Vector culled_entities;
+  Vector y_bins[16];
+} draw_layer_t;
+
+static draw_layer_t draw_layers[32] = {0};
+
+inline int compare_drawables(int a, int b)
 {
   const CDrawable *spriteA = CmpGetDrawable(a);
   const CDrawable *spriteB = CmpGetDrawable(b);
@@ -23,6 +33,21 @@ int sort_drawables(int a, int b)
   return tmp;
 }
 
+static void insertion_sort(int arr[], int n)
+{
+  for (int i = 1; i < n; i++)
+  {
+    int key = arr[i];
+    int j = i - 1;
+    while (j >= 0 && compare_drawables(arr[j], key) > 0)
+    {
+      arr[j + 1] = arr[j];
+      j--;
+    }
+    arr[j + 1] = key;
+  }
+}
+
 void renderingSystemSetShader(int shader)
 {
   shader_id = shader;
@@ -32,16 +57,15 @@ void rendering_system_update(float dt)
 {
   (void)(dt); // Unused parameter
 
-  if (sprite_system_query == -1)
-  {
-    int components[2] = {cid_position, cid_drawable};
-    sprite_system_query = microECSCachedQueryCreate(components, 2,
-                                                    sort_drawables);
-  }
-
-  ecs_entity_list entities = microECSCachedQueryRun(sprite_system_query);
-  if (entities.size == 0)
-    return;
+  // TODO:
+  // - clear bins without deallocating
+  // - bin all drawables by layerId
+  // - go through each bin and check which one require Y-sorting
+  // - cull drawables, have a bin for drawables not in viewport which
+  //   do not require Y-sorting, OR Y-bin based on y relative to viewport.y
+  //   if in viewport
+  // - sort each Y-bin by Y using custom insertion sort (no function callback)
+  // - move sorted entities in a single array? Might be nice, just a couple of memcpy
 
   int winWidth, winHeight;
   microSystemGetWindowSize(&winWidth, &winHeight);

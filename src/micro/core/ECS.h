@@ -104,32 +104,4 @@ typedef void (*MicroECSNotifyFreedEntitiesCb)(const int *entities,
 // garbage collect extra data.
 void microECSSetNotifyFreedEntitiesCb(MicroECSNotifyFreedEntitiesCb cb);
 
-////////////////////////////////
-// --- Query ---
-////////////////////////////////
-typedef struct
-{
-  int *entityIds;
-  int size;
-} ecs_entity_list;
-
-// Create new query and return its id.
-int microECSCachedQueryCreate(int *componentTypeIds, int size,
-                              int (*sort_compare)(int, int));
-
-// Free query.
-void microECSCachedQueryFree(int queryId);
-
-// Run query and return list of entities.
-ecs_entity_list microECSCachedQueryRun(int queryId);
-
-// Free all queries.
-void microECSCachedQueryFreeAll();
-
-// Get number of comparisions in sorting queries.
-unsigned int microECSQueriesComparisions();
-
-// Reset number of comparisions in sorting queries.
-void microECSQueriesResetComparisions();
-
 #endif /* end of include guard: ECS_H */
