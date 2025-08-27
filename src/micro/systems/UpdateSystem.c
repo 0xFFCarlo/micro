@@ -16,4 +16,4 @@ static void update_system_update(float dt)
   }
 }
 
-MicroECSSystem update_system = {update_system_update, NULL, NULL};
+MicroECSSystem update_system = {update_system_update, NULL, NULL, NULL};

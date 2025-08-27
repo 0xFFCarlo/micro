@@ -22,8 +22,7 @@ void RegisterCSprite()
   cid_sprite = microECSComponentRegister(sizeof(CSprite), NULL);
 }
 
-void CmpAddSprite(int entity_id, int textureId, int tx, int ty, int tw,
-                  int th)
+void CmpAddSprite(int entity_id, int textureId, int tx, int ty, int tw, int th)
 {
   assert(cid_sprite != -1);
   microECSEntityAddComponent(entity_id, cid_sprite,
@@ -57,8 +56,8 @@ void CmpAddMesh(int entity_id, int shaderId, int textureId, int vertexCount,
                 int attributesCount)
 {
   assert(cid_mesh != -1);
-  u32 vao_id = microVAONew(shaderId, textureId, vertexCount, instanceCount,
-                           attributes, attributesCount);
+  uint32_t vao_id = microVAONew(shaderId, textureId, vertexCount, instanceCount,
+                                attributes, attributesCount);
   microECSEntityAddComponent(entity_id, cid_mesh,
                              &(CMesh){
                                .VAOId = vao_id,
@@ -75,8 +74,8 @@ void RegisterCText()
   cid_text = microECSComponentRegister(sizeof(CText), NULL);
 }
 
-void CmpAddText(int entity_id, u8 fontId, float scale, float lineSpacing,
-                u32 alignment, u32 maxLineWidth, char *text)
+void CmpAddText(int entity_id, uint8_t fontId, float scale, float lineSpacing,
+                uint32_t alignment, uint32_t maxLineWidth, char *text)
 {
   assert(cid_text != -1);
   microECSEntityAddComponent(entity_id, cid_text,
@@ -123,7 +122,7 @@ void RegisterCDrawable()
   cid_drawable = microECSComponentRegister(sizeof(CDrawable), NULL);
 }
 
-void CmpAddDrawable(int entity_id, u8 layerId, bool visible)
+void CmpAddDrawable(int entity_id, uint8_t layerId, bool visible)
 {
   assert(cid_drawable != -1);
   microECSEntityAddComponent(entity_id, cid_drawable,

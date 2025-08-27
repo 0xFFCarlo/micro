@@ -26,4 +26,4 @@ static void listener_system_update(float dt)
   microListenerSetMaxDistance(listener->max_distance);
 }
 
-MicroECSSystem listener_system = {listener_system_update, NULL, NULL};
+MicroECSSystem listener_system = {listener_system_update, NULL, NULL, NULL};

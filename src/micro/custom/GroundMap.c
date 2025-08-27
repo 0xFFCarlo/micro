@@ -220,10 +220,10 @@ int GroundMapNew(int textureId, float tx, float ty, float tw, int tileTexSize,
   tile_shader_attrs[3].vbo_id = microVBONew(1 * sizeof(int), MICRO_STATIC_DRAW,
                                             NULL);
   tile_shader_attrs[3].divisor = width * height;
-  tile_shader_attrs[4].vbo_id = microVBONew(4 * sizeof(u32) * tm->width *
+  tile_shader_attrs[4].vbo_id = microVBONew(4 * sizeof(uint32_t) * tm->width *
                                               tm->height,
                                             MICRO_STATIC_DRAW, NULL);
-  tile_shader_attrs[5].vbo_id = microVBONew(4 * sizeof(u32) * tm->width *
+  tile_shader_attrs[5].vbo_id = microVBONew(4 * sizeof(uint32_t) * tm->width *
                                               tm->height,
                                             MICRO_STATIC_DRAW, NULL);
   CmpAddMesh(tm->entityId, tilemap_shader_id, textureId, 6,

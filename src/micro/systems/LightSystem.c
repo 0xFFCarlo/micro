@@ -27,4 +27,4 @@ static void light_system_update(float dt)
   microLightsUpdateTexture();
 }
  
-MicroECSSystem light_system = {light_system_update, NULL, NULL};
+MicroECSSystem light_system = {light_system_update, NULL, NULL, NULL};

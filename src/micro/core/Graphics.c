@@ -1,5 +1,3 @@
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_video.h>
 #if defined(__linux__)
 // #include <GLES3/gl.h>
 // #include <GL/glu.h>
@@ -14,8 +12,10 @@
 #include <dirent.h>
 #include <math.h>
 
+#include "../util/mat.h"
 #include "../util/vector.h"
 #include "Graphics.h"
+#include "System.h"
 
 #define STB_RECT_PACK_IMPLEMENTATION
 #include "stb/stb_rect_pack.h"
@@ -188,11 +188,11 @@ typedef struct microParticleEmitter
   MicroParticle (*particleGenerator)(int);
 
   float emissionTimer;
-  Vector particles;
-  Vector freeParticles;
+  MicroParticle *particles;
+  int *freeParticles;
 } microParticleEmitter;
-static Vector microParticleEmitters;
-static Vector microFreedParticleEmitters;
+static microParticleEmitter *microParticleEmitters;
+static int *microFreedParticleEmitters;
 static unsigned int microTotalParticles = 0;
 
 typedef struct
@@ -214,7 +214,7 @@ typedef struct MicroVAO
   uint32_t draw_indirect_buf_id;
   DrawCommand drawCmd;
 } MicroVAO;
-static Vector microVAOs;
+static MicroVAO *microVAOs;
 
 static const int vao_draw_modes[] = {GL_STATIC_DRAW, GL_DYNAMIC_DRAW,
                                      GL_STREAM_DRAW};
@@ -298,8 +298,6 @@ static int defaultShaderId = -1;
 static int lightShaderId = -1;
 
 // renderer buffers and states
-static SDL_GLContext *context = NULL;
-static SDL_Window *window = NULL;
 static const float sprites_vertex_buf[6 * 2] = {0, 0, 1, 0, 0, 1,
                                                 1, 0, 1, 1, 0, 1};
 static float sprites_pos_buf[MICRO_SPRITES_BUFFER_SIZE * 2];
@@ -312,13 +310,10 @@ static int defaultVAOId = -1;
 static RenderingDebugInfo debugInfo;
 
 // current view state
-float viewViewportX, viewViewportY, viewViewportW, viewViewportH;
-float viewCenterX, viewCenterY;
-float viewWidth, viewHeight;
-float viewRotation;
-float viewMatrix[16];
-int viewFlipY = 0;
-int viewUpdated = 0;
+static MicroView view;
+static MicroView3d view3d;
+static float viewMatrix[16];
+static bool viewUpdated = false;
 
 ////////////////////////////
 // Resources management
@@ -2110,12 +2105,12 @@ void microLightsUpdateTexture()
 
   // SDL get winwdow size
   int w, h;
-  SDL_GetWindowSize(window, &w, &h);
+  microSystemGetWindowSize(&w, &h);
 
   microGraphicsRenderToCanvas(lightsCanvasId);
   glViewport(0, 0, w, h);
   microShaderApply(lightShaderId);
-  MicroVAO *defaultVAO = vector_at(&microVAOs, defaultVAOId);
+  MicroVAO *defaultVAO = &microVAOs[defaultVAOId];
   defaultVAO->shaderId = lightShaderId;
   glBlendFunc(GL_ONE, GL_ONE);
   // glBlendEquation(GL_FUNC_ADD);
@@ -2183,33 +2178,17 @@ float microLightsGetAmbientIntensity()
 ///////////////////////////
 int microGraphicsInit()
 {
-  if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
-  {
-    debug_print("Failed to initialize th SDL2 library\n");
-    return -1;
-  }
+#if defined(__linux__)
+  GLenum err = glewInit();
+  if (err != GLEW_OK)
+    exit(1);
+  else
+    debug_print("GLEW version: %s\n", glewGetString(GLEW_VERSION));
+#endif
 
-  SDL_DisplayMode DM;
-  SDL_GetCurrentDisplayMode(0, &DM);
-  const unsigned int screenWidth = DM.w;
-  const unsigned int screenHeight = DM.h;
-
-  // create window and opengl context
-  window = SDL_CreateWindow("micro", SDL_WINDOWPOS_CENTERED,
-                            SDL_WINDOWPOS_CENTERED, screenWidth, screenHeight,
-                            SDL_WINDOW_FULLSCREEN | SDL_WINDOW_OPENGL |
-                              SDL_WINDOW_SHOWN | SDL_WINDOW_INPUT_FOCUS);
-
-  // Set fullscreen
-  SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
-  // SDL_SetWindowFullscreen(window, 0);  // Switches to windowed mode
-  SDL_MaximizeWindow(window);
-
-  if (!window)
-  {
-    debug_print("Failed to create the window\n");
-    return -1;
-  }
+  char *glVersion = (char *)glGetString(GL_VERSION);
+  if (glVersion)
+    debug_print("OpenGL version: %s\n", glVersion);
 
   // clear memory allocations
   for (int j = 0; j < RESOURCE_COUNT; j++)
@@ -2232,41 +2211,8 @@ int microGraphicsInit()
     microFonts[i].textureId = -1;
   for (int i = 0; i < MICRO_MAX_ATLASES; i++)
     microAtlases[i].textureId = -1;
-  microParticleEmitters = vector_create(sizeof(microParticleEmitter));
-  microFreedParticleEmitters = vector_create(sizeof(int));
-
-  // Set OpenGL version
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-
-  // Initilize Opengl
-  context = SDL_GL_CreateContext(window);
-  if (context == NULL)
-  {
-    debug_print("Couldn't create OpenGL context\n");
-    return -1;
-  }
-
-  char *glVersion = (char *)glGetString(GL_VERSION);
-  if (glVersion)
-    debug_print("OpenGL version: %s\n", glVersion);
-
-#if defined(__linux__)
-  GLenum err = glewInit();
-  if (err != GLEW_OK)
-    exit(1);
-  else
-    debug_print("GLEW version: %s\n", glewGetString(GLEW_VERSION));
-#endif
-
-  // Set VSYNC, try adaptive first and if not supported, use normal vsync
-  if (SDL_GL_SetSwapInterval(-1) == -1)
-  {
-    if (SDL_GL_SetSwapInterval(1) == -1)
-      printf("Unable to set VSYNC! SDL Error: %s\n", SDL_GetError());
-  }
-  // SDL_GL_SetSwapInterval(0);
+  microParticleEmitters = vec_new(sizeof(microParticleEmitter));
+  microFreedParticleEmitters = vec_new(sizeof(int));
 
   // Load base shader
   defaultShaderId = microShaderLoadFromSource("micro_sprite_shader",
@@ -2275,7 +2221,7 @@ int microGraphicsInit()
   assert(defaultShaderId != -1);
 
   // Setup sprite buffers vector
-  microVAOs = vector_create(sizeof(MicroVAO));
+  microVAOs = vec_new(sizeof(MicroVAO));
 
   // Clear
   glClear(GL_COLOR_BUFFER_BIT);
@@ -2316,7 +2262,7 @@ int microGraphicsInit()
                              sizeof(default_attrs) /
                                sizeof(MicroAttributeData));
   assert(defaultVAOId != -1);
-  MicroVAO *defaultVAO = vector_at(&microVAOs, defaultVAOId);
+  MicroVAO *defaultVAO = &microVAOs[defaultVAOId];
   defaultVAO->drawCmd.start = 0;
   defaultVAO->drawCmd.count = 6;
   defaultVAO->drawCmd.instanceCount = 0;
@@ -2330,6 +2276,8 @@ int microGraphicsInit()
   GL_CHECK_ERRORS();
 
   // Setup lights canvas
+  int screenWidth, screenHeight;
+  microSystemGetWindowSize(&screenWidth, &screenHeight);
   lightsCanvasId = microCanvasCreate(screenWidth, screenHeight);
 
   debug_print("microGraphics allocated %d kb\n",
@@ -2360,15 +2308,9 @@ void microGraphicsQuit()
   microFontFreeAll();
   microParticleEmitterRemoveAll();
 
-  vector_free(&microParticleEmitters);
-  vector_free(&microFreedParticleEmitters);
-  vector_free(&microVAOs);
-
-  // Delete context
-  SDL_GL_DeleteContext(context);
-  // Causes crash sometimes
-  SDL_DestroyWindow(window);
-  SDL_Quit();
+  vec_free(microParticleEmitters);
+  vec_free(microFreedParticleEmitters);
+  vec_free(microVAOs);
 }
 
 void microGraphicsClear()
@@ -2385,7 +2327,7 @@ void microGraphicsRenderToScreen()
 {
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   int windowWidth, windowHeight;
-  SDL_GetWindowSize(window, &windowWidth, &windowHeight);
+  microSystemGetWindowSize(&windowWidth, &windowHeight);
   glViewport(0, 0, windowWidth, windowHeight);
   GL_CHECK_ERRORS();
 }
@@ -2401,7 +2343,7 @@ void microGraphicsRenderToCanvas(int canvasId)
 
 void microGraphicsDisplay()
 {
-  MicroVAO *defaultVAO = vector_at(&microVAOs, defaultVAOId);
+  MicroVAO *defaultVAO = &microVAOs[defaultVAOId];
   if (defaultVAO->drawCmd.instanceCount == 0)
     return;
   assert(defaultVAO->drawCmd.instanceCount <= MICRO_SPRITES_BUFFER_SIZE);
@@ -2495,22 +2437,22 @@ int microVAONew(int shaderId, int textureId, int vertexCount,
   glBindVertexArray(0);
 
   // Find a spot to store the VAO
-  for (size_t i = 0; i < microVAOs.size; i++)
+  for (size_t i = 0; i < vec_len(microVAOs); i++)
   {
-    MicroVAO *va = vector_at(&microVAOs, i);
+    MicroVAO *va = &microVAOs[i];
     if (va->vao_id != -1)
       continue;
     memcpy(va, &vao, sizeof(MicroVAO));
     return i;
   }
-  vector_push_back(&microVAOs, &vao);
-  return microVAOs.size - 1;
+  vec_append(microVAOs, &vao);
+  return vec_len(microVAOs) - 1;
 }
 
 void microVAOSubmit(int vaoId, const char *attribute_name, const void *data,
                     int start, int count)
 {
-  MicroVAO *vao = vector_at(&microVAOs, vaoId);
+  MicroVAO *vao = &microVAOs[vaoId];
   assert(vao->attr_count < MICRO_MAX_ATTRIBUTES);
   for (int i = 0; i < vao->attr_count; i++)
   {
@@ -2536,7 +2478,7 @@ void microVAOSubmit(int vaoId, const char *attribute_name, const void *data,
 
 void microVAODraw(int vaoId)
 {
-  MicroVAO *vao = vector_at(&microVAOs, vaoId);
+  MicroVAO *vao = &microVAOs[vaoId];
   if (vao->drawCmd.count == 0)
     return;
 
@@ -2611,7 +2553,7 @@ void microVAODraw(int vaoId)
 void microVAOSetDrawRange(int vaoId, int start, int count, int instancesCount,
                           int baseInstance)
 {
-  MicroVAO *vao = vector_at(&microVAOs, vaoId);
+  MicroVAO *vao = &microVAOs[vaoId];
   vao->drawCmd.start = start;
   vao->drawCmd.count = count;
   vao->drawCmd.instanceCount = instancesCount;
@@ -2625,7 +2567,7 @@ void microVAOSetDrawRange(int vaoId, int start, int count, int instancesCount,
 
 void microVAOFree(int vaoId)
 {
-  MicroVAO *vao = vector_at(&microVAOs, vaoId);
+  MicroVAO *vao = &microVAOs[vaoId];
   GLuint vao_id = vao->vao_id;
   glDeleteVertexArrays(1, &vao_id);
   for (int i = 0; i < vao->attr_count; i++)
@@ -2678,7 +2620,7 @@ void microGraphicsDrawSprite(int textureId, float tx, float ty, float tw,
                              unsigned char r, unsigned char g, unsigned char b,
                              unsigned char a)
 {
-  MicroVAO *defaultVAO = vector_at(&microVAOs, defaultVAOId);
+  MicroVAO *defaultVAO = &microVAOs[defaultVAOId];
   int glTextureId = 0;
   if (textureId >= 0)
     glTextureId = microTextures[textureId].id;
@@ -2952,32 +2894,21 @@ void microGraphicsDrawText(int fontId, const char *text, float x, float y,
 // VIEW
 void microViewSet(MicroView view)
 {
-  viewViewportX = view.viewportX;
-  viewViewportY = view.viewportY;
-  viewViewportW = view.viewportWidth;
-  viewViewportH = view.viewportHeight;
-  viewCenterX = view.centerX;
-  viewCenterY = view.centerY;
-  viewWidth = view.width;
-  viewHeight = view.height;
-  viewRotation = view.rotation;
-  viewFlipY = (view.flipY > 0);
-  viewUpdated = 0;
+  view.viewportX = view.viewportX;
+  view.viewportY = view.viewportY;
+  view.viewportWidth = view.viewportWidth;
+  view.viewportHeight = view.viewportHeight;
+  view.centerX = view.centerX;
+  view.centerY = view.centerY;
+  view.width = view.width;
+  view.height = view.height;
+  view.rotation = view.rotation;
+  view.flipY = (view.flipY > 0);
+  viewUpdated = false;
 }
 
 MicroView microViewGet()
 {
-  MicroView view;
-  view.viewportX = viewViewportX;
-  view.viewportY = viewViewportY;
-  view.viewportWidth = viewViewportW;
-  view.viewportHeight = viewViewportH;
-  view.centerX = viewCenterX;
-  view.centerY = viewCenterY;
-  view.width = viewWidth;
-  view.height = viewHeight;
-  view.rotation = viewRotation;
-  view.flipY = viewFlipY;
   return view;
 }
 
@@ -2986,21 +2917,21 @@ void microViewApply()
   if (!viewUpdated)
   {
     float NCenterX, NCenterY;
-    NCenterX = floor(viewCenterX);
-    NCenterY = floor(viewCenterY);
+    NCenterX = floor(view.centerX);
+    NCenterY = floor(view.centerY);
 
     // Rotation components
-    float angle = viewRotation;
+    float angle = view.rotation;
     float cosine = cosf(angle);
     float sine = sinf(angle);
     float tx = -NCenterX * cosine - NCenterY * sine + NCenterX;
     float ty = NCenterX * sine - NCenterY * cosine + NCenterY;
 
     // Projection components
-    float a = 2.f / viewWidth;
-    float b = viewFlipY
-                ? 2.f / viewHeight
-                : -2.f / viewHeight; // Change the sign of b based on flipY
+    float a = 2.f / view.width;
+    float b = view.flipY
+                ? 2.f / view.height
+                : -2.f / view.height; // Change the sign of b based on flipY
     float c = -a * NCenterX;
     float d = -b * NCenterY;
 
@@ -3028,9 +2959,10 @@ void microViewApply()
     viewMatrix[15] = 1.f;
 
     // Set viewport
-    glViewport(viewViewportX, viewViewportY, viewViewportW, viewViewportH);
+    glViewport(view.viewportX, view.viewportY, view.viewportWidth,
+               view.viewportHeight);
 
-    viewUpdated = 1;
+    viewUpdated = true;
   }
 
   // Apply view
@@ -3038,104 +2970,104 @@ void microViewApply()
     microShaderSetMatrix4("u_view", viewMatrix);
 }
 
-void microViewFlipY(int flipY)
+void microViewFlipY(bool flipY)
 {
-  viewFlipY = (flipY > 0);
-  viewUpdated = 0;
+  view.flipY = flipY;
+  viewUpdated = false;
 }
 
 void microViewSetViewport(float x, float y, float width, float height)
 {
-  viewViewportX = x;
-  viewViewportY = y;
-  viewViewportW = width;
-  viewViewportH = height;
-  viewUpdated = 0;
+  view.viewportX = x;
+  view.viewportY = y;
+  view.viewportWidth = width;
+  view.viewportHeight = height;
+  viewUpdated = false;
 }
 
 void microViewSetCenter(float x, float y)
 {
-  viewCenterX = x;
-  viewCenterY = y;
-  viewUpdated = 0;
+  view.centerX = x;
+  view.centerY = y;
+  viewUpdated = false;
 }
 
 void microViewSetSize(float width, float height)
 {
-  viewWidth = width;
-  viewHeight = height;
-  viewUpdated = 0;
+  view.width = width;
+  view.height = height;
+  viewUpdated = false;
 }
 
 void microViewSetRotation(float rotation)
 {
-  viewRotation = rotation;
-  viewUpdated = 0;
+  view.rotation = rotation;
+  viewUpdated = false;
 }
 
 void microViewGetCenter(float *centerX, float *centerY)
 {
-  *centerX = viewCenterX;
-  *centerY = viewCenterY;
+  *centerX = view.centerX;
+  *centerY = view.centerY;
 }
 
 void microViewGetSize(float *width, float *height)
 {
-  *width = viewWidth;
-  *height = viewHeight;
+  *width = view.width;
+  *height = view.height;
 }
 
 float microViewGetRotation()
 {
-  return viewRotation;
+  return view.rotation;
 }
 
 void microViewGetViewport(float *width, float *height)
 {
-  *width = viewViewportW;
-  *height = viewViewportH;
+  *width = view.viewportWidth;
+  *height = view.viewportHeight;
 }
 
 void microViewPointWorldToScreen(float x, float y, float *outX, float *outY)
 {
   // 1. Translate to the view's local coordinate system (center becomes
   // origin)
-  x -= viewCenterX;
-  y -= viewCenterY;
+  x -= view.centerX;
+  y -= view.centerY;
 
   // 2. Rotate around the (new) origin
-  const float angle = -viewRotation;
+  const float angle = -view.rotation;
   const float cosine = cosf(angle);
   const float sine = sinf(angle);
   float tx = x * cosine - y * sine;
   float ty = x * sine + y * cosine;
 
   // 3. Scale (if required)
-  const float scaleX = viewViewportW / viewWidth;
-  const float scaleY = viewViewportH / viewHeight;
+  const float scaleX = view.viewportWidth / view.width;
+  const float scaleY = view.viewportHeight / view.height;
   tx *= scaleX;
   ty *= scaleY;
 
   // 4. Translate to screen coordinates (from the origin to the center of the
   // viewport)
-  *outX = tx + viewViewportW / 2;
-  *outY = ty + viewViewportH / 2;
+  *outX = tx + view.viewportWidth / 2;
+  *outY = ty + view.viewportHeight / 2;
 }
 
 void microViewPointScreenToWorld(float x, float y, float *outX, float *outY)
 {
   // 1. Inverse Translation to the origin
-  x -= viewViewportW / 2;
-  y -= viewViewportH / 2;
+  x -= view.viewportWidth / 2;
+  y -= view.viewportHeight / 2;
 
   // 2. Inverse Scaling
-  const float invScaleX = viewWidth / viewViewportW;
-  const float invScaleY = viewHeight / viewViewportH;
+  const float invScaleX = view.width / view.viewportWidth;
+  const float invScaleY = view.height / view.viewportHeight;
   x *= invScaleX;
   y *= invScaleY;
 
   // 3. Inverse Rotation
-  const float angle = -viewRotation;
+  const float angle = -view.rotation;
   const float cosine = cosf(angle);
   const float sine = sinf(angle);
   float tx = x * cosine +
@@ -3144,8 +3076,173 @@ void microViewPointScreenToWorld(float x, float y, float *outX, float *outY)
              y * cosine; // Note: inverse rotation uses - for sine in y
 
   // 4. Inverse centering translation
-  *outX = tx + viewCenterX;
-  *outY = ty + viewCenterY;
+  *outX = tx + view.centerX;
+  *outY = ty + view.centerY;
+}
+
+static void proj_perspective_gl_rh(float m[16], float fovY, float aspect,
+                                   float zn, float zf, int flipY)
+{
+  mat4_identity(m);
+  float f = 1.0f / tanf(0.5f * fovY);
+  m[MIDX(0, 0)] = f / (aspect > 0 ? aspect : 1.0f);
+  m[MIDX(1, 1)] = f;
+  m[MIDX(2, 2)] = (zf + zn) / (zn - zf);
+  m[MIDX(2, 3)] = -1.0f;
+  m[MIDX(3, 2)] = (2.0f * zf * zn) / (zn - zf);
+  m[MIDX(3, 3)] = 0.0f;
+  if (flipY)
+    m[MIDX(1, 1)] = -m[MIDX(1, 1)];
+}
+
+static void proj_ortho_gl_rh(float m[16], float width, float height, float zn,
+                             float zf, int flipY)
+{
+  mat4_identity(m);
+  float l = -0.5f * width, r = 0.5f * width;
+  float b = -0.5f * height, t = 0.5f * height;
+  m[MIDX(0, 0)] = 2.0f / (r - l);
+  m[MIDX(1, 1)] = 2.0f / (t - b);
+  m[MIDX(2, 2)] = -2.0f / (zf - zn);
+  m[MIDX(3, 0)] = -(r + l) / (r - l);
+  m[MIDX(3, 1)] = -(t + b) / (t - b);
+  m[MIDX(3, 2)] = -(zf + zn) / (zf - zn);
+  if (flipY)
+    m[MIDX(1, 1)] = -m[MIDX(1, 1)];
+}
+
+void microView3dSet(MicroView3d view)
+{
+  view3d = view;
+  viewUpdated = false;
+}
+
+MicroView3d microView3dGet()
+{
+  return view3d;
+}
+
+void microView3dApply()
+{
+}
+
+void microView3dSetPosition(float x, float y, float z)
+{
+  view3d.position[0] = x;
+  view3d.position[1] = y;
+  view3d.position[2] = z;
+  viewUpdated = false;
+}
+
+void microView3dSetOrientation(float x, float y, float z, float w)
+{
+  view3d.orientation[0] = x;
+  view3d.orientation[1] = y;
+  view3d.orientation[2] = z;
+  view3d.orientation[3] = w;
+  viewUpdated = false;
+}
+
+void microView3dLookAt(float eyeX, float eyeY, float eyeZ, float targetX,
+                       float targetY, float targetZ, float upX, float upY,
+                       float upZ)
+{
+  vec3_set(view3d.position, eyeX, eyeY, eyeZ);
+  float eye[3] = {eyeX, eyeY, eyeZ}, tgt[3] = {targetX, targetY, targetZ},
+        up[3] = {upX, upY, upZ};
+  float fwd[3];
+  vec3_sub(fwd, tgt, eye);
+  vec3_norm(fwd, fwd); // world forward (where camera looks)
+  float zcol[3] = {-fwd[0], -fwd[1], -fwd[2]}; // camera -Z in world
+  float xcol[3];
+  vec3_cross(xcol, up, zcol);
+  vec3_norm(xcol, xcol); // camera +X in world
+  float ycol[3];
+  vec3_cross(ycol, zcol, xcol); // camera +Y in world
+  quat_from_rotation_matrix_cols(view3d.orientation, xcol, ycol, zcol);
+}
+
+void microView3dSetPerspective(float fovY, float nearZ, float farZ)
+{
+  view3d.fovY = fovY;
+  view3d.nearZ = nearZ;
+  view3d.farZ = farZ;
+  view3d.projectionType = VIEW_PERSPECTIVE;
+}
+
+void microView3dSetOrthographic(float width, float height, float nearZ,
+                                float farZ)
+{
+  view3d.orthoWidth = width;
+  view3d.orthoHeight = height;
+  view3d.nearZ = nearZ;
+  view3d.farZ = farZ;
+  view3d.projectionType = VIEW_ORTHOGRAPHIC;
+}
+
+void microView3dFlyMoveLocal(float dx, float dy, float dz)
+{
+  float xcol[3], ycol[3], zcol[3];
+  quat_to_mat3_cols(view3d.orientation, xcol, ycol, zcol);
+  float move[3] = {xcol[0] * dx + ycol[0] * dy + (-zcol[0]) * dz,
+                   xcol[1] * dx + ycol[1] * dy + (-zcol[1]) * dz,
+                   xcol[2] * dx + ycol[2] * dy + (-zcol[2]) * dz};
+  view3d.position[0] += move[0];
+  view3d.position[1] += move[1];
+  view3d.position[2] += move[2];
+}
+
+void microView3dFlyRotate(float dYaw, float dPitch, float dRoll)
+{
+  // yaw about world +Y
+  if (dYaw != 0.0f)
+  {
+    float axisY[3] = {0, 1, 0}, qy[4];
+    quat_from_axis_angle(qy, axisY, dYaw);
+    float out[4];
+    quat_mul(out, qy, view3d.orientation);
+    memcpy(view3d.orientation, out, sizeof(out));
+  }
+  // pitch about camera local +X
+  if (dPitch != 0.0f)
+  {
+    float xcol[3], ycol[3], zcol[3];
+    quat_to_mat3_cols(view3d.orientation, xcol, ycol, zcol);
+    float qx[4];
+    quat_from_axis_angle(qx, xcol, dPitch);
+    float out[4];
+    quat_mul(out, qx, view3d.orientation);
+    memcpy(view3d.orientation, out, sizeof(out));
+  }
+  // roll about camera local -Z forward axis
+  if (dRoll != 0.0f)
+  {
+    float xcol[3], ycol[3], zcol[3];
+    quat_to_mat3_cols(view3d.orientation, xcol, ycol, zcol);
+    float fwd[3] = {-zcol[0], -zcol[1], -zcol[2]};
+    float qz[4];
+    quat_from_axis_angle(qz, fwd, dRoll);
+    float out[4];
+    quat_mul(out, qz, view3d.orientation);
+    memcpy(view3d.orientation, out, sizeof(out));
+  }
+  quat_normalize(view3d.orientation);
+}
+
+void microView3dGetView(float out16[16])
+{
+  if (out16)
+    memcpy(out16, view3d.view, 16 * sizeof(float));
+}
+void microView3dGetProj(float out16[16])
+{
+  if (out16)
+    memcpy(out16, view3d.proj, 16 * sizeof(float));
+}
+void microView3dGetViewProj(float out16[16])
+{
+  if (out16)
+    memcpy(out16, view3d.viewProj, 16 * sizeof(float));
 }
 
 RenderingDebugInfo microGetRenderingDebugInfo()
@@ -3161,11 +3258,6 @@ void microRenderingDebugInfoClear()
   debugInfo.textureSwitches = 0;
   debugInfo.shaderSwitches = 0;
   debugInfo.bytesSent = 0;
-}
-
-void microSwapBuffers()
-{
-  SDL_GL_SwapWindow(window);
 }
 
 static uint64_t lastTime = 0;
@@ -3214,8 +3306,8 @@ int microParticleEmitterCreateSteady(int x, int y, float emissionRate,
 {
   // Create emitter
   microParticleEmitter newEmitter;
-  newEmitter.particles = vector_create(sizeof(MicroParticle));
-  newEmitter.freeParticles = vector_create(sizeof(int));
+  newEmitter.particles = vec_new(sizeof(MicroParticle));
+  newEmitter.freeParticles = vec_new(sizeof(int));
   newEmitter.particleGenerator = generationFunc;
   newEmitter.emitterType = MICRO_EMITTER_STEADY;
   newEmitter.emissionTimer = 0;
@@ -3226,18 +3318,18 @@ int microParticleEmitterCreateSteady(int x, int y, float emissionRate,
   newEmitter.y = y;
 
   int spot = -1;
-  if (microFreedParticleEmitters.size > 0)
+  if (vec_len(microFreedParticleEmitters) > 0)
   {
     // Reuse a freed emitter
-    spot = *(int *)vector_back(&microFreedParticleEmitters);
-    vector_pop_back(&microFreedParticleEmitters);
-    memcpy(vector_at(&microParticleEmitters, spot), &newEmitter,
+    spot = *(int *)vec_back(microFreedParticleEmitters);
+    vec_pop_back(microFreedParticleEmitters);
+    memcpy(&microParticleEmitters[spot], &newEmitter,
            sizeof(microParticleEmitter));
   }
   else
   {
-    vector_push_back(&microParticleEmitters, &newEmitter);
-    spot = microParticleEmitters.size - 1;
+    vec_append(microParticleEmitters, &newEmitter);
+    spot = vec_len(microParticleEmitters) - 1;
   }
 
   return spot;
@@ -3248,8 +3340,8 @@ int microParticleEmitterCreateExplosion(int x, int y, int particlesCount,
 {
   // Create emitter
   microParticleEmitter newEmitter;
-  newEmitter.particles = vector_create(sizeof(MicroParticle));
-  newEmitter.freeParticles = vector_create(sizeof(int));
+  newEmitter.particles = vec_new(sizeof(MicroParticle));
+  newEmitter.freeParticles = vec_new(sizeof(int));
   newEmitter.particleGenerator = generationFunc;
   newEmitter.emitterType = MICRO_EMITTER_EXPLOSION;
   newEmitter.emissionTimer = 0;
@@ -3260,20 +3352,20 @@ int microParticleEmitterCreateExplosion(int x, int y, int particlesCount,
   newEmitter.y = y;
 
   int spot = -1;
-  if (microFreedParticleEmitters.size > 0)
+  if (vec_len(microFreedParticleEmitters) > 0)
   {
     // Reuse a freed emitter
-    spot = *(int *)vector_back(&microFreedParticleEmitters);
-    vector_pop_back(&microFreedParticleEmitters);
-    memcpy(vector_at(&microParticleEmitters, spot), &newEmitter,
+    spot = *(int *)vec_back(microFreedParticleEmitters);
+    vec_pop_back(microFreedParticleEmitters);
+    memcpy(&microParticleEmitters[spot], &newEmitter,
            sizeof(microParticleEmitter));
   }
   else
   {
-    vector_push_back(&microParticleEmitters, &newEmitter);
-    spot = microParticleEmitters.size - 1;
+    vec_append(microParticleEmitters, &newEmitter);
+    spot = vec_len(microParticleEmitters) - 1;
   }
-  microParticleEmitter *emitter = vector_at(&microParticleEmitters, spot);
+  microParticleEmitter *emitter = &microParticleEmitters[spot];
 
   // Create particles if it is an explosion
   for (int i = 0; i < particlesCount; i++)
@@ -3285,7 +3377,7 @@ int microParticleEmitterCreateExplosion(int x, int y, int particlesCount,
     p.alpha = p.startAlpha;
     p.scale = p.startScale;
     p.alive = 1;
-    vector_push_back(&emitter->particles, &p);
+    vec_append(emitter->particles, &p);
     microTotalParticles++;
   }
 
@@ -3294,55 +3386,55 @@ int microParticleEmitterCreateExplosion(int x, int y, int particlesCount,
 
 void microParticleEmitterSetPosition(int emitterId, int x, int y)
 {
-  microParticleEmitter *emitter = vector_at(&microParticleEmitters, emitterId);
+  microParticleEmitter *emitter = &microParticleEmitters[emitterId];
   emitter->x = x;
   emitter->y = y;
 }
 
 void microParticleEmitterSetSize(int emitterId, int width, int height)
 {
-  microParticleEmitter *emitter = vector_at(&microParticleEmitters, emitterId);
+  microParticleEmitter *emitter = &microParticleEmitters[emitterId];
   emitter->width = width;
   emitter->height = height;
 }
 
 void microParticleEmitterSetEmissionRate(int emitterId, float emissionRate)
 {
-  microParticleEmitter *emitter = vector_at(&microParticleEmitters, emitterId);
+  microParticleEmitter *emitter = &microParticleEmitters[emitterId];
   emitter->emissionRate = emissionRate;
 }
 
 void microParticleEmitterSetGenerationFunc(int emitterId,
                                            MicroParticle (*generationFunc)(int))
 {
-  microParticleEmitter *emitter = vector_at(&microParticleEmitters, emitterId);
+  microParticleEmitter *emitter = &microParticleEmitters[emitterId];
   emitter->particleGenerator = generationFunc;
 }
 void microParticleEmitterGetPosition(int emitterId, int *x, int *y)
 {
-  microParticleEmitter *emitter = vector_at(&microParticleEmitters, emitterId);
+  microParticleEmitter *emitter = &microParticleEmitters[emitterId];
   *x = emitter->x;
   *y = emitter->y;
 }
 
 float microParticleEmitterGetEmissionRate(int emitterId)
 {
-  microParticleEmitter *emitter = vector_at(&microParticleEmitters, emitterId);
+  microParticleEmitter *emitter = &microParticleEmitters[emitterId];
   return emitter->emissionRate;
 }
 
 void microParticleEmittersUpdate(float dt)
 {
-  for (size_t i = 0; i < microParticleEmitters.size; i++)
+  for (size_t i = 0; i < vec_len(microParticleEmitters); i++)
   {
 
-    microParticleEmitter *emitter = vector_at(&microParticleEmitters, i);
-    Vector *particles = &emitter->particles;
+    microParticleEmitter *emitter = &microParticleEmitters[i];
+    MicroParticle *particles = emitter->particles;
 
     // Update particles
-    for (unsigned int j = 0; j < particles->size; j++)
+    for (unsigned int j = 0; j < vec_len(particles); j++)
     {
-      MicroParticle *p = vector_at(particles, j);
+      MicroParticle *p = &particles[j];
       if (p->life <= 0 || !p->alive)
         continue;
       p->x += p->vx * dt;
@@ -3356,13 +3448,13 @@ void microParticleEmittersUpdate(float dt)
     }
 
     // Remove dead particles
-    for (unsigned int j = 0; j < particles->size; j++)
+    for (unsigned int j = 0; j < vec_len(particles); j++)
     {
-      MicroParticle *p = vector_at(particles, j);
+      MicroParticle *p = &particles[j];
       if (p->life <= 0 && p->alive)
       {
         p->alive = 0;
-        vector_push_back(&emitter->freeParticles, &j);
+        vec_append(emitter->freeParticles, &j);
         microTotalParticles--;
       }
     }
@@ -3384,15 +3476,15 @@ void microParticleEmittersUpdate(float dt)
         p.alive = 1;
         microTotalParticles++;
 
-        if (emitter->freeParticles.size > 0)
+        if (vec_len(emitter->freeParticles) > 0)
         {
-          int spot = *(int *)vector_back(&emitter->freeParticles);
-          vector_pop_back(&emitter->freeParticles);
-          memcpy(vector_at(particles, spot), &p, sizeof(MicroParticle));
+          int spot = *(int *)vec_back(emitter->freeParticles);
+          vec_pop_back(emitter->freeParticles);
+          memcpy(&particles[spot], &p, sizeof(MicroParticle));
         }
         else
         {
-          vector_push_back(particles, &p);
+          vec_append(particles, &p);
         }
 
         emitter->emissionTimer = 0;
@@ -3403,12 +3495,12 @@ void microParticleEmittersUpdate(float dt)
 
 void microParticleEmitterDraw(int emitterId)
 {
-  microParticleEmitter *emitter = vector_at(&microParticleEmitters, emitterId);
-  Vector *particles = &emitter->particles;
+  microParticleEmitter *emitter = &microParticleEmitters[emitterId];
+  MicroParticle **particles = &emitter->particles;
 
-  for (unsigned int i = 0; i < particles->size; i++)
+  for (unsigned int i = 0; i < vec_len(particles); i++)
   {
-    MicroParticle *p = vector_at(particles, i);
+    MicroParticle *p = particles[i];
     if (p->life <= 0.0)
       continue;
 
@@ -3421,15 +3513,15 @@ void microParticleEmitterDraw(int emitterId)
 
 void microParticleEmitterRemove(int emitterId)
 {
-  microParticleEmitter *emitter = vector_at(&microParticleEmitters, emitterId);
-  vector_free(&emitter->particles);
-  vector_free(&emitter->freeParticles);
-  vector_push_back(&microFreedParticleEmitters, &emitterId);
+  microParticleEmitter *emitter = &microParticleEmitters[emitterId];
+  vec_free(emitter->particles);
+  vec_free(emitter->freeParticles);
+  vec_append(microFreedParticleEmitters, &emitterId);
 }
 
 void microParticleEmitterRemoveAll()
 {
-  for (unsigned int i = 0; i < microParticleEmitters.size; i++)
+  for (unsigned int i = 0; i < vec_len(microParticleEmitters); i++)
     microParticleEmitterRemove(i);
 }
 

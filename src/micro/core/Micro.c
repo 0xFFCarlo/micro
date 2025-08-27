@@ -3,6 +3,7 @@
 #include "ECS.h"
 #include "Graphics.h"
 #include "Physics.h"
+#include "System.h"
 #include "../util/debug.h"
 #include "../components/Components.h"
 #include "../systems/Systems.h"
@@ -11,9 +12,11 @@ static bool running = true;
 
 int microInit(MicroState bootState)
 {
-  if (microAudioInit() != 0)
+  if (microAudioInit())
     return EXIT_FAILURE;
-  if (microGraphicsInit() != 0)
+  if (microSystemInit())
+    return EXIT_FAILURE;
+  if (microGraphicsInit())
     return EXIT_FAILURE;
 
   // Setup entity component system and register
@@ -39,6 +42,7 @@ static int microFree()
   debug_print("Freeing graphics\n");
   microGraphicsQuit();
   debug_print("Done\n");
+  microSystemFree();
   return 0;
 }
 

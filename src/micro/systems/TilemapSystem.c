@@ -7,4 +7,4 @@ static void tilemap_system_update(float dt)
   microTilemapsUpdate(dt);
 }
 
-MicroECSSystem tilemap_system = {tilemap_system_update, NULL, NULL};
+MicroECSSystem tilemap_system = {tilemap_system_update, NULL, NULL, NULL};

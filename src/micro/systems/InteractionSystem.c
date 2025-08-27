@@ -36,4 +36,4 @@ static void interaction_system_update(float dt)
   }
 }
 
-MicroECSSystem interaction_system = {interaction_system_update, NULL, NULL};
+MicroECSSystem interaction_system = {interaction_system_update, NULL, NULL, NULL};

@@ -51,9 +51,9 @@ void CmpAddParent(int entity_id, int parent_eid);
 CParent *CmpGetParent(int entity_id);
 
 // Internal Childrens
-typedef struct
+typedef struct _CChildrens
 {
-  Vector childrens;
+  int *childrens;
 } _CChildrens;
 extern int cid_childrens;
 void RegisterCChildrens();

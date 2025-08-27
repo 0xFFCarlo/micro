@@ -56,4 +56,4 @@ static void shaded_canvas_system_update(float dt)
   microViewApply();
 }
 
-MicroECSSystem shaded_canvas_system = {shaded_canvas_system_update, NULL, NULL};
+MicroECSSystem shaded_canvas_system = {shaded_canvas_system_update, NULL, NULL, NULL};

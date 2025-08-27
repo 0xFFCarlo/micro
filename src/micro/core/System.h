@@ -397,12 +397,15 @@ typedef enum MicroKey
                                  for array bounds */
 } MicroKey;
 
+int microSystemInit();
+int microSystemFree();
 int microSystemGetKey(MicroKey scancode);
 void microSystemGetMousePos(int *x, int *y);
 void microSystemSetMousePos(int x, int y);
 void microSystemGetWindowSize(int *width, int *height);
 void microSystemShowCursor(bool show);
 void microSystemFocusWindow();
+void microSystemWindowSwapBuffers();
 bool microSystemIsGamepadConnected();
 SDL_GameController *microSystemGetGameController();
 

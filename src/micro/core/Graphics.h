@@ -132,148 +132,129 @@ typedef struct
   float centerX, centerY;
   float width, height;
   float rotation;
-  int flipY;
+  bool flipY;
 } MicroView;
+
+typedef struct
+{
+  // Viewport (pixels)
+  float viewportX, viewportY;
+  float viewportWidth, viewportHeight;
+
+  // Camera pose
+  float position[3];    // world-space position
+  float orientation[4]; // quaternion (x,y,z,w), local->world
+
+  // Projection
+  enum
+  {
+    VIEW_PERSPECTIVE,
+    VIEW_ORTHOGRAPHIC,
+  } projectionType;
+  float fovY;        // radians (perspective)
+  float nearZ, farZ; // near/far
+  float orthoWidth;  // world units (orthographic volume)
+  float orthoHeight; // world units (orthographic volume)
+
+  // Options
+  bool flipY; // 0/1, flips clip-space Y by negating proj[1][1]
+
+  // Derived (filled by Apply)
+  float view[16];     // column-major
+  float proj[16];     // column-major
+  float viewProj[16]; // column-major, proj*view
+} MicroView3d;
+
 void microViewSet(MicroView view);
 MicroView microViewGet();
 void microViewApply();
-void microViewFlipY(int flipY);
+void microViewFlipY(bool flipY);
 void microViewSetViewport(float x, float y, float width, float height);
 void microViewSetCenter(float x, float y);
 void microViewSetSize(float width, float height);
 void microViewSetRotation(float rotation);
-
-// Get view center
 void microViewGetCenter(float *centerX, float *centerY);
-
-// Get view size
 void microViewGetSize(float *width, float *height);
-
-// Get viewport
 void microViewGetViewport(float *width, float *height);
-
-// Get view rotation
 float microViewGetRotation();
-
-// Transform world coordinates to screen coordinates
 void microViewPointWorldToScreen(float x, float y, float *outX, float *outY);
-
-// Transform screen coordinates to world coordinates
 void microViewPointScreenToWorld(float x, float y, float *outX, float *outY);
+
+void microView3dSet(MicroView3d view);
+MicroView3d microView3dGet();
+void microView3dApply();
+void microView3dSetPosition(float x, float y, float z);
+void microView3dSetOrientation(float x, float y, float z, float w);
+void microView3dLookAt(float eyeX, float eyeY, float eyeZ,
+                       float targetX, float targetY, float targetZ,
+                       float upX, float upY, float upZ);
+void microView3dFlyMoveLocal(float dx, float dy, float dz);
+void microView3dFlyRotate(float dYaw, float dPitch, float dRoll);
+void microView3dSetPerspective(float fovY, float nearZ, float farZ);
+void microView3dSetOrthographic(float width, float height, float nearZ,
+                                float farZ);
+void microView3dGetPosition(float *x, float *y, float *z);
+void microView3dGetOrientation(float *x, float *y, float *z, float *w);
+void microView3dGetProjectionMatrix(float *matrix4x4);
+void microView3dGetViewMatrix(float *matrix4x4);
+void microView3dGetViewProjectionMatrix(float *matrix4x4);
+void microView3dGetViewport(float *width, float *height);
+float microView3dGetFovY();
+float microView3dGetNearZ();
+float microView3dGetFarZ();
+float microView3dGetOrthoWidth();
+float microView3dGetOrthoHeight();
+void microView3dFlipY(bool flipY);
+void microView3dSetViewport(float x, float y, float width, float height);
+
 
 /////////////////////////////
 // Shader
 /////////////////////////////
-
-// Load shader from file
 int microShaderLoadFromFile(const char *resName, const char *vertexShaderPath,
                             const char *fragmentShaderPath);
-
-// Load shader from source code
 int microShaderLoadFromSource(const char *resName, const char *vertexShaderSrc,
                               const char *fragmentShaderSrc);
-
-// Get shader program id
 int microShaderGetProgramID(int shaderId);
-
-// Get shader id by name
 int microShaderGet(const char *resName);
-
-// Free shader
 void microShaderFree(int shaderId);
-
-// Apply shader
 void microShaderApply(int shaderId);
-
-// Apply default shader
 void microShaderApplyDefault();
-
-// Get current shader id
 int microShaderGetCurrent();
-
-// Get attribute location in shader
 int microShaderGetAttributeLocation(int shaderId, const char *name);
-
-// Get uniform location in shader
 int microShaderGetUniformLocation(int shaderId, const char *name);
-
-// Set uniform values (variable number of arguments)
 void microShaderSetUniformf(const char *name, ...);
-
-// Set uniform values (variable number of arguments)
 void microShaderSetUniformi(const char *name, ...);
-
-// Set uniform matrix 4x4
 void microShaderSetMatrix4(const char *name, float *matrix);
-
-// Get uniform value
 void microShaderGetUniform1(const char *name, double *v1);
-
-// Get uniform 2D vector
 void microShaderGetUniform2(const char *name, double *v1, double *v2);
-
-// Get uniform 3D vector
 void microShaderGetUniform3(const char *name, double *v1, double *v2,
                             double *v3);
-
-// Get uniform 4D vector
 void microShaderGetUniform4(const char *name, double *v1, double *v2,
                             double *v3, double *v4);
 
 /////////////////////////////
 // Canvas
 /////////////////////////////
-
-// Create canvas with specified width and height
 int microCanvasCreate(int width, int height);
-
-// Get canvas texture id
 int microCanvasGetTextureId(int canvasId);
-
-// Free canvas
 void microCanvasFree(int canvasId);
 
 /////////////////////////////
 // Lighting
 /////////////////////////////
-
-// Add light to scene
 int microLightAdd(float cx, float cy, float radius, float intensity);
-
-// Set light position
 void microLightSetPosition(int lightId, float x, float y);
-
-// Set light scale
 void microLightSetRadius(int lightId, float radius);
-
-// Set light intensity
 void microLightSetIntensity(int lightId, float intensity);
-
-// Set light is active
 void microLightSetActive(int lightId, int is_active);
-
-// Remove light from scene
 void microLightRemove(int lightId);
-
-// Remove all lights from scene
 void microLightRemoveAll();
-
-// Recalculate lights texture
 void microLightsUpdateTexture();
-
-// Get lights texture id
 int microLightsGetTextureId();
-
-// Get lights count
 int microLightsGetCount();
-
-// Get active lights count
 int microLightsGetActiveCount();
-
-// Set ambient light intensity
 void microLightsSetAmbientIntensity(float intensity);
-
-// Get ambient light intensity
 float microLightsGetAmbientIntensity();
 
 /////////////////////////////
@@ -343,35 +324,18 @@ typedef struct RenderingDebugInfo
   int bytesSent;
 } RenderingDebugInfo;
 
-// Initializes graphics system
 int microGraphicsInit();
-
-// Frees all memory used by graphics system
 void microGraphicsQuit();
-
-// Clears screen
 void microGraphicsClear();
-
-// Set clear color
 void microGraphicsClearColor(float r, float g, float b, float a);
-
-// Draws geometry still in queue to screen
 void microGraphicsDisplay();
-
-// Set rendering target to screen
 void microGraphicsRenderToScreen();
-
-// Set rendering target to canvas
 void microGraphicsRenderToCanvas(int canvasId);
-
-// Draw sprite
 void microGraphicsDrawSprite(int textureId, float tx, float ty, float tw,
                              float th, float x, float y, float w, float h,
                              float originX, float originY, float rotation,
                              unsigned char r, unsigned char g, unsigned char b,
                              unsigned char a);
-
-// Draw text with font
 void microGraphicsDrawText(int fontId, const char *text, float x, float y,
                            float lineSpacing, float scale, TextAlignment align,
                            int maxLineWidth, unsigned char r, unsigned char g,
@@ -382,9 +346,6 @@ RenderingDebugInfo microGetRenderingDebugInfo();
 
 // Reset rendering debug info
 void microRenderingDebugInfoClear();
-
-// Swap buffers (finalizes frame)
-void microSwapBuffers();
 
 // CAP framerate and returns delta time in seconds
 float microGraphicsDelayToNextFrame(float target_fps);

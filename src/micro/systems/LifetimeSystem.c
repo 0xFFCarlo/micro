@@ -19,4 +19,4 @@ static void lifetime_system_update(float dt)
   }
 }
 
-MicroECSSystem lifetime_system = {lifetime_system_update, NULL, NULL};
+MicroECSSystem lifetime_system = {lifetime_system_update, NULL, NULL, NULL};

@@ -13,14 +13,13 @@ typedef struct
 
 extern int cid_sprite;
 void RegisterCSprite();
-void CmpAddSprite(int entity_id, int textureId, int tx, int ty, int tw,
-                  int th);
+void CmpAddSprite(int entity_id, int textureId, int tx, int ty, int tw, int th);
 CSprite *CmpGetSprite(int entity_id);
 
 // Sprite buffer
 typedef struct
 {
-  u32 VAOId;
+  uint32_t VAOId;
 } CMesh;
 extern int cid_mesh;
 void RegisterCMesh();
@@ -32,18 +31,18 @@ CMesh *CmpGetMesh(int entity_id);
 // Text
 typedef struct
 {
-  u8 fontId;
+  uint8_t fontId;
   float scale;
   float lineSpacing;
-  u32 alignment;
-  u32 maxLineWidth;
+  uint32_t alignment;
+  uint32_t maxLineWidth;
   char *text;
 } CText;
 
 extern int cid_text;
 void RegisterCText();
-void CmpAddText(int entity_id, u8 fontId, float scale, float lineSpacing,
-                u32 alignment, u32 maxLineWidth, char *text);
+void CmpAddText(int entity_id, uint8_t fontId, float scale, float lineSpacing,
+                uint32_t alignment, uint32_t maxLineWidth, char *text);
 CText *CmpGetText(int entity_id);
 
 // Color
@@ -61,13 +60,13 @@ CColor *CmpGetColor(int entity_id);
 // Layer
 typedef struct
 {
-  u8 layerId;
+  uint8_t layerId;
   bool visible;
 } CDrawable;
 
 extern int cid_drawable;
 void RegisterCDrawable();
-void CmpAddDrawable(int entity_id, u8 layerId, bool visible);
+void CmpAddDrawable(int entity_id, uint8_t layerId, bool visible);
 CDrawable *CmpGetDrawable(int entity_id);
 
 // Hud
@@ -84,7 +83,7 @@ CHud *CmpGetHud(int entity_id);
 typedef struct
 {
   int animationId;
-  u16 frameId;
+  uint16_t frameId;
   float duration;
   bool flipX;
   bool flipY;
@@ -128,13 +127,13 @@ CLockOnView *CmpGetLockOnView(int entity_id);
 // ParticleEmitter
 typedef struct
 {
-  u16 emitterId;
-  u16 offsetX, offsetY;
+  uint16_t emitterId;
+  uint16_t offsetX, offsetY;
 } CParticleEmitter;
 extern int cid_particle_emitter;
 void RegisterCParticleEmitter();
-void CmpAddParticleEmitter(int entity_id, u16 emitterId, u16 offsetX,
-                           u16 offsetY);
+void CmpAddParticleEmitter(int entity_id, uint16_t emitterId, uint16_t offsetX,
+                           uint16_t offsetY);
 CParticleEmitter *CmpGetParticleEmitter(int entity_id);
 
 // Light source

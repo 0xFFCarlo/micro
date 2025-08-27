@@ -43,4 +43,4 @@ static void parent_system_update(float dt)
   }
 }
 
-MicroECSSystem parent_system = {parent_system_update, NULL, NULL};
+MicroECSSystem parent_system = {parent_system_update, NULL, NULL, NULL};

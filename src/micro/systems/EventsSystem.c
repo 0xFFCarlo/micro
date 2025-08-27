@@ -25,4 +25,4 @@ static void event_system_update(float dt)
   }
 }
 
-MicroECSSystem events_system = {event_system_update, NULL, NULL};
+MicroECSSystem events_system = {event_system_update, NULL, NULL, NULL};

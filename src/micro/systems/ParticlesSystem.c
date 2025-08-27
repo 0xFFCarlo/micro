@@ -29,4 +29,4 @@ static void particles_system_update(float dt)
   microParticleEmittersUpdate(dt);
 }
 
-MicroECSSystem particles_system = {particles_system_update, NULL, NULL};
+MicroECSSystem particles_system = {particles_system_update, NULL, NULL, NULL};

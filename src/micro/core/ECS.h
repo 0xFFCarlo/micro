@@ -69,6 +69,7 @@ int microECSComponentGetEntityId(int componentTypeId, int index);
 typedef struct MicroECSSystem
 {
   void (*update)(float dt);
+  void (*system_free)();
   void (*entity_add)(int entityId);
   void (*entity_remove)(int entityId);
 } MicroECSSystem;

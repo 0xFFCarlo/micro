@@ -29,4 +29,4 @@ static void physics_system_update(float dt)
   }
 }
 
-MicroECSSystem physics_system = {physics_system_update, NULL, NULL};
+MicroECSSystem physics_system = {physics_system_update, NULL, NULL, NULL};

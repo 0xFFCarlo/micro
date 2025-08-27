@@ -48,4 +48,4 @@ static void animation_system_update(float dt)
   }
 }
 
-MicroECSSystem animation_system = {animation_system_update, NULL, NULL};
+MicroECSSystem animation_system = {animation_system_update, NULL, NULL, NULL};

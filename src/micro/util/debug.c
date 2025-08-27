@@ -47,7 +47,6 @@ typedef struct LOCATION_INFO
 } LOCATION_INFO;
 
 static LOCATION_INFO *location_hashmap[HASHMAP_SIZE] = {NULL};
-static uint16_t location_ids = 0;
 
 typedef struct MEM_INFO
 {
@@ -116,7 +115,7 @@ void print_trace()
 #endif
 
 // MurmurHash64A
-uint32_t hash_fun(uint64_t key)
+static uint32_t hash_fun(uint64_t key)
 {
   const uint64_t m = 0xc6a4a7935bd1e995;
   const int r = 47;
@@ -145,7 +144,7 @@ uint32_t hash_fun(uint64_t key)
   return h % HASHMAP_SIZE;
 }
 
-uint32_t loc_hash_fun(const char *filename, int line)
+static uint32_t loc_hash_fun(const char *filename, int line)
 {
   uint64_t key = 1;
   const int filename_length = strlen(filename);
@@ -155,7 +154,7 @@ uint32_t loc_hash_fun(const char *filename, int line)
   return hash_fun(key);
 }
 
-void alloc_hashmap_add(void *ptr, MEM_INFO *info)
+static void alloc_hashmap_add(void *ptr, MEM_INFO *info)
 {
   int index = hash_fun((uint64_t)ptr);
   info->next = allocations_hashmap[index];
@@ -164,7 +163,7 @@ void alloc_hashmap_add(void *ptr, MEM_INFO *info)
   allocations_hashmap[index] = info;
 }
 
-MEM_INFO *alloc_hashmap_get(void *ptr)
+static MEM_INFO *alloc_hashmap_get(void *ptr)
 {
   int index = hash_fun((uint64_t)ptr);
   MEM_INFO *current = allocations_hashmap[index];
@@ -177,7 +176,7 @@ MEM_INFO *alloc_hashmap_get(void *ptr)
   return NULL;
 }
 
-void alloc_hashmap_remove(void *ptr)
+static void alloc_hashmap_remove(void *ptr)
 {
   int index = hash_fun((uint64_t)ptr);
   MEM_INFO *current = allocations_hashmap[index];
@@ -199,7 +198,7 @@ void alloc_hashmap_remove(void *ptr)
   }
 }
 
-LOCATION_INFO *loc_hashmap_get(const char *filename, int line)
+static LOCATION_INFO *loc_hashmap_get(const char *filename, int line)
 {
   int index = loc_hash_fun(filename, line);
   LOCATION_INFO *current = location_hashmap[index];
@@ -212,7 +211,7 @@ LOCATION_INFO *loc_hashmap_get(const char *filename, int line)
   return NULL;
 }
 
-LOCATION_INFO *loc_hashmap_add(const char *filename, int line)
+static LOCATION_INFO *loc_hashmap_add(const char *filename, int line)
 {
   LOCATION_INFO *location = loc_hashmap_get(filename, line);
   if (location != NULL)
@@ -230,7 +229,7 @@ LOCATION_INFO *loc_hashmap_add(const char *filename, int line)
   return new_location;
 }
 
-int is_guard_valid(MEM_INFO *info)
+static int is_guard_valid(MEM_INFO *info)
 {
   for (int i = 0; i < GUARD_LENGTH; i++)
     if (info->guard[i] != GUARD_CONTENT)
@@ -484,13 +483,10 @@ void *realloc_debug(void *ptr, const size_t size, char *file, const int line)
 
 void memory_check_leaks()
 {
-  printf("%sChecking for memory leaks...%s\n", COLOR_LIGHT_BLUE, COLOR_DEFAULT);
   int leaks = 0;
   for (int i = 0; i < HASHMAP_SIZE; i++)
   {
     MEM_INFO *current = allocations_hashmap[i];
-    // printf(" current %p\n", current);
-    // printf("-> Checking hashmap bucket %d/%d\n", i + 1, HASHMAP_SIZE);
     while (current)
     {
       // Check the guard byte for corruption
@@ -510,14 +506,6 @@ void memory_check_leaks()
       current = current->next;
     }
   }
-
-  if (leaks == 0)
-  {
-    printf("%sNo memory leaks detected.%s\n", COLOR_LIGHT_GREEN, COLOR_DEFAULT);
-    printf("%sNo memory corruptions detected.%s\n", COLOR_LIGHT_GREEN,
-           COLOR_DEFAULT);
-  }
-  printf("%sDone%s\n", COLOR_LIGHT_BLUE, COLOR_DEFAULT);
 }
 
 void memory_check_corruption()
@@ -538,7 +526,6 @@ void memory_check_corruption()
       current = current->next;
     }
   }
-  // printf("No memory corruption detected.\n");
 }
 
 void abort_trace()

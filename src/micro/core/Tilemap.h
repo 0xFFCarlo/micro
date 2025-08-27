@@ -97,7 +97,7 @@ typedef struct TilemapDynamic
 {
   uint32_t eid;              // Tilemap entity id
   HashMap chunks;            // Hashmap of chunks
-  Vector chunks_active;      // List of active chunks pointers
+  TilemapChunk* chunks_active;      // List of active chunks pointers
   uint32_t chunk_width;      // number of tiles in chunk width
   uint32_t chunk_height;     // number of tiles in chunk height
   uint32_t tile_width;       // tile width in pixels

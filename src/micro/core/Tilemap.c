@@ -409,7 +409,7 @@ void microTilemapAddChunk(TilemapDynamic *tm, TilemapChunk *chunk)
 {
   int16_t key[2] = {chunk->x, chunk->y};
   hashmap_insert(&tm->chunks, key, chunk);
-  vector_push_back(&tm->chunks_active, &chunk);
+  vec_append(tm->chunks_active, &chunk);
   microTilemapChunkUpdateNeighbours(tm, chunk);
 }
 
@@ -465,15 +465,15 @@ static void microTilemapDynamicUpdate(int eid, float dt)
       else if (chunk->active_timer <= 0)
       {
         chunk->active_timer = tm->active_timeout_s;
-        vector_push_back(&tm->chunks_active, &chunk);
+        vec_append(tm->chunks_active, &chunk);
       }
     }
   }
 
   // Update active chunks and remove inactive ones
-  for (int i = tm->chunks_active.size - 1; i >= 0; i--)
+  for (int i = vec_len(tm->chunks_active) - 1; i >= 0; i--)
   {
-    TilemapChunk *chunk = *(TilemapChunk **)vector_at(&tm->chunks_active, i);
+    TilemapChunk *chunk = &tm->chunks_active[i];
 
     if (chunk == NULL)
       continue;
@@ -501,7 +501,7 @@ static void microTilemapDynamicUpdate(int eid, float dt)
     if (chunk->active_timer <= 0)
     {
       debug_print("Removing chunk: %d, %d\n", chunk->x, chunk->y);
-      vector_remove_at(&tm->chunks_active, i);
+      vec_remove_at(tm->chunks_active, i);
       continue;
     }
 
@@ -528,7 +528,7 @@ TilemapDynamic *microTilemapDynamicNew(uint32_t chunk_width,
   TilemapDynamic *tm = malloc(sizeof(TilemapDynamic));
   tm->chunks = hashmap_create(sizeof(int16_t) * 2, CHUNK_HASH_SIZE, chunk_hash,
                               (void (*)(void *))chunk_free);
-  tm->chunks_active = vector_create(sizeof(TilemapChunk *));
+  tm->chunks_active = vec_new(sizeof(TilemapChunk *));
   tm->chunk_width = chunk_width;
   tm->chunk_height = chunk_height;
   tm->tile_width = tile_width;
@@ -547,7 +547,7 @@ void microTilemapDynamicFree(TilemapDynamic *tm)
 {
   microECSEntityQueueFree(tm->eid);
   hashmap_free(&tm->chunks);
-  vector_free(&tm->chunks_active);
+  vec_free(tm->chunks_active);
   free(tm);
 }
 
@@ -717,10 +717,10 @@ int microTilemapNew(int textureId, float tx, float ty, float tw,
   tile_shader_attrs[3].vbo_id = microVBONew(1 * sizeof(int), MICRO_STATIC_DRAW,
                                             NULL);
   tile_shader_attrs[3].divisor = width * height;
-  tile_shader_attrs[4].vbo_id = microVBONew(sizeof(u32) * tm->width *
+  tile_shader_attrs[4].vbo_id = microVBONew(sizeof(uint32_t) * tm->width *
                                               tm->height,
                                             MICRO_STATIC_DRAW, NULL);
-  tile_shader_attrs[5].vbo_id = microVBONew(sizeof(u32) * tm->width *
+  tile_shader_attrs[5].vbo_id = microVBONew(sizeof(uint32_t) * tm->width *
                                               tm->height,
                                             MICRO_STATIC_DRAW, NULL);
   CmpAddMesh(tm->entityId, tilemap_shader_id, textureId, 6,

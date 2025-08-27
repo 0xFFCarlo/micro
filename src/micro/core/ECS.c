@@ -31,7 +31,7 @@ static entity_desc entities[MAX_ENTITIES];
 static uint32_t entities_len = 0;
 static int freed_entities[MAX_ENTITIES];
 static int freed_entities_count = 0;
-static Vector entities_to_remove;
+static int *entities_to_remove;
 
 // Component
 typedef struct
@@ -51,24 +51,6 @@ static MicroECSNotifyFreedEntitiesCb notify_freed_entities_cb = NULL;
 // System
 static MicroECSSystem systems[MAX_SYSTEMS];
 static unsigned int systems_count = 0;
-
-////////////////////////////////////
-////// QUERY IMPLEMENTATION ////////
-////////////////////////////////////
-static void insertion_sort(int arr[], int n, int (*compare)(int, int))
-{
-  for (int i = 1; i < n; i++)
-  {
-    int key = arr[i];
-    int j = i - 1;
-    while (j >= 0 && compare(arr[j], key) > 0)
-    {
-      arr[j + 1] = arr[j];
-      j--;
-    }
-    arr[j + 1] = key;
-  }
-}
 
 ////////////////////////////////////
 ////// ENTITY IMPLEMENTATION ///////
@@ -105,7 +87,7 @@ void microECSEntityQueueFree(int entityId)
   if ((entities[entityId].state & ENTITY_ALIVE_MASK) == 0)
     return;
   CLEARBITS(entities[entityId].state, ENTITY_ALIVE_MASK);
-  vector_push_back(&entities_to_remove, &entityId);
+  vec_append(entities_to_remove, &entityId);
 }
 
 void microECSEntityFree(int entityId)
@@ -125,7 +107,8 @@ void microECSEntityFree(int entityId)
   }
 
   // Free memory
-  free(entities[entityId].component_offset);
+  if (entities[entityId].component_offset != NULL)
+    free(entities[entityId].component_offset);
   SETBITS(entities[entityId].state, ENTITY_FREED_MASK);
 
   // Add to freed entities
@@ -306,6 +289,8 @@ int microECSSystemAdd(MicroECSSystem system)
 
 void microECSSystemRemove(int systemId)
 {
+  if (systems[systemId].system_free != NULL)
+    systems[systemId].system_free();
   systems[systemId].update = NULL;
 }
 
@@ -317,7 +302,7 @@ int microECSInit()
   // Initialize entity system
   for (int i = 0; i < MAX_ENTITIES; i++)
     freed_entities[i] = -1;
-  entities_to_remove = vector_create(sizeof(int));
+  entities_to_remove = vec_new(sizeof(int));
   return 0;
 }
 
@@ -356,17 +341,17 @@ void microECSAllocateComponents()
 void microECSFree()
 {
   // Remove entities that were marked for removal
-  while (entities_to_remove.size)
+  while (vec_len(entities_to_remove) > 0)
   {
-    const int eid = *(int *)vector_back(&entities_to_remove);
-    vector_pop_back(&entities_to_remove);
+    const int eid = *(int *)vec_back(entities_to_remove);
+    vec_pop_back(entities_to_remove);
     microECSEntityFree(eid);
   }
 
   // Free entities
   microECSEntityFreeAll();
-  if (entities_to_remove.data != NULL)
-    vector_free(&entities_to_remove);
+  if (entities_to_remove != NULL)
+    vec_free(entities_to_remove);
 
   // Free components
   if (is_components_data_allocated)
@@ -377,19 +362,24 @@ void microECSFree()
 
     is_components_data_allocated = false;
   }
+
+  // Free systems
+  for (unsigned int i = 0; i < systems_count; i++)
+    if (systems[i].system_free != NULL)
+      systems[i].system_free();
 }
 
 void microECSRun(float dt)
 {
   // Notify of queue to be freed entities
-  if (notify_freed_entities_cb != NULL && entities_to_remove.size)
-    notify_freed_entities_cb((int *)entities_to_remove.data,
-                             entities_to_remove.size);
+  if (notify_freed_entities_cb != NULL && vec_len(entities_to_remove) > 0)
+    notify_freed_entities_cb((int *)entities_to_remove,
+                             vec_len(entities_to_remove));
 
   // Remove entities that were marked for removal, fifo
-  for (uint32_t i = 0; i < entities_to_remove.size; i++)
-    microECSEntityFree(*(int *)vector_at(&entities_to_remove, i));
-  vector_clear(&entities_to_remove);
+  for (uint32_t i = 0; i < vec_len(entities_to_remove); i++)
+    microECSEntityFree(entities_to_remove[i]);
+  vec_clear(entities_to_remove);
 
   // Update systems
   for (unsigned int i = 0; i < systems_count; i++)

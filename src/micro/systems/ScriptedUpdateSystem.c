@@ -21,4 +21,4 @@ static void scripted_update_system_update(float dt)
 }
 
 MicroECSSystem scripted_update_system = {scripted_update_system_update, NULL,
-                                         NULL};
+                                         NULL, NULL};

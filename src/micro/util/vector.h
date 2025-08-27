@@ -1,58 +1,62 @@
-/*
- * This file provides a generic implementation of a dynamic array (often
- * referred to as a vector in many languages) in C. It is capable of storing
- * elements of any type. Here is a summary of the data structure and functions:
- */
-
 #ifndef VECTOR_H
 #define VECTOR_H
 
+#include <stdalign.h> // alignas, max_align_t
 #include <stddef.h>
+#include <stdint.h>
 
-typedef struct
+#define VEC_INIT_CAPACITY 8
+
+typedef struct _vec_hdr_t
 {
-  void **data;
-  size_t size;
-  size_t capacity;
-  size_t data_size;
-} Vector;
+  size_t elem_size;                          // bytes per element
+  size_t capacity;                           // allocated elements
+  size_t count;                              // used elements
+  alignas(max_align_t) unsigned char data[]; // start of storage
+} _vec_hdr_t;
 
-// create a new vector
-Vector vector_create(unsigned int data_size);
+#define VEC_HDR(p) ((_vec_hdr_t *)((char *)(p)-offsetof(_vec_hdr_t, data)))
 
-// create a new vector with a specified capacity
-Vector vector_create_with_capacity(unsigned int data_size, unsigned int capacity);
+// Allocate a new vector with the specified element size
+void *vec_new(size_t elem_size);
 
-// free the vector and all its elements
-void vector_free(Vector *vec);
+// Free the vector and its memory
+void vec_free(void *vec);
 
-// push an element to the end of the vector
-void vector_push_back(Vector *vec, const void *value);
+// Get length of the vector
+#define vec_len(vec) ((vec) ? VEC_HDR(vec)->count : 0)
 
-// remove the last element
-void vector_pop_back(Vector *vec);
+// Get capacity of the vector
+#define vec_capacity(vec) ((vec) ? VEC_HDR(vec)->capacity : 0)
 
-// remove the element at the specified index
-// last element is moved to the position of the removed element
-void vector_remove_at(Vector *vec, const unsigned int index);
+// Get element size of the vector
+#define vec_elem_size(vec) ((vec) ? VEC_HDR(vec)->elem_size : 0)
 
-// remove the element with the specified value
-// the first occurrence of the value is removed
-void vector_remove_val(Vector *vec, const void *value);
+// Add element to the end of the vector
+#define vec_append(vec, elem) _vec_append((void **)(&vec), (const void *)(elem))
+int _vec_append(void **vec, const void *elem);
 
-// return the first element
-void *vector_back(Vector *vec);
+// Remove last element from vector
+#define vec_pop_back(vec) _vec_pop_back((void **)(&vec))
+void _vec_pop_back(void **vec);
 
-// return the element at the specified index
-void *vector_at(Vector *vec, const unsigned int index);
+// Remove element at index from vector
+#define vec_remove_at(vec, index) _vec_remove_at((void **)(&vec), (index))
+int _vec_remove_at(void **vec, size_t index);
 
-// return the last element
-void *vector_last(Vector *vec);
+// Remove element from vector by value
+#define vec_remove(vec, elem) _vec_remove((void **)(&vec), (const void *)(elem))
+int _vec_remove(void **vec, const void *elem);
 
-// remove all elements from the vector and reallocate memory
-void vector_clear(Vector *vec);
+// Get last element of the vector
+void *vec_back(void *vec);
 
-// remove all elements from the vector but do not reallocate memory
-void vector_empty(Vector *vec);
+// Clear vector and resize to initial capacity
+#define vec_clear(vec) _vec_clear((void **)(&vec))
+void _vec_clear(void **vec);
+
+// Clear vector without resizing
+#define vec_empty(vec) _vec_empty((void **)(&vec))
+void _vec_empty(void **vec);
 
 #endif /* end of include guard: VECTOR_H */

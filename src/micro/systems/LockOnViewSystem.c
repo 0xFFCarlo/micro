@@ -49,4 +49,5 @@ static void lock_on_view_system_update(float dt)
   microViewApply();
 }
 
-MicroECSSystem lock_on_view_system = {lock_on_view_system_update, NULL, NULL};
+MicroECSSystem lock_on_view_system = {lock_on_view_system_update, NULL, NULL, NULL};
+

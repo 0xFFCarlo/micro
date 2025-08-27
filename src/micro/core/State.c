@@ -1,6 +1,7 @@
 #include "State.h"
 #include "ECS.h"
 #include "Graphics.h"
+#include "System.h"
 #include <SDL2/SDL.h>
 
 static MicroState currentState = {NULL, NULL, NULL, 0.0};
@@ -39,7 +40,7 @@ void microStateUpdate(float dt)
   end = SDL_GetPerformanceCounter();
   lastBusyTime = (double)(end - start) / freq;
   microGraphicsDisplay();
-  microSwapBuffers();
+  microSystemWindowSwapBuffers();
 }
 
 void microStateFree()

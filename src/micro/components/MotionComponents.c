@@ -66,17 +66,17 @@ void FreeCChildrens(void *childrens)
 {
   _CChildrens *cchildrens = (_CChildrens *)childrens;
   // Remove all children entities
-  while (cchildrens->childrens.size > 0)
+  while (vec_len(cchildrens->childrens) > 0)
   {
-    int child_id = *(int *)vector_back(&cchildrens->childrens);
-    vector_pop_back(&cchildrens->childrens);
+    int child_id = *(int *)vec_back(cchildrens->childrens);
+    vec_pop_back(cchildrens->childrens);
     CParent *parent_cmp = CmpGetParent(child_id);
     parent_cmp->parent_eid = -1; // Clear parent component
     microECSEntityQueueFree(child_id);
   }
 
   // Free vector
-  vector_free(&cchildrens->childrens);
+  vec_free(cchildrens->childrens);
 }
 
 void RegisterCChildrens()
@@ -99,7 +99,7 @@ void CmpAddChildrens(int entity_id)
   assert(childrens == NULL);
   microECSEntityAddComponent(entity_id, cid_childrens,
                              &(_CChildrens){
-                               .childrens = vector_create(sizeof(int)),
+                               .childrens = vec_new(sizeof(int)),
                              });
 }
 
@@ -110,7 +110,14 @@ void FreeCParent(void *parent)
     return; // No parent to free
   _CChildrens *childrens = CmpGetChildrens(cparent->parent_eid);
   assert(childrens != NULL);
-  vector_remove_val(&childrens->childrens, &cparent->entity_id);
+  for (size_t i = 0; i < vec_len(childrens->childrens); i++)
+  {
+    const int child_id = childrens->childrens[i];
+    if (child_id != cparent->entity_id)
+      continue;
+    vec_remove_at(childrens->childrens, i);
+    break; // Found and removed the child
+  }
 }
 
 void RegisterCParent()
@@ -135,7 +142,7 @@ void CmpAddParent(int entity_id, int parent_eid)
     CmpAddChildrens(parent_eid);
     childrens = CmpGetChildrens(parent_eid);
   }
-  vector_push_back(&childrens->childrens, &entity_id);
+  vec_append(childrens->childrens, &entity_id);
 }
 
 CParent *CmpGetParent(int entity_id)
