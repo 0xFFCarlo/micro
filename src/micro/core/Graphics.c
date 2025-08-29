@@ -312,8 +312,6 @@ static RenderingDebugInfo debugInfo;
 // current view state
 static MicroView view;
 static MicroView3d view3d;
-static float viewMatrix[16];
-static bool viewUpdated = false;
 
 ////////////////////////////
 // Resources management
@@ -2891,30 +2889,61 @@ void microGraphicsDrawText(int fontId, const char *text, float x, float y,
                              maxLineWidth, r, g, b, a);
 }
 
-// VIEW
-void microViewSet(MicroView view)
+static void proj_perspective_gl_rh(Mat4 m, float fovY, float aspect, float zn,
+                                   float zf, int flipY)
 {
-  view.viewportX = view.viewportX;
-  view.viewportY = view.viewportY;
-  view.viewportWidth = view.viewportWidth;
-  view.viewportHeight = view.viewportHeight;
-  view.centerX = view.centerX;
-  view.centerY = view.centerY;
-  view.width = view.width;
-  view.height = view.height;
-  view.rotation = view.rotation;
-  view.flipY = (view.flipY > 0);
-  viewUpdated = false;
+  mat4_identity(m);
+  float f = 1.0f / tanf(0.5f * fovY);
+  m[MIDX(0, 0)] = f / (aspect > 0 ? aspect : 1.0f);
+  m[MIDX(1, 1)] = f;
+  m[MIDX(2, 2)] = (zf + zn) / (zn - zf);
+  m[MIDX(2, 3)] = -1.0f;
+  m[MIDX(3, 2)] = (2.0f * zf * zn) / (zn - zf);
+  m[MIDX(3, 3)] = 0.0f;
+  if (flipY)
+    m[MIDX(1, 1)] = -m[MIDX(1, 1)];
 }
 
-MicroView microViewGet()
+static void proj_ortho_gl_rh(Mat4 m, float width, float height, float zn,
+                             float zf, int flipY)
 {
-  return view;
+  mat4_identity(m);
+  float l = -0.5f * width, r = 0.5f * width;
+  float b = -0.5f * height, t = 0.5f * height;
+  m[MIDX(0, 0)] = 2.0f / (r - l);
+  m[MIDX(1, 1)] = 2.0f / (t - b);
+  m[MIDX(2, 2)] = -2.0f / (zf - zn);
+  m[MIDX(3, 0)] = -(r + l) / (r - l);
+  m[MIDX(3, 1)] = -(t + b) / (t - b);
+  m[MIDX(3, 2)] = -(zf + zn) / (zf - zn);
+  if (flipY)
+    m[MIDX(1, 1)] = -m[MIDX(1, 1)];
+}
+
+// VIEW
+void microViewSet(MicroView new_view)
+{
+  view.viewportX = new_view.viewportX;
+  view.viewportY = new_view.viewportY;
+  view.viewportWidth = new_view.viewportWidth;
+  view.viewportHeight = new_view.viewportHeight;
+  view.centerX = new_view.centerX;
+  view.centerY = new_view.centerY;
+  view.width = new_view.width;
+  view.height = new_view.height;
+  view.rotation = new_view.rotation;
+  view.flipY = (new_view.flipY > 0);
+  view._need_matrix_update = true;
+}
+
+const MicroView *microViewGet()
+{
+  return &view;
 }
 
 void microViewApply()
 {
-  if (!viewUpdated)
+  if (view._need_matrix_update)
   {
     float NCenterX, NCenterY;
     NCenterX = floor(view.centerX);
@@ -2941,39 +2970,39 @@ void microViewApply()
     const float f = -(zFar + zNear) / (zFar - zNear);
 
     // Update matrix
-    viewMatrix[0] = a * cosine;
-    viewMatrix[1] = -b * sine;
-    viewMatrix[2] = 0.f;
-    viewMatrix[3] = 0.f;
-    viewMatrix[4] = a * sine;
-    viewMatrix[5] = b * cosine;
-    viewMatrix[6] = 0.f;
-    viewMatrix[7] = 0.f;
-    viewMatrix[8] = 0.f;
-    viewMatrix[9] = 0.f;
-    viewMatrix[10] = e;
-    viewMatrix[11] = 0.f;
-    viewMatrix[12] = a * tx + c;
-    viewMatrix[13] = b * ty + d;
-    viewMatrix[14] = f;
-    viewMatrix[15] = 1.f;
+    view.viewProj[0] = a * cosine;
+    view.viewProj[1] = -b * sine;
+    view.viewProj[2] = 0.f;
+    view.viewProj[3] = 0.f;
+    view.viewProj[4] = a * sine;
+    view.viewProj[5] = b * cosine;
+    view.viewProj[6] = 0.f;
+    view.viewProj[7] = 0.f;
+    view.viewProj[8] = 0.f;
+    view.viewProj[9] = 0.f;
+    view.viewProj[10] = e;
+    view.viewProj[11] = 0.f;
+    view.viewProj[12] = a * tx + c;
+    view.viewProj[13] = b * ty + d;
+    view.viewProj[14] = f;
+    view.viewProj[15] = 1.f;
 
     // Set viewport
     glViewport(view.viewportX, view.viewportY, view.viewportWidth,
                view.viewportHeight);
 
-    viewUpdated = true;
+    view._need_matrix_update = false;
   }
 
   // Apply view
   if (currentShader != -1)
-    microShaderSetMatrix4("u_view", viewMatrix);
+    microShaderSetMatrix4("u_view", view.viewProj);
 }
 
 void microViewFlipY(bool flipY)
 {
   view.flipY = flipY;
-  viewUpdated = false;
+  view._need_matrix_update = true;
 }
 
 void microViewSetViewport(float x, float y, float width, float height)
@@ -2982,27 +3011,27 @@ void microViewSetViewport(float x, float y, float width, float height)
   view.viewportY = y;
   view.viewportWidth = width;
   view.viewportHeight = height;
-  viewUpdated = false;
+  view._need_matrix_update = true;
 }
 
 void microViewSetCenter(float x, float y)
 {
   view.centerX = x;
   view.centerY = y;
-  viewUpdated = false;
+  view._need_matrix_update = true;
 }
 
 void microViewSetSize(float width, float height)
 {
   view.width = width;
   view.height = height;
-  viewUpdated = false;
+  view._need_matrix_update = true;
 }
 
 void microViewSetRotation(float rotation)
 {
   view.rotation = rotation;
-  viewUpdated = false;
+  view._need_matrix_update = true;
 }
 
 void microViewGetCenter(float *centerX, float *centerY)
@@ -3080,50 +3109,79 @@ void microViewPointScreenToWorld(float x, float y, float *outX, float *outY)
   *outY = ty + view.centerY;
 }
 
-static void proj_perspective_gl_rh(float m[16], float fovY, float aspect,
-                                   float zn, float zf, int flipY)
-{
-  mat4_identity(m);
-  float f = 1.0f / tanf(0.5f * fovY);
-  m[MIDX(0, 0)] = f / (aspect > 0 ? aspect : 1.0f);
-  m[MIDX(1, 1)] = f;
-  m[MIDX(2, 2)] = (zf + zn) / (zn - zf);
-  m[MIDX(2, 3)] = -1.0f;
-  m[MIDX(3, 2)] = (2.0f * zf * zn) / (zn - zf);
-  m[MIDX(3, 3)] = 0.0f;
-  if (flipY)
-    m[MIDX(1, 1)] = -m[MIDX(1, 1)];
-}
-
-static void proj_ortho_gl_rh(float m[16], float width, float height, float zn,
-                             float zf, int flipY)
-{
-  mat4_identity(m);
-  float l = -0.5f * width, r = 0.5f * width;
-  float b = -0.5f * height, t = 0.5f * height;
-  m[MIDX(0, 0)] = 2.0f / (r - l);
-  m[MIDX(1, 1)] = 2.0f / (t - b);
-  m[MIDX(2, 2)] = -2.0f / (zf - zn);
-  m[MIDX(3, 0)] = -(r + l) / (r - l);
-  m[MIDX(3, 1)] = -(t + b) / (t - b);
-  m[MIDX(3, 2)] = -(zf + zn) / (zf - zn);
-  if (flipY)
-    m[MIDX(1, 1)] = -m[MIDX(1, 1)];
-}
-
 void microView3dSet(MicroView3d view)
 {
   view3d = view;
-  viewUpdated = false;
+  view3d._need_update_view = true;
+  view3d._need_update_proj = true;
 }
 
-MicroView3d microView3dGet()
+const MicroView3d *microView3dGet()
 {
-  return view3d;
+  return &view3d;
 }
 
 void microView3dApply()
 {
+  const bool viewProjNeedsUpdate = view3d._need_update_view ||
+                                   view3d._need_update_proj;
+  // VIEW
+  if (view3d._need_update_view)
+  {
+    // Camera basis (columns = +X,+Y,+Z in world)
+    Vec3 xcol, ycol, zcol;
+    quat_to_mat3_cols(view3d.orientation, xcol, ycol, zcol);
+
+    const float *p = view3d.position;
+    float *V = view3d.view;
+
+    // R^T (rows are the camera axes in world)
+    V[MIDX(0, 0)] = xcol[0];
+    V[MIDX(0, 1)] = xcol[1];
+    V[MIDX(0, 2)] = xcol[2];
+    V[MIDX(1, 0)] = ycol[0];
+    V[MIDX(1, 1)] = ycol[1];
+    V[MIDX(1, 2)] = ycol[2];
+    V[MIDX(2, 0)] = zcol[0];
+    V[MIDX(2, 1)] = zcol[1];
+    V[MIDX(2, 2)] = zcol[2];
+
+    // Last column = -R^T * pos
+    V[MIDX(0, 3)] = -(xcol[0] * p[0] + xcol[1] * p[1] + xcol[2] * p[2]);
+    V[MIDX(1, 3)] = -(ycol[0] * p[0] + ycol[1] * p[1] + ycol[2] * p[2]);
+    V[MIDX(2, 3)] = -(zcol[0] * p[0] + zcol[1] * p[1] + zcol[2] * p[2]);
+
+    // Bottom row
+    V[MIDX(3, 0)] = 0.0f;
+    V[MIDX(3, 1)] = 0.0f;
+    V[MIDX(3, 2)] = 0.0f;
+    V[MIDX(3, 3)] = 1.0f;
+
+    view3d._need_update_view = false;
+  }
+
+  // PROJECTION
+  if (view3d._need_update_proj)
+  {
+    float aspect = (view3d.viewportHeight > 0.0f)
+                     ? (view3d.viewportWidth / view3d.viewportHeight)
+                     : 1.0f;
+    if (view3d.projectionType == VIEW_PERSPECTIVE)
+      proj_perspective_gl_rh(view3d.proj, view3d.fovY, aspect, view3d.nearZ,
+                             view3d.farZ, view3d.flipY);
+    else
+      proj_ortho_gl_rh(view3d.proj, view3d.orthoWidth, view3d.orthoHeight,
+                       view3d.nearZ, view3d.farZ, view3d.flipY);
+    view3d._need_update_proj = false;
+  }
+
+  // VIEW PROJECTION
+  if (viewProjNeedsUpdate)
+    mat4_mul(view3d.viewProj, view3d.proj, view3d.view);
+
+  // Apply view
+  if (currentShader != -1)
+    microShaderSetMatrix4("u_view", view3d.viewProj);
 }
 
 void microView3dSetPosition(float x, float y, float z)
@@ -3131,7 +3189,7 @@ void microView3dSetPosition(float x, float y, float z)
   view3d.position[0] = x;
   view3d.position[1] = y;
   view3d.position[2] = z;
-  viewUpdated = false;
+  view3d._need_update_view = true;
 }
 
 void microView3dSetOrientation(float x, float y, float z, float w)
@@ -3140,7 +3198,7 @@ void microView3dSetOrientation(float x, float y, float z, float w)
   view3d.orientation[1] = y;
   view3d.orientation[2] = z;
   view3d.orientation[3] = w;
-  viewUpdated = false;
+  view3d._need_update_view = true;
 }
 
 void microView3dLookAt(float eyeX, float eyeY, float eyeZ, float targetX,
@@ -3160,6 +3218,7 @@ void microView3dLookAt(float eyeX, float eyeY, float eyeZ, float targetX,
   float ycol[3];
   vec3_cross(ycol, zcol, xcol); // camera +Y in world
   quat_from_rotation_matrix_cols(view3d.orientation, xcol, ycol, zcol);
+  view3d._need_update_view = true;
 }
 
 void microView3dSetPerspective(float fovY, float nearZ, float farZ)
@@ -3168,6 +3227,7 @@ void microView3dSetPerspective(float fovY, float nearZ, float farZ)
   view3d.nearZ = nearZ;
   view3d.farZ = farZ;
   view3d.projectionType = VIEW_PERSPECTIVE;
+  view3d._need_update_proj = true;
 }
 
 void microView3dSetOrthographic(float width, float height, float nearZ,
@@ -3178,6 +3238,7 @@ void microView3dSetOrthographic(float width, float height, float nearZ,
   view3d.nearZ = nearZ;
   view3d.farZ = farZ;
   view3d.projectionType = VIEW_ORTHOGRAPHIC;
+  view3d._need_update_proj = true;
 }
 
 void microView3dFlyMoveLocal(float dx, float dy, float dz)
@@ -3190,6 +3251,7 @@ void microView3dFlyMoveLocal(float dx, float dy, float dz)
   view3d.position[0] += move[0];
   view3d.position[1] += move[1];
   view3d.position[2] += move[2];
+  view3d._need_update_view = true;
 }
 
 void microView3dFlyRotate(float dYaw, float dPitch, float dRoll)
@@ -3227,22 +3289,7 @@ void microView3dFlyRotate(float dYaw, float dPitch, float dRoll)
     memcpy(view3d.orientation, out, sizeof(out));
   }
   quat_normalize(view3d.orientation);
-}
-
-void microView3dGetView(float out16[16])
-{
-  if (out16)
-    memcpy(out16, view3d.view, 16 * sizeof(float));
-}
-void microView3dGetProj(float out16[16])
-{
-  if (out16)
-    memcpy(out16, view3d.proj, 16 * sizeof(float));
-}
-void microView3dGetViewProj(float out16[16])
-{
-  if (out16)
-    memcpy(out16, view3d.viewProj, 16 * sizeof(float));
+  view3d._need_update_view = true;
 }
 
 RenderingDebugInfo microGetRenderingDebugInfo()

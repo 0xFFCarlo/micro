@@ -521,14 +521,14 @@ end
 --- Adds an entity category component.
 --- @param entity_id number The entity identifier.
 --- @param category number The category value.
-function Cmp.addEntityCategory(entity_id, category)
+function Cmp.addCategory(entity_id, category)
 	lib.CmpAddEntityCategory(entity_id, category)
 end
 
 --- Retrieves the entity category component.
 --- @param entity_id number The entity identifier.
 --- @return CEntityCategory A pointer to the entity category component.
-function Cmp.getEntityCategory(entity_id)
+function Cmp.getCategory(entity_id)
 	return lib.CmpGetEntityCategory(entity_id)
 end
 

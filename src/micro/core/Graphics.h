@@ -133,6 +133,8 @@ typedef struct
   float width, height;
   float rotation;
   bool flipY;
+  float viewProj[16];
+  bool _need_matrix_update;
 } MicroView;
 
 typedef struct
@@ -163,10 +165,12 @@ typedef struct
   float view[16];     // column-major
   float proj[16];     // column-major
   float viewProj[16]; // column-major, proj*view
+  bool _need_update_view;
+  bool _need_update_proj;
 } MicroView3d;
 
 void microViewSet(MicroView view);
-MicroView microViewGet();
+const MicroView* microViewGet();
 void microViewApply();
 void microViewFlipY(bool flipY);
 void microViewSetViewport(float x, float y, float width, float height);
@@ -181,32 +185,20 @@ void microViewPointWorldToScreen(float x, float y, float *outX, float *outY);
 void microViewPointScreenToWorld(float x, float y, float *outX, float *outY);
 
 void microView3dSet(MicroView3d view);
-MicroView3d microView3dGet();
+const MicroView3d *microView3dGet();
 void microView3dApply();
 void microView3dSetPosition(float x, float y, float z);
 void microView3dSetOrientation(float x, float y, float z, float w);
-void microView3dLookAt(float eyeX, float eyeY, float eyeZ,
-                       float targetX, float targetY, float targetZ,
-                       float upX, float upY, float upZ);
+void microView3dLookAt(float eyeX, float eyeY, float eyeZ, float targetX,
+                       float targetY, float targetZ, float upX, float upY,
+                       float upZ);
 void microView3dFlyMoveLocal(float dx, float dy, float dz);
 void microView3dFlyRotate(float dYaw, float dPitch, float dRoll);
 void microView3dSetPerspective(float fovY, float nearZ, float farZ);
 void microView3dSetOrthographic(float width, float height, float nearZ,
                                 float farZ);
-void microView3dGetPosition(float *x, float *y, float *z);
-void microView3dGetOrientation(float *x, float *y, float *z, float *w);
-void microView3dGetProjectionMatrix(float *matrix4x4);
-void microView3dGetViewMatrix(float *matrix4x4);
-void microView3dGetViewProjectionMatrix(float *matrix4x4);
-void microView3dGetViewport(float *width, float *height);
-float microView3dGetFovY();
-float microView3dGetNearZ();
-float microView3dGetFarZ();
-float microView3dGetOrthoWidth();
-float microView3dGetOrthoHeight();
 void microView3dFlipY(bool flipY);
 void microView3dSetViewport(float x, float y, float width, float height);
-
 
 /////////////////////////////
 // Shader

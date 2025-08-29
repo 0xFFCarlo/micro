@@ -17,7 +17,7 @@ static void shaded_canvas_system_update(float dt)
 
   // Store old view and set canvas view full window
   int old_shader = microShaderGetCurrent();
-  MicroView old_view = microViewGet();
+  const MicroView old_view = *microViewGet();
 
   // Update all shaded canvases
   for (unsigned int i = 0; i < components_count; i++)

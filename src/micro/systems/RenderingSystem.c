@@ -83,7 +83,7 @@ static void rendering_system_update(float dt)
   microSystemGetWindowSize(&winWidth, &winHeight);
 
   // Store old view and set default shader
-  MicroView old_view = microViewGet();
+  const MicroView old_view = *microViewGet();
   microShaderApply(shader_id);
   hud_mode = 0;
 
