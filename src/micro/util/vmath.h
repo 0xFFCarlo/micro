@@ -1,11 +1,12 @@
-#ifndef MAT_H
-#define MAT_H
+#ifndef VMATH_H
+#define VMATH_H
 
 // column-major 4x4 index
 #define MIDX(r, c) ((c)*4 + (r))
 
 typedef float Vec2[2];
 typedef float Vec3[3];
+typedef float Vec4[4];
 typedef float Mat4[16];
 typedef float Quat[4];
 
@@ -30,4 +31,4 @@ void quat_to_mat3_cols(const Quat q, Vec3 xcol, Vec3 ycol, Vec3 zcol);
 void quat_from_rotation_matrix_cols(Quat q, const Vec3 xcol, const Vec3 ycol,
                                     const Vec3 zcol);
 
-#endif // MAT_H
+#endif // VMATH_H

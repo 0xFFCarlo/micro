@@ -1,8 +1,6 @@
 #ifndef STATE_HPP
 #define STATE_HPP
 
-#include <SDL2/SDL_events.h>
-
 typedef struct
 {
   void (*init)();

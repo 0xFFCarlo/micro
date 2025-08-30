@@ -1,4 +1,4 @@
-#include "mat.h"
+#include "vmath.h"
 #include <math.h>
 #include <string.h>
 

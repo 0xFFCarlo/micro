@@ -12,7 +12,7 @@
 #include <dirent.h>
 #include <math.h>
 
-#include "../util/mat.h"
+#include "../util/vmath.h"
 #include "../util/vector.h"
 #include "Graphics.h"
 #include "System.h"
@@ -3310,6 +3310,9 @@ void microRenderingDebugInfoClear()
 static uint64_t lastTime = 0;
 static uint64_t frequency = 0;
 
+
+// TODO: fix
+#include <SDL2/SDL.h>
 float microGraphicsDelayToNextFrame(float target_fps)
 {
   if (frequency == 0)

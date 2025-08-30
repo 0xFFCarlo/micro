@@ -1,7 +1,6 @@
 #ifndef SYSTEM_H
 #define SYSTEM_H
 
-#include <SDL2/SDL.h>
 #include "../util/Types.h"
 
 typedef enum MicroKey
@@ -407,7 +406,7 @@ void microSystemShowCursor(bool show);
 void microSystemFocusWindow();
 void microSystemWindowSwapBuffers();
 bool microSystemIsGamepadConnected();
-SDL_GameController *microSystemGetGameController();
+//SDL_GameController *microSystemGetGameController();
 
 
 #endif /* end of include guard: SYSTEM_H */
