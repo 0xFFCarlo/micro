@@ -74,6 +74,13 @@ else()
     )
 endif()
 
+# make install to install include in /usr/local/include
+install(
+    DIRECTORY ${CMAKE_SOURCE_DIR}/src/
+    DESTINATION include
+    FILES_MATCHING PATTERN "*.h"
+)
+
 # Compiler flags
 # target_compile_options(main PRIVATE -Wall -O3)
 
