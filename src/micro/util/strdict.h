@@ -9,6 +9,11 @@ typedef struct StrDictEntry {
   int value;
 } StrDictEntry;
 
+typedef struct StrDict {
+  int size;
+  StrDictEntry entries[];
+} StrDict;
+
 int strdict_get(const StrDictEntry *dict, const char *key, const int dict_size);
 int strdict_insert(StrDictEntry *dict, const char *key, const int value,
                    const int dict_size);

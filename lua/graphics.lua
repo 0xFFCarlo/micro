@@ -117,7 +117,7 @@ typedef struct
 } MicroView;
 void microViewSet(MicroView view);
 const MicroView* microViewGet();
-void microViewApply();
+void microViewApply(int shaderId);
 void microViewFlipY(int flipY);
 void microViewSetViewport(float x, float y, float width, float height);
 void microViewSetCenter(float x, float y);
@@ -247,6 +247,7 @@ void microGraphicsDrawText(int fontId, const char *text, float x, float y,
                            float lineSpacing, float scale, TextAlignment align,
                            int maxLineWidth, unsigned char r, unsigned char g,
                            unsigned char b, unsigned char a);
+int microGraphicsGetSpriteShaderId();
 RenderingDebugInfo microGetRenderingDebugInfo();
 void microRenderingDebugInfoClear();
 void microSwapBuffers();
@@ -710,8 +711,8 @@ function Gfx.getView()
 end
 
 --- Applies the current view.
-function Gfx.applyView()
-	lib.microViewApply()
+function Gfx.applyView(shaderId)
+	lib.microViewApply(shaderId)
 end
 
 --- Flips the view vertically.
@@ -1109,6 +1110,11 @@ end
 -- @param a number alpha.
 function Gfx.drawText(fontId, text, x, y, lineSpacing, scale, align, maxLineWidth, r, g, b, a)
 	lib.microGraphicsDrawText(fontId, text, x, y, lineSpacing, scale, align, maxLineWidth, r, g, b, a)
+end
+--- Gets the sprite shader ID.
+--- @return shaderId number.
+function Gfx.getSpriteShaderId()
+  return lib.microGraphicsGetSpriteShaderId()
 end
 
 --- Gets rendering debug information.

@@ -2221,9 +2221,6 @@ int microGraphicsInit()
   // Setup sprite buffers vector
   microVAOs = vec_new(sizeof(MicroVAO));
 
-  // For 3d
-  glEnable(GL_DEPTH_TEST);
-
   // Clear
   glClear(GL_COLOR_BUFFER_BIT);
   glClearColor(0.0, 0.0, 0.0, 0.0);
