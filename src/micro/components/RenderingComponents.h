@@ -20,12 +20,11 @@ CSprite *CmpGetSprite(int entity_id);
 typedef struct
 {
   uint32_t VAOId;
+  bool freeVAO;
 } CMesh;
 extern int cid_mesh;
 void RegisterCMesh();
-void CmpAddMesh(int entity_id, int shaderId, int textureId, int vertexCount,
-                int instanceCount, const MicroAttributeData *attributes,
-                int attributesCount);
+void CmpAddMesh(int entity_id, int vaoId, bool freeVAO);
 CMesh *CmpGetMesh(int entity_id);
 
 // Text

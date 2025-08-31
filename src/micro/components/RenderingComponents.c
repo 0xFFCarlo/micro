@@ -43,7 +43,8 @@ CSprite *CmpGetSprite(int entity_id)
 void FreeCMesh(void *component)
 {
   CMesh *mesh = (CMesh *)component;
-  microVAOFree(mesh->VAOId);
+  if (mesh->freeVAO)
+    microVAOFree(mesh->VAOId);
 }
 
 void RegisterCMesh()
@@ -51,16 +52,13 @@ void RegisterCMesh()
   cid_mesh = microECSComponentRegister(sizeof(CMesh), FreeCMesh);
 }
 
-void CmpAddMesh(int entity_id, int shaderId, int textureId, int vertexCount,
-                int instanceCount, const MicroAttributeData *attributes,
-                int attributesCount)
+void CmpAddMesh(int entity_id, int vaoId, bool freeVAO)
 {
   assert(cid_mesh != -1);
-  uint32_t vao_id = microVAONew(shaderId, textureId, vertexCount, instanceCount,
-                                attributes, attributesCount);
   microECSEntityAddComponent(entity_id, cid_mesh,
                              &(CMesh){
-                               .VAOId = vao_id,
+                               .VAOId = vaoId,
+                               .freeVAO = freeVAO,
                              });
 }
 

@@ -1,6 +1,0 @@
-{
-    "files.associations": {
-        "sdl_timer.h": "c",
-        "iosfwd": "cpp"
-    }
-}

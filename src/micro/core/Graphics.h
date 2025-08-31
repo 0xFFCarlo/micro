@@ -171,7 +171,7 @@ typedef struct
 
 void microViewSet(MicroView view);
 const MicroView* microViewGet();
-void microViewApply();
+void microViewApply(int shaderId);
 void microViewFlipY(bool flipY);
 void microViewSetViewport(float x, float y, float width, float height);
 void microViewSetCenter(float x, float y);
@@ -186,7 +186,7 @@ void microViewPointScreenToWorld(float x, float y, float *outX, float *outY);
 
 void microView3dSet(MicroView3d view);
 const MicroView3d *microView3dGet();
-void microView3dApply();
+void microView3dApply(int shaderId);
 void microView3dSetPosition(float x, float y, float z);
 void microView3dSetOrientation(float x, float y, float z, float w);
 void microView3dLookAt(float eyeX, float eyeY, float eyeZ, float targetX,
@@ -194,7 +194,7 @@ void microView3dLookAt(float eyeX, float eyeY, float eyeZ, float targetX,
                        float upZ);
 void microView3dFlyMoveLocal(float dx, float dy, float dz);
 void microView3dFlyRotate(float dYaw, float dPitch, float dRoll);
-void microView3dSetPerspective(float fovY, float nearZ, float farZ);
+void microView3dSetPerspective(float fovY_deg, float nearZ, float farZ);
 void microView3dSetOrthographic(float width, float height, float nearZ,
                                 float farZ);
 void microView3dFlipY(bool flipY);
@@ -332,6 +332,7 @@ void microGraphicsDrawText(int fontId, const char *text, float x, float y,
                            float lineSpacing, float scale, TextAlignment align,
                            int maxLineWidth, unsigned char r, unsigned char g,
                            unsigned char b, unsigned char a);
+int microGraphicsGetSpriteShaderId();
 
 // Get rendering debug info
 RenderingDebugInfo microGetRenderingDebugInfo();

@@ -1,6 +1,7 @@
 #include "vmath.h"
 #include <math.h>
 #include <string.h>
+#include <stdio.h>
 
 void vec3_set(Vec3 v, float x, float y, float z)
 {
@@ -77,6 +78,18 @@ void mat4_mul(Mat4 out, const Mat4 a, const Mat4 b)
     }
   }
   memcpy(out, r, sizeof(r));
+}
+
+void mat4_print(const Mat4 m)
+{
+  printf("[[%f, %f, %f, %f],\n", m[MIDX(0, 0)], m[MIDX(0, 1)], m[MIDX(0, 2)],
+         m[MIDX(0, 3)]);
+  printf(" [%f, %f, %f, %f],\n", m[MIDX(1, 0)], m[MIDX(1, 1)], m[MIDX(1, 2)],
+         m[MIDX(1, 3)]);
+  printf(" [%f, %f, %f, %f],\n", m[MIDX(2, 0)], m[MIDX(2, 1)], m[MIDX(2, 2)],
+         m[MIDX(2, 3)]);
+  printf(" [%f, %f, %f, %f]]\n", m[MIDX(3, 0)], m[MIDX(3, 1)], m[MIDX(3, 2)],
+         m[MIDX(3, 3)]);
 }
 
 void quat_normalize(Quat q)

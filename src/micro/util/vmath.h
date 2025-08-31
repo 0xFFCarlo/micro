@@ -20,6 +20,7 @@ void vec3_norm(Vec3 o, const Vec3 a);
 
 void mat4_identity(Mat4 m);
 void mat4_mul(Mat4 out, const Mat4 a, const Mat4 b);
+void mat4_print(const Mat4 m);
 
 // quaternion (x,y,z,w), rotates local->world
 void quat_normalize(Quat q);

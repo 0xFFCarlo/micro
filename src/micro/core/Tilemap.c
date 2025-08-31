@@ -723,9 +723,11 @@ int microTilemapNew(int textureId, float tx, float ty, float tw,
   tile_shader_attrs[5].vbo_id = microVBONew(sizeof(uint32_t) * tm->width *
                                               tm->height,
                                             MICRO_STATIC_DRAW, NULL);
-  CmpAddMesh(tm->entityId, tilemap_shader_id, textureId, 6,
-             tm->width * tm->height, tile_shader_attrs,
-             sizeof(tile_shader_attrs) / sizeof(tile_shader_attrs[0]));
+  const int vaoId = microVAONew(tilemap_shader_id, textureId, 6,
+                          tm->width * tm->height, tile_shader_attrs,
+                          sizeof(tile_shader_attrs) /
+                            sizeof(tile_shader_attrs[0]));
+  CmpAddMesh(tm->entityId, vaoId, true);
   CMesh *mesh = CmpGetMesh(tm->entityId);
   microVAOSubmit(mesh->VAOId, "vpos", quad_verts, 0, 6);
   int tilemapTransform[4] = {tm->x, tm->y, tm->width, tm->height};
@@ -887,5 +889,5 @@ void microTilemapsUpdate(float dt)
   tilemap_shader_time += dt;
   microShaderApply(tilemap_shader_id);
   microShaderSetUniformf("time", tilemap_shader_time);
-  microViewApply();
+  microViewApply(tilemap_shader_id);
 }

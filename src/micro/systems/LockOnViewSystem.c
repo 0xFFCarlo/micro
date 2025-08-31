@@ -46,7 +46,7 @@ static void lock_on_view_system_update(float dt)
     }
   }
 
-  microViewApply();
+  microViewApply(microGraphicsGetSpriteShaderId());
 }
 
 MicroECSSystem lock_on_view_system = {lock_on_view_system_update, NULL, NULL, NULL};

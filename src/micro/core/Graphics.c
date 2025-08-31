@@ -12,8 +12,8 @@
 #include <dirent.h>
 #include <math.h>
 
-#include "../util/vmath.h"
 #include "../util/vector.h"
+#include "../util/vmath.h"
 #include "Graphics.h"
 #include "System.h"
 
@@ -2118,7 +2118,7 @@ void microLightsUpdateTexture()
   microGraphicsClearColor(0.0f, 0.0f, 0.0f, 1.0f);
   microGraphicsClear();
   microViewFlipY(true);
-  microViewApply();
+  microViewApply(lightShaderId);
 
   for (int i = 0; i < microLightsCount; i++)
   {
@@ -2139,7 +2139,7 @@ void microLightsUpdateTexture()
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glBlendEquation(GL_FUNC_ADD);
   microViewFlipY(false);
-  microViewApply();
+  microViewApply(defaultShaderId);
 }
 
 int microLightsGetTextureId()
@@ -2220,6 +2220,9 @@ int microGraphicsInit()
 
   // Setup sprite buffers vector
   microVAOs = vec_new(sizeof(MicroVAO));
+
+  // For 3d
+  glEnable(GL_DEPTH_TEST);
 
   // Clear
   glClear(GL_COLOR_BUFFER_BIT);
@@ -2596,6 +2599,7 @@ unsigned int microVBONew(int size, MicroVAODrawType drawType, const void *data)
   glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
   glBufferData(GL_ARRAY_BUFFER, size, data, vao_draw_modes[drawType]);
   GL_CHECK_ERRORS();
+  debugInfo.bytesSent += size;
   return vbo_id;
 }
 void microVBOSubmit(unsigned int vboId, const void *data, int start, int count)
@@ -2889,11 +2893,16 @@ void microGraphicsDrawText(int fontId, const char *text, float x, float y,
                              maxLineWidth, r, g, b, a);
 }
 
-static void proj_perspective_gl_rh(Mat4 m, float fovY, float aspect, float zn,
-                                   float zf, int flipY)
+int microGraphicsGetSpriteShaderId()
+{
+  return defaultShaderId;
+}
+
+static void proj_perspective_gl_rh(Mat4 m, float fovY_deg, float aspect,
+                                   float zn, float zf, int flipY)
 {
   mat4_identity(m);
-  float f = 1.0f / tanf(0.5f * fovY);
+  float f = 1.0f / tanf(0.5f * fovY_deg * (float)M_PI / 180.0f);
   m[MIDX(0, 0)] = f / (aspect > 0 ? aspect : 1.0f);
   m[MIDX(1, 1)] = f;
   m[MIDX(2, 2)] = (zf + zn) / (zn - zf);
@@ -2941,7 +2950,7 @@ const MicroView *microViewGet()
   return &view;
 }
 
-void microViewApply()
+void microViewApply(int shaderId)
 {
   if (view._need_matrix_update)
   {
@@ -2995,8 +3004,8 @@ void microViewApply()
   }
 
   // Apply view
-  if (currentShader != -1)
-    microShaderSetMatrix4("u_view", view.viewProj);
+  microShaderApply(shaderId);
+  microShaderSetMatrix4("u_view", view.viewProj);
 }
 
 void microViewFlipY(bool flipY)
@@ -3121,7 +3130,7 @@ const MicroView3d *microView3dGet()
   return &view3d;
 }
 
-void microView3dApply()
+void microView3dApply(int shaderId)
 {
   const bool viewProjNeedsUpdate = view3d._need_update_view ||
                                    view3d._need_update_proj;
@@ -3172,16 +3181,25 @@ void microView3dApply()
     else
       proj_ortho_gl_rh(view3d.proj, view3d.orthoWidth, view3d.orthoHeight,
                        view3d.nearZ, view3d.farZ, view3d.flipY);
+
+    // after computing viewProj, before drawing
+    glViewport((GLint)view3d.viewportX, (GLint)view3d.viewportY,
+               (GLsizei)view3d.viewportWidth, (GLsizei)view3d.viewportHeight);
+
     view3d._need_update_proj = false;
   }
 
   // VIEW PROJECTION
   if (viewProjNeedsUpdate)
     mat4_mul(view3d.viewProj, view3d.proj, view3d.view);
+  printf("view3d matrix:\n");
+  mat4_print(view3d.viewProj);
 
   // Apply view
-  if (currentShader != -1)
-    microShaderSetMatrix4("u_view", view3d.viewProj);
+  const int tmp_shader_id = currentShader;
+  microShaderApply(shaderId);
+  microShaderSetMatrix4("u_view", view3d.viewProj);
+  microShaderApply(tmp_shader_id);
 }
 
 void microView3dSetPosition(float x, float y, float z)
@@ -3221,9 +3239,9 @@ void microView3dLookAt(float eyeX, float eyeY, float eyeZ, float targetX,
   view3d._need_update_view = true;
 }
 
-void microView3dSetPerspective(float fovY, float nearZ, float farZ)
+void microView3dSetPerspective(float fovY_deg, float nearZ, float farZ)
 {
-  view3d.fovY = fovY;
+  view3d.fovY = fovY_deg;
   view3d.nearZ = nearZ;
   view3d.farZ = farZ;
   view3d.projectionType = VIEW_PERSPECTIVE;
@@ -3292,6 +3310,15 @@ void microView3dFlyRotate(float dYaw, float dPitch, float dRoll)
   view3d._need_update_view = true;
 }
 
+void microView3dSetViewport(float x, float y, float width, float height)
+{
+  view3d.viewportX = x;
+  view3d.viewportY = y;
+  view3d.viewportWidth = width;
+  view3d.viewportHeight = height;
+  view3d._need_update_proj = true;
+}
+
 RenderingDebugInfo microGetRenderingDebugInfo()
 {
   return debugInfo;
@@ -3309,7 +3336,6 @@ void microRenderingDebugInfoClear()
 
 static uint64_t lastTime = 0;
 static uint64_t frequency = 0;
-
 
 // TODO: fix
 #include <SDL2/SDL.h>

@@ -15,10 +15,6 @@ static void shaded_canvas_system_update(float dt)
   if (components_count == 0)
     return;
 
-  // Store old view and set canvas view full window
-  int old_shader = microShaderGetCurrent();
-  const MicroView old_view = *microViewGet();
-
   // Update all shaded canvases
   for (unsigned int i = 0; i < components_count; i++)
   {
@@ -38,7 +34,7 @@ static void shaded_canvas_system_update(float dt)
                              .height = scanvas->height,
                              .rotation = 0,
                              .flipY = 1});
-    microViewApply();
+    microViewApply(scanvas->shaderId);
     int textureId = microCanvasGetTextureId(scanvas->canvasId);
     int texWidth, texHeight;
     microTextureGetSize(textureId, &texWidth, &texHeight);
@@ -51,9 +47,7 @@ static void shaded_canvas_system_update(float dt)
 
   // Restore old view and shader
   microGraphicsRenderToScreen();
-  microShaderApply(old_shader);
-  microViewSet(old_view);
-  microViewApply();
 }
 
-MicroECSSystem shaded_canvas_system = {shaded_canvas_system_update, NULL, NULL, NULL};
+MicroECSSystem shaded_canvas_system = {shaded_canvas_system_update, NULL, NULL,
+                                       NULL};

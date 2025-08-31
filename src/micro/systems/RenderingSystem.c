@@ -9,7 +9,6 @@
 
 #define MICRO_MAX_LAYER 32
 
-static int shader_id = 0;
 static int hud_mode = 0;
 
 typedef struct
@@ -49,11 +48,6 @@ static void insertion_sort(int arr[], int n)
   }
 }
 
-void renderingSystemSetShader(int shader)
-{
-  shader_id = shader;
-}
-
 static void rendering_system_quit()
 {
   for (int lid = 0; lid < MICRO_MAX_LAYER; lid++)
@@ -84,7 +78,6 @@ static void rendering_system_update(float dt)
 
   // Store old view and set default shader
   const MicroView old_view = *microViewGet();
-  microShaderApply(shader_id);
   hud_mode = 0;
 
   // Clear layers
@@ -163,7 +156,6 @@ static void rendering_system_update(float dt)
       if (entity_hud == 1 && hud_mode == 0)
       {
         microGraphicsDisplay();
-        microShaderApply(shader_id);
         microViewSet((MicroView){.viewportX = 0,
                                  .viewportY = 0,
                                  .viewportWidth = winWidth,
@@ -174,15 +166,14 @@ static void rendering_system_update(float dt)
                                  .height = winHeight,
                                  .rotation = 0,
                                  .flipY = 0});
-        microViewApply();
+        microViewApply(microGraphicsGetSpriteShaderId());
         hud_mode = 1;
       }
       else if (entity_hud == 0 && hud_mode == 1)
       {
         microGraphicsDisplay();
-        microShaderApply(shader_id);
         microViewSet(old_view);
-        microViewApply();
+        microViewApply(microGraphicsGetSpriteShaderId());
         hud_mode = 0;
       }
 
@@ -251,8 +242,6 @@ static void rendering_system_update(float dt)
   }
 
   microGraphicsDisplay();
-  microViewSet(old_view);
-  microViewApply();
 }
 
 MicroECSSystem rendering_system = {rendering_system_update,
