@@ -2221,6 +2221,9 @@ int microGraphicsInit()
   // Setup sprite buffers vector
   microVAOs = vec_new(sizeof(MicroVAO));
 
+  glEnable(GL_DEPTH_TEST);
+  glDepthFunc(GL_LESS);
+
   // Clear
   glClear(GL_COLOR_BUFFER_BIT);
   glClearColor(0.0, 0.0, 0.0, 0.0);
@@ -2313,7 +2316,7 @@ void microGraphicsQuit()
 
 void microGraphicsClear()
 {
-  glClear(GL_COLOR_BUFFER_BIT);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 void microGraphicsClearColor(float r, float g, float b, float a)
@@ -2899,12 +2902,12 @@ static void proj_perspective_gl_rh(Mat4 m, float fovY_deg, float aspect,
                                    float zn, float zf, int flipY)
 {
   mat4_identity(m);
-  float f = 1.0f / tanf(0.5f * fovY_deg * (float)M_PI / 180.0f);
+  float f = 1.0f / tanf(0.5f * fovY_deg * ((float)M_PI / 180.0f));
   m[MIDX(0, 0)] = f / (aspect > 0 ? aspect : 1.0f);
   m[MIDX(1, 1)] = f;
   m[MIDX(2, 2)] = (zf + zn) / (zn - zf);
-  m[MIDX(2, 3)] = -1.0f;
-  m[MIDX(3, 2)] = (2.0f * zf * zn) / (zn - zf);
+  m[MIDX(2, 3)] = (2.0f * zf * zn) / (zn - zf); // z clip offset (last column)
+  m[MIDX(3, 2)] = -1.0f; // perspective (bottom row, Z column)
   m[MIDX(3, 3)] = 0.0f;
   if (flipY)
     m[MIDX(1, 1)] = -m[MIDX(1, 1)];
@@ -2919,9 +2922,9 @@ static void proj_ortho_gl_rh(Mat4 m, float width, float height, float zn,
   m[MIDX(0, 0)] = 2.0f / (r - l);
   m[MIDX(1, 1)] = 2.0f / (t - b);
   m[MIDX(2, 2)] = -2.0f / (zf - zn);
-  m[MIDX(3, 0)] = -(r + l) / (r - l);
-  m[MIDX(3, 1)] = -(t + b) / (t - b);
-  m[MIDX(3, 2)] = -(zf + zn) / (zf - zn);
+  m[MIDX(0, 3)] = -(r + l) / (r - l);
+  m[MIDX(1, 3)] = -(t + b) / (t - b);
+  m[MIDX(2, 3)] = -(zf + zn) / (zf - zn);
   if (flipY)
     m[MIDX(1, 1)] = -m[MIDX(1, 1)];
 }
@@ -3189,8 +3192,6 @@ void microView3dApply(int shaderId)
   // VIEW PROJECTION
   if (viewProjNeedsUpdate)
     mat4_mul(view3d.viewProj, view3d.proj, view3d.view);
-  printf("view3d matrix:\n");
-  mat4_print(view3d.viewProj);
 
   // Apply view
   const int tmp_shader_id = currentShader;
