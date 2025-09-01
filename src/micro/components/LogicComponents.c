@@ -63,7 +63,7 @@ void RegisterCEventListener()
 }
 
 void CmpAddEventListener(int entity_id,
-                         void (*on_event)(int, const SDL_Event *))
+                         void (*on_event)(int, const void *))
 {
   assert(cid_event_listener != -1);
   microECSEntityAddComponent(entity_id, cid_event_listener,

@@ -1,6 +1,7 @@
 #include "../components/LogicComponents.h"
 #include "../core/ECS.h"
 #include "../util/debug.h"
+#include <SDL2/SDL.h>
 #include <stdlib.h>
 
 static void event_system_update(float dt)

@@ -1,7 +1,7 @@
 #ifndef LOGIC_COMPONENTS_H
 #define LOGIC_COMPONENTS_H
 
-#include <SDL2/SDL_events.h>
+#include <stdint.h>
 
 // Update
 typedef struct
@@ -23,19 +23,18 @@ extern int cid_scripted_update;
 void RegisterCScriptedUpdate();
 void CmpAddScriptedUpdate(int entity_id);
 CScriptedUpdate *CmpGetScriptedUpdate(int entity_id);
-typedef void (*UpdateHandlerType)(int* eids, int count, float dt);
+typedef void (*UpdateHandlerType)(int *eids, int count, float dt);
 void CmpSetScriptedUpdateCb(UpdateHandlerType cb);
 
 // EventListener
 typedef struct
 {
-  void (*on_event)(int, const SDL_Event *);
+  void (*on_event)(int, const void *);
 } CEventListener;
 
 extern int cid_event_listener;
 void RegisterCEventListener();
-void CmpAddEventListener(int entity_id,
-                         void (*on_event)(int, const SDL_Event *));
+void CmpAddEventListener(int entity_id, void (*on_event)(int, const void *));
 CEventListener *CmpGetEventListener(int entity_id);
 
 typedef struct
