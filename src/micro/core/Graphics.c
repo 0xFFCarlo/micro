@@ -3211,6 +3211,14 @@ void microView3dSetPosition(float x, float y, float z)
   view3d._need_update_view = true;
 }
 
+void microView3dMove(float dx, float dy, float dz)
+{
+  view3d.position[0] += dx;
+  view3d.position[1] += dy;
+  view3d.position[2] += dz;
+  view3d._need_update_view = true;
+}
+
 void microView3dSetOrientation(float x, float y, float z, float w)
 {
   view3d.orientation[0] = x;

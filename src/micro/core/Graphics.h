@@ -188,6 +188,7 @@ void microView3dSet(MicroView3d view);
 const MicroView3d *microView3dGet();
 void microView3dApply(int shaderId);
 void microView3dSetPosition(float x, float y, float z);
+void microView3dMove(float dx, float dy, float dz);
 void microView3dSetOrientation(float x, float y, float z, float w);
 void microView3dLookAt(float eyeX, float eyeY, float eyeZ, float targetX,
                        float targetY, float targetZ, float upX, float upY,

@@ -28,9 +28,9 @@ int microSystemInit()
                               SDL_WINDOW_SHOWN); //| SDL_WINDOW_INPUT_FOCUS);
 
   // Set fullscreen
-  // SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
+  SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
   // SDL_SetWindowFullscreen(window, 0);  // Switches to windowed mode
-  SDL_MaximizeWindow(window);
+  // SDL_MaximizeWindow(window);
 
   if (!window)
   {
