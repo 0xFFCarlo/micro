@@ -36,6 +36,7 @@ void microStateUpdate(float dt)
   microGraphicsClear();
   start = SDL_GetPerformanceCounter();
   microECSRun(dt);
+  microSystemUpdate();
   currentState.update(dt);
   end = SDL_GetPerformanceCounter();
   lastBusyTime = (double)(end - start) / freq;

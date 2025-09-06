@@ -7,6 +7,11 @@
 static SDL_GameController *controller = NULL;
 static SDL_GLContext *context = NULL;
 static SDL_Window *window = NULL;
+static const uint8_t *currKeys = NULL;
+static uint8_t *prevKeys = NULL;
+static int keyCount = 0;
+static uint32_t currMouseState = 0;
+static uint32_t prevMouseState = 0;
 
 int microSystemInit()
 {
@@ -59,11 +64,17 @@ int microSystemInit()
   }
   // SDL_GL_SetSwapInterval(0);
 
+  // Initialize keyboard state arrays
+  currKeys = SDL_GetKeyboardState(&keyCount);
+  prevKeys = malloc(keyCount);
+  memset(prevKeys, 0, keyCount);
+
   return 0;
 }
 
 int microSystemFree()
 {
+  free(prevKeys);
   SDL_GL_DeleteContext(context);
   SDL_DestroyWindow(window);
   SDL_Quit();
@@ -71,15 +82,34 @@ int microSystemFree()
   return 0;
 }
 
+void microSystemUpdate()
+{
+
+  SDL_PumpEvents();
+  memcpy(prevKeys, currKeys, keyCount);
+  prevMouseState = currMouseState;
+  currKeys = SDL_GetKeyboardState(NULL);
+  currMouseState = SDL_GetMouseState(NULL, NULL);
+}
+
 void microSystemWindowSwapBuffers()
 {
   SDL_GL_SwapWindow(window);
 }
 
-int microSystemGetKey(MicroKey key)
+int microSystemKeyIsDown(MicroKey scancode)
 {
-  const Uint8 *state = SDL_GetKeyboardState(NULL);
-  return state[key];
+  return currKeys[scancode];
+}
+
+int microSystemKeyIsPress(MicroKey scancode)
+{
+  return currKeys[scancode] && !prevKeys[scancode];
+}
+
+int microSystemKeyIsReleased(MicroKey scancode)
+{
+  return !currKeys[scancode] && prevKeys[scancode];
 }
 
 void microSystemGetMousePos(int *x, int *y)
@@ -87,9 +117,43 @@ void microSystemGetMousePos(int *x, int *y)
   SDL_GetMouseState(x, y);
 }
 
+void microSystemGetRelativeMousePos(int *x, int *y)
+{
+  SDL_GetRelativeMouseState(x, y);
+}
+
 void microSystemSetMousePos(int x, int y)
 {
   SDL_WarpMouseInWindow(SDL_GL_GetCurrentWindow(), x, y);
+}
+
+bool microSystemMouseIsDown(MicroMouseButton button)
+{
+  return (currMouseState & SDL_BUTTON(button)) != 0;
+}
+
+bool microSystemMouseIsPress(MicroMouseButton button)
+{
+  return (currMouseState & SDL_BUTTON(button)) != 0 &&
+         (prevMouseState & SDL_BUTTON(button)) == 0;
+}
+
+bool microSystemMouseIsReleased(MicroMouseButton button)
+{
+  return (currMouseState & SDL_BUTTON(button)) == 0 &&
+         (prevMouseState & SDL_BUTTON(button)) != 0;
+}
+
+void microSystemSetRelativeMouseMode(bool enabled)
+{
+  if (enabled == false)
+  {
+    SDL_SetRelativeMouseMode(SDL_FALSE);
+    SDL_SetWindowGrab(window, SDL_FALSE);
+    return;
+  }
+  SDL_SetRelativeMouseMode(SDL_TRUE);
+  SDL_SetWindowGrab(window, SDL_TRUE);
 }
 
 void microSystemGetWindowSize(int *width, int *height)
