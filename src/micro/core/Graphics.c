@@ -298,8 +298,8 @@ static int defaultShaderId = -1;
 static int lightShaderId = -1;
 
 // renderer buffers and states
-static const float sprites_vertex_buf[6 * 2] = {0, 0, 1, 0, 0, 1,
-                                                1, 0, 1, 1, 0, 1};
+static const float sprites_vertex_buf[6 * 2] = {0, 0, 1, 0, 1, 1,
+                                                0, 0, 1, 1, 0, 1};
 static float sprites_pos_buf[MICRO_SPRITES_BUFFER_SIZE * 2];
 static float sprites_size_buf[MICRO_SPRITES_BUFFER_SIZE * 2];
 static float sprites_origin_buf[MICRO_SPRITES_BUFFER_SIZE * 2];
@@ -2223,9 +2223,9 @@ int microGraphicsInit()
 
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LESS);
-  glEnable(GL_CULL_FACE);
-  glCullFace(GL_BACK);
-  glFrontFace(GL_CCW);
+  // glEnable(GL_CULL_FACE);
+  // glCullFace(GL_BACK);
+  // glFrontFace(GL_CCW);
 
   // Clear
   glClear(GL_COLOR_BUFFER_BIT);
@@ -2999,14 +2999,13 @@ void microViewApply(int shaderId)
     view.viewProj[14] = f;
     view.viewProj[15] = 1.f;
 
-    // Set viewport
-    glViewport(view.viewportX, view.viewportY, view.viewportWidth,
-               view.viewportHeight);
-
     view._need_matrix_update = false;
   }
 
   // Apply view
+  // Set viewport
+  glViewport(view.viewportX, view.viewportY, view.viewportWidth,
+             view.viewportHeight);
   microShaderApply(shaderId);
   microShaderSetMatrix4("u_view", view.viewProj);
 }
@@ -3186,9 +3185,6 @@ void microView3dApply(int shaderId)
                        view3d.nearZ, view3d.farZ, view3d.flipY);
 
     // after computing viewProj, before drawing
-    glViewport((GLint)view3d.viewportX, (GLint)view3d.viewportY,
-               (GLsizei)view3d.viewportWidth, (GLsizei)view3d.viewportHeight);
-
     view3d._need_update_proj = false;
   }
 
@@ -3198,6 +3194,9 @@ void microView3dApply(int shaderId)
 
   // Apply view
   const int tmp_shader_id = currentShader;
+  glViewport((GLint)view3d.viewportX, (GLint)view3d.viewportY,
+             (GLsizei)view3d.viewportWidth, (GLsizei)view3d.viewportHeight);
+
   microShaderApply(shaderId);
   microShaderSetMatrix4("u_view", view3d.viewProj);
   microShaderApply(tmp_shader_id);
