@@ -17,9 +17,22 @@ typedef struct
   bool is_sorted;
   int *culled_entities;
   int *y_bins[16];
+
+  void (*setup_layer)(int layerId);
 } draw_layer_t;
 
 static draw_layer_t draw_layers[MICRO_MAX_LAYER] = {0};
+
+void microRenderingSysSetLayerSetupCb(int layerId,
+                                      void (*setup_layer)(int layerId))
+{
+  if (layerId < 0 || layerId >= MICRO_MAX_LAYER)
+  {
+    debug_print("Invalid layerId %d\n", layerId);
+    return;
+  }
+  draw_layers[layerId].setup_layer = setup_layer;
+}
 
 static inline int compare_drawables(int a, int b)
 {
@@ -122,6 +135,9 @@ static void rendering_system_update(float dt)
   for (int lid = 0; lid < MICRO_MAX_LAYER; lid++)
   {
     draw_layer_t *layer = &draw_layers[lid];
+
+    if (layer->setup_layer != NULL)
+      layer->setup_layer(lid);
 
     for (int i = 0; i < (int)vec_len(layer->entities); i++)
     {
