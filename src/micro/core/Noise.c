@@ -1,7 +1,6 @@
 #include "Noise.h"
 #include "../util/debug.h"
 #include "../util/perlin_noise.h"
-#include <math.h>
 
 static float fractalNoise2(float x, float y, const NoiseCfg *cfg)
 {

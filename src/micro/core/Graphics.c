@@ -26,7 +26,6 @@
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb/stb_truetype.h"
 
-#include "../util/Types.h"
 #include "../util/debug.h"
 
 #define MICRO_MAX_TEXTURES 64
@@ -2105,6 +2104,9 @@ void microLightsUpdateTexture()
   int w, h;
   microSystemGetWindowSize(&w, &h);
 
+  if (lightsCanvasId == -1)
+    lightsCanvasId = microCanvasCreate(w, h);
+
   microGraphicsRenderToCanvas(lightsCanvasId);
   glViewport(0, 0, w, h);
   microShaderApply(lightShaderId);
@@ -2282,7 +2284,6 @@ int microGraphicsInit()
   // Setup lights canvas
   int screenWidth, screenHeight;
   microSystemGetWindowSize(&screenWidth, &screenHeight);
-  lightsCanvasId = microCanvasCreate(screenWidth, screenHeight);
 
   debug_print("microGraphics allocated %d kb\n",
               (int)((sizeof(microTextures) + sizeof(microCanvases) +

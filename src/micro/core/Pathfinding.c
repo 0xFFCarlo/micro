@@ -1,6 +1,5 @@
 #include "Pathfinding.h"
 #include "../util/debug.h"
-#include <math.h>
 #include <memory.h>
 #include <stdio.h>
 
