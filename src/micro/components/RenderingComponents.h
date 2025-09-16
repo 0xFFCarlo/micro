@@ -95,6 +95,16 @@ void CmpAddAnimation(int entity_id, int animationId, float duration, bool flipX,
                      bool flipY, bool reverse);
 CAnimation *CmpGetAnimation(int entity_id);
 
+// Immediate draw
+typedef struct
+{
+  void (*drawFunc)(int entity_id);
+} CImmediateDraw;
+extern int cid_immediate_draw;
+void RegisterCImmediateDraw();
+void CmpAddImmediateDraw(int entity_id, void (*drawFunc)(int entity_id));
+CImmediateDraw *CmpGetImmediateDraw(int entity_id);
+
 // ShadedCanvas
 typedef struct
 {

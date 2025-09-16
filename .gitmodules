@@ -1,3 +1,6 @@
 [submodule "micro-resources"]
 	path = micro-resources
 	url = https://Flowx08@bitbucket.org/Flowx08/micro-resources.git
+[submodule "dep/SDL"]
+	path = dep/SDL
+	url = https://github.com/libsdl-org/SDL

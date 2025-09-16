@@ -2902,6 +2902,17 @@ int microGraphicsGetSpriteShaderId()
   return defaultShaderId;
 }
 
+void microGraphicsSetDepthTest(bool enable)
+{
+  if (enable)
+  {
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+  }
+  else
+    glDisable(GL_DEPTH_TEST);
+}
+
 static void proj_perspective_gl_rh(Mat4 m, float fovY_deg, float aspect,
                                    float zn, float zf, int flipY)
 {

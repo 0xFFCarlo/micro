@@ -254,6 +254,14 @@ static void rendering_system_update(float dt)
                               text->alignment, text->maxLineWidth, color->r,
                               color->g, color->b, color->a);
       }
+
+      // Immediate draw
+      if (microECSEntityHasComponent(entityId, cid_immediate_draw))
+      {
+        const CImmediateDraw *immediateDraw = CmpGetImmediateDraw(entityId);
+        if (immediateDraw->drawFunc != NULL)
+          immediateDraw->drawFunc(entityId);
+      }
     }
   }
 

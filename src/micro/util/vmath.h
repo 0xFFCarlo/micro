@@ -1,12 +1,17 @@
 #ifndef VMATH_H
 #define VMATH_H
 
+#include <stdint.h>
+
 // column-major 4x4 index
 #define MIDX(r, c) ((c)*4 + (r))
 
 typedef float Vec2[2];
 typedef float Vec3[3];
 typedef float Vec4[4];
+typedef uint32_t Vecu2[2];
+typedef uint32_t Vecu3[3];
+typedef uint32_t Vecu4[4];
 typedef float Mat4[16];
 typedef float Quat[4];
 

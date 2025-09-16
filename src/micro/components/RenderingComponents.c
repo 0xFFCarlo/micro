@@ -12,6 +12,7 @@ int cid_color = -1;
 int cid_drawable = -1;
 int cid_hud = -1;
 int cid_animation = -1;
+int cid_immediate_draw = -1;
 int cid_shadedCanvas = -1;
 int cid_lock_on_view = -1;
 int cid_particle_emitter = -1;
@@ -177,6 +178,26 @@ CAnimation *CmpGetAnimation(int entity_id)
   return (CAnimation *)microECSEntityGetComponent(entity_id, cid_animation);
 }
 
+void RegisterCImmediateDraw()
+{
+  cid_immediate_draw = microECSComponentRegister(sizeof(CImmediateDraw), NULL);
+}
+
+void CmpAddImmediateDraw(int entity_id, void (*drawFunc)(int entity_id))
+{
+  assert(cid_immediate_draw != -1);
+  microECSEntityAddComponent(entity_id, cid_immediate_draw,
+                             &(CImmediateDraw){
+                               .drawFunc = drawFunc,
+                             });
+}
+
+CImmediateDraw *CmpGetImmediateDraw(int entity_id)
+{
+  return (CImmediateDraw *)microECSEntityGetComponent(entity_id,
+                                                      cid_immediate_draw);
+}
+
 void RegisterCShadedCanvas()
 {
   cid_shadedCanvas = microECSComponentRegister(sizeof(CShadedCanvas), NULL);
@@ -287,6 +308,7 @@ void RegisterRenderingComponents()
   RegisterCDrawable();
   RegisterCHud();
   RegisterCAnimation();
+  RegisterCImmediateDraw();
   RegisterCShadedCanvas();
   RegisterCLockOnView();
   RegisterCParticleEmitter();

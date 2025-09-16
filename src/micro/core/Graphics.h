@@ -323,6 +323,7 @@ void microGraphicsClear();
 void microGraphicsClearColor(float r, float g, float b, float a);
 void microGraphicsDisplay();
 void microGraphicsRenderToScreen();
+void microGraphicsSetDepthTest(bool enable);
 void microGraphicsRenderToCanvas(int canvasId);
 void microGraphicsDrawSprite(int textureId, float tx, float ty, float tw,
                              float th, float x, float y, float w, float h,
