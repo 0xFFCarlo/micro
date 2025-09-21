@@ -3,4 +3,10 @@
 	url = https://Flowx08@bitbucket.org/Flowx08/micro-resources.git
 [submodule "dep/SDL"]
 	path = dep/SDL
-	url = https://github.com/libsdl-org/SDL
+	url = https://github.com/libsdl-org/SDL.git
+[submodule "dep/Chipmunk2D"]
+	path = dep/Chipmunk2D
+	url = https://github.com/slembcke/Chipmunk2D.git
+[submodule "dep/openal-soft"]
+	path = dep/openal-soft
+	url = https://github.com/kcat/openal-soft.git
