@@ -1,6 +1,7 @@
 #ifndef LOGIC_COMPONENTS_H
 #define LOGIC_COMPONENTS_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 // Update
@@ -77,6 +78,20 @@ extern int cid_health;
 void RegisterCHealth();
 void CmpAddHealth(int eid, unsigned int max, unsigned int current);
 CHealth *CmpGetHealth(int eid);
+
+typedef struct CController
+{
+  bool has_control;
+} CController;
+typedef struct _CController
+{
+  bool has_control;
+  uint64_t uid;
+} _CController;
+extern int cid_controller;
+void RegisterCController();
+void CmpAddController(int eid);
+const CController *CmpGetController(int eid);
 
 typedef struct
 {

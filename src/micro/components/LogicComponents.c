@@ -13,6 +13,7 @@ int cid_entity_category = -1;
 int cid_name = -1;
 int cid_interactive_desc = -1;
 int cid_health = -1;
+int cid_controller = -1;
 
 void RegisterCUpdate()
 {
@@ -36,7 +37,7 @@ CUpdate *CmpGetUpdate(int entity_id)
 void RegisterCScriptedUpdate()
 {
   cid_scripted_update = microECSComponentRegister(sizeof(CScriptedUpdate),
-                                                   NULL);
+                                                  NULL);
 }
 
 void CmpAddScriptedUpdate(int entity_id)
@@ -62,8 +63,7 @@ void RegisterCEventListener()
   cid_event_listener = microECSComponentRegister(sizeof(CEventListener), NULL);
 }
 
-void CmpAddEventListener(int entity_id,
-                         void (*on_event)(int, const void *))
+void CmpAddEventListener(int entity_id, void (*on_event)(int, const void *))
 {
   assert(cid_event_listener != -1);
   microECSEntityAddComponent(entity_id, cid_event_listener,
@@ -155,6 +155,27 @@ CHealth *CmpGetHealth(int eid)
   return microECSEntityGetComponent(eid, cid_health);
 }
 
+void RegisterCController()
+{
+  cid_controller = microECSComponentRegister(sizeof(_CController), NULL);
+}
+
+static uint64_t controller_uid_counter = 1;
+void CmpAddController(int eid)
+{
+  assert(cid_controller != -1);
+  microECSEntityAddComponent(eid, cid_controller,
+                             &(_CController){
+                               .has_control = true,
+                               .uid = controller_uid_counter++,
+                             });
+}
+
+const CController *CmpGetController(int eid)
+{
+  return (CController *)microECSEntityGetComponent(eid, cid_controller);
+}
+
 void RegisterCInteractiveDesc()
 {
   cid_interactive_desc = microECSComponentRegister(sizeof(CInteractiveDesc),
@@ -188,5 +209,6 @@ void RegisterLogicComponents()
   RegisterCEntityCategory();
   RegisterCName();
   RegisterCHealth();
+  RegisterCController();
   RegisterCInteractiveDesc();
 }
