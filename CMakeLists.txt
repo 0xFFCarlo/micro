@@ -84,6 +84,8 @@ find_package(OpenGL REQUIRED)
 # Include dirs needed by *your* code (not globally)
 target_include_directories(${MICRO_TARGET} PRIVATE
   ${CMAKE_SOURCE_DIR}/dep/Chipmunk2D/include   # for <chipmunk/chipmunk.h>
+  /usr/local/include/
+  ${CMAKE_SOURCE_DIR}/dep/SDL/include
   ${CMAKE_SOURCE_DIR}/src/systems
   ${CMAKE_SOURCE_DIR}/src/components
   ${CMAKE_SOURCE_DIR}/src/entities
@@ -99,7 +101,7 @@ target_link_libraries(${MICRO_TARGET}
   PRIVATE
     m
     ${OPENGL_LIBRARIES}
-    SDL2
+    SDL2-static
     ${OPENAL_TARGET}
     ${CHIPMUNK_TARGET}
 )
