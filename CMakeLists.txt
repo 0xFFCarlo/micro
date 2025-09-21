@@ -99,7 +99,7 @@ target_link_libraries(${MICRO_TARGET}
   PRIVATE
     m
     ${OPENGL_LIBRARIES}
-    SDL2-static
+    SDL2
     ${OPENAL_TARGET}
     ${CHIPMUNK_TARGET}
 )
