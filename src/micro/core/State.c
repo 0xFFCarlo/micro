@@ -4,9 +4,9 @@
 #include "System.h"
 #include <SDL2/SDL.h>
 
-static MicroState currentState = {NULL, NULL, NULL, 0.0};
+static MicroState currentState = {NULL, NULL, NULL, 0.0, 0.0};
 static int stateChangeRequested = 0;
-static MicroState nextState = {NULL, NULL, NULL, 0.0};
+static MicroState nextState = {NULL, NULL, NULL, 0.0, 0.0};
 static double lastBusyTime = 0.0;
 
 void microStateSet(MicroState state)
@@ -32,6 +32,7 @@ void microStateUpdate(float dt)
   if (currentState.update == NULL)
     return;
 
+  currentState.dt = dt;
   currentState.time += dt;
   microGraphicsClear();
   start = SDL_GetPerformanceCounter();
@@ -61,4 +62,9 @@ double microStateGetLastBusyTime()
 double microStateGetTime()
 {
   return currentState.time;
+}
+
+float microStateGetDeltaTime()
+{
+  return currentState.dt;
 }

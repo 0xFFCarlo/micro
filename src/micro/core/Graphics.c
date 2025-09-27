@@ -1282,9 +1282,17 @@ int microFontGetLineHeight(int fontId, float scale)
   if (microFonts[fontId].type == MICRO_FONT_BITMAP)
     return microFonts[fontId].fontSize * scale;
 
-  int ascent;
-  stbtt_GetFontVMetrics(&microFonts[fontId].ttf.fontInfo, &ascent, 0, 0);
-  return ascent * microFonts[fontId].fontSize * scale;
+  float scaleFactor = stbtt_ScaleForPixelHeight(&microFonts[fontId]
+                                                   .ttf.fontInfo,
+                                                microFonts[fontId].fontSize *
+                                                  scale);
+  int ascent, descent, lineGap;
+  stbtt_GetFontVMetrics(&microFonts[fontId].ttf.fontInfo, &ascent, &descent,
+                        &lineGap);
+
+  // Convert from font units to pixels
+  int lineHeight = (int)((ascent - descent + lineGap) * scaleFactor);
+  return lineHeight;
 }
 
 static int microFontTTFTextWidth(int fontId, const char *text, float scale)
