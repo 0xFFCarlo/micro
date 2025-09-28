@@ -97,19 +97,24 @@ void microSystemWindowSwapBuffers()
   SDL_GL_SwapWindow(window);
 }
 
-int microSystemKeyIsDown(MicroKey scancode)
+int microSystemKeyIsDown(SDL_Scancode scancode)
 {
   return currKeys[scancode];
 }
 
-int microSystemKeyIsPress(MicroKey scancode)
+int microSystemKeyIsPress(SDL_Scancode scancode)
 {
   return currKeys[scancode] && !prevKeys[scancode];
 }
 
-int microSystemKeyIsReleased(MicroKey scancode)
+int microSystemKeyIsReleased(SDL_Scancode scancode)
 {
   return !currKeys[scancode] && prevKeys[scancode];
+}
+
+SDL_Keymod microSystemGetKeyModState()
+{
+  return SDL_GetModState();
 }
 
 void microSystemGetMousePos(int *x, int *y)
