@@ -85,7 +85,6 @@ int microSystemFree()
 void microSystemUpdate()
 {
 
-  SDL_PumpEvents();
   memcpy(prevKeys, currKeys, keyCount);
   prevMouseState = currMouseState;
   currKeys = SDL_GetKeyboardState(NULL);
