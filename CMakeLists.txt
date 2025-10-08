@@ -2,9 +2,9 @@ cmake_minimum_required(VERSION 3.10)
 
 project(micro VERSION 1.0)
 
-# Disallow in-source builds (helps with SDL/OpenAL subprojects)
-if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
-  message(FATAL_ERROR "Use: cmake -S . -B build && cmake --build build")
+# Disallow in-source builds (helps with SDL/OpenAL subprojects) 
+if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR) 
+  message(FATAL_ERROR "Use: cmake -S . -B build && cmake --build build") 
 endif()
 
 set(CMAKE_C_STANDARD 11)
@@ -21,7 +21,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
 
 # Sources
-file(GLOB_RECURSE SOURCES "${CMAKE_SOURCE_DIR}/src/*.c")
+file(GLOB_RECURSE SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
 
 # -------------------- Dependencies --------------------
 
@@ -29,7 +29,7 @@ file(GLOB_RECURSE SOURCES "${CMAKE_SOURCE_DIR}/src/*.c")
 set(SDL_SHARED OFF CACHE BOOL "" FORCE)
 set(SDL_STATIC ON  CACHE BOOL "" FORCE)
 set(SDL_TEST   OFF CACHE BOOL "" FORCE)
-add_subdirectory(${CMAKE_SOURCE_DIR}/dep/sdl EXCLUDE_FROM_ALL)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/dep/sdl EXCLUDE_FROM_ALL)
 
 # OpenAL Soft (shared) — keep LGPL simple
 set(BUILD_SHARED_LIBS ON  CACHE BOOL "Build shared libraries (OpenAL as shared)" FORCE)
@@ -37,7 +37,7 @@ set(ALSOFT_EXAMPLES OFF   CACHE BOOL "" FORCE)
 set(ALSOFT_UTILS   OFF    CACHE BOOL "" FORCE)
 set(ALSOFT_TESTS   OFF    CACHE BOOL "" FORCE)
 set(ALSOFT_NO_CONFIG_UTIL ON CACHE BOOL "" FORCE)
-add_subdirectory(${CMAKE_SOURCE_DIR}/dep/openal-soft EXCLUDE_FROM_ALL)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/dep/openal-soft EXCLUDE_FROM_ALL)
 
 # Resolve dependency target names
 set(OPENAL_TARGET OpenAL)
@@ -49,7 +49,7 @@ endif()
 set(BUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(BUILD_STATIC ON CACHE BOOL "" FORCE)
 set(BUILD_DEMOS OFF CACHE BOOL "" FORCE)
-add_subdirectory(${CMAKE_SOURCE_DIR}/dep/Chipmunk2D EXCLUDE_FROM_ALL)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/dep/Chipmunk2D EXCLUDE_FROM_ALL)
 
 # Resolve Chipmunk target robustly
 set(CHIPMUNK_TARGET "")
@@ -71,7 +71,6 @@ if(_chip_type STREQUAL "STATIC_LIBRARY")
 endif()
 
 # -------------------- Your target --------------------
-
 if(LIBRARY_BUILD)
   add_library(micro SHARED ${SOURCES})
   set(MICRO_TARGET micro)
@@ -84,12 +83,12 @@ find_package(OpenGL REQUIRED)
 
 # Include dirs needed by *your* code (not globally)
 target_include_directories(${MICRO_TARGET} PRIVATE
-  ${CMAKE_SOURCE_DIR}/dep/Chipmunk2D/include   # for <chipmunk/chipmunk.h>
+  ${CMAKE_CURRENT_SOURCE_DIR}/dep/Chipmunk2D/include   # for <chipmunk/chipmunk.h>
   /usr/local/include/
-  ${CMAKE_SOURCE_DIR}/dep/SDL/include
-  ${CMAKE_SOURCE_DIR}/src/systems
-  ${CMAKE_SOURCE_DIR}/src/components
-  ${CMAKE_SOURCE_DIR}/src/entities
+  ${CMAKE_CURRENT_SOURCE_DIR}/dep/SDL/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/systems
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/components
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/entities
 )
 
 # Linux-only GLEW (if you use it there)
@@ -118,7 +117,7 @@ endif()
 
 # Install public headers
 install(
-  DIRECTORY ${CMAKE_SOURCE_DIR}/src/
+  DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/
   DESTINATION include
   FILES_MATCHING PATTERN "*.h"
 )
