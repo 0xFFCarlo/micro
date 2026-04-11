@@ -3,6 +3,7 @@
 #include "../util/vector.h"
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define MAX_COMPONENTS 32
@@ -15,6 +16,10 @@
 #define GETBIT(x, n) ((x >> n) & 1)
 #define ENTITY_ALIVE_MASK 0x1
 #define ENTITY_FREED_MASK 0x2
+
+#ifndef MICRO_ECS_RUNTIME_CHECKS
+#define MICRO_ECS_RUNTIME_CHECKS 1
+#endif
 
 ////////////////////////////////////
 ////// DATA STRUCTURES /////////////
@@ -52,6 +57,62 @@ static MicroECSNotifyFreedEntitiesCb notify_freed_entities_cb = NULL;
 static MicroECSSystem systems[MAX_SYSTEMS];
 static unsigned int systems_count = 0;
 
+#if MICRO_ECS_RUNTIME_CHECKS
+#define ECS_VALID_ENTITY(entityId) \
+  ((entityId) >= 0 && (entityId) < (int)entities_len)
+#define ECS_VALID_COMPONENT(componentTypeId) \
+  ((componentTypeId) >= 0 && \
+   (componentTypeId) < (int)components_types_count)
+#define ECS_VALID_SYSTEM(systemId) \
+  ((systemId) >= 0 && (systemId) < (int)systems_count)
+#define ECS_RUNTIME_ASSERT(cond) assert(cond)
+#else
+#define ECS_VALID_ENTITY(entityId) (true)
+#define ECS_VALID_COMPONENT(componentTypeId) (true)
+#define ECS_VALID_SYSTEM(systemId) (true)
+#define ECS_RUNTIME_ASSERT(cond) ((void)0)
+#endif
+
+#define ECS_GUARD_ENTITY(entityId)                                               \
+  do                                                                             \
+  {                                                                              \
+    if (!ECS_VALID_ENTITY(entityId))                                             \
+      return;                                                                    \
+  }                                                                              \
+  while (0)
+
+#define ECS_GUARD_ENTITY_RET(entityId, ret)                                      \
+  do                                                                             \
+  {                                                                              \
+    if (!ECS_VALID_ENTITY(entityId))                                             \
+      return (ret);                                                              \
+  }                                                                              \
+  while (0)
+
+#define ECS_GUARD_COMPONENT(componentTypeId)                                     \
+  do                                                                             \
+  {                                                                              \
+    if (!ECS_VALID_COMPONENT(componentTypeId))                                   \
+      return;                                                                    \
+  }                                                                              \
+  while (0)
+
+#define ECS_GUARD_COMPONENT_RET(componentTypeId, ret)                            \
+  do                                                                             \
+  {                                                                              \
+    if (!ECS_VALID_COMPONENT(componentTypeId))                                   \
+      return (ret);                                                              \
+  }                                                                              \
+  while (0)
+
+#define ECS_GUARD_SYSTEM(systemId)                                               \
+  do                                                                             \
+  {                                                                              \
+    if (!ECS_VALID_SYSTEM(systemId))                                             \
+      return;                                                                    \
+  }                                                                              \
+  while (0)
+
 ////////////////////////////////////
 ////// ENTITY IMPLEMENTATION ///////
 ////////////////////////////////////
@@ -65,7 +126,7 @@ int microECSEntityNew(void *data, void (*free)(int))
   }
   else
   {
-    assert(entities_len < MAX_ENTITIES - 1);
+    assert(entities_len < MAX_ENTITIES);
     id = entities_len;
     entities_len++;
   }
@@ -75,14 +136,17 @@ int microECSEntityNew(void *data, void (*free)(int))
   entities[id].free_entity = free;
   entities[id].data = data;
   entities[id].components = 0; // No components enabled
-  entities[id].component_offset = malloc(sizeof(uint16_t) *
-                                         components_types_count);
+  entities[id].component_offset = calloc(components_types_count,
+                                         sizeof(uint16_t));
+  assert(entities[id].component_offset != NULL || components_types_count == 0);
 
   return id;
 }
 
 void microECSEntityQueueFree(int entityId)
 {
+  ECS_GUARD_ENTITY(entityId);
+
   // Prevent queuing twice
   if ((entities[entityId].state & ENTITY_ALIVE_MASK) == 0)
     return;
@@ -92,6 +156,8 @@ void microECSEntityQueueFree(int entityId)
 
 void microECSEntityFree(int entityId)
 {
+  ECS_GUARD_ENTITY(entityId);
+
   if (entities[entityId].state & ENTITY_FREED_MASK)
     return;
 
@@ -112,28 +178,32 @@ void microECSEntityFree(int entityId)
   SETBITS(entities[entityId].state, ENTITY_FREED_MASK);
 
   // Add to freed entities
+  assert(freed_entities_count < MAX_ENTITIES);
   freed_entities[freed_entities_count] = entityId;
   freed_entities_count++;
-  assert(freed_entities_count < MAX_ENTITIES);
 }
 
 int microECSEntityIsAlive(int entityId)
 {
+  ECS_GUARD_ENTITY_RET(entityId, 0);
   return (entities[entityId].state & ENTITY_ALIVE_MASK) != 0;
 }
 
 void *microECSEntityGetData(int entityId)
 {
+  ECS_GUARD_ENTITY_RET(entityId, NULL);
   return entities[entityId].data;
 }
 
 void microECSEntitySetData(int entityId, void *data)
 {
+  ECS_GUARD_ENTITY(entityId);
   entities[entityId].data = data;
 }
 
 void microECSEntitySetFreeData(int entityId, void (*free)(int))
 {
+  ECS_GUARD_ENTITY(entityId);
   entities[entityId].free_entity = free;
 }
 
@@ -151,6 +221,10 @@ static inline void *microECSEntityIndexComponent(int entityId,
 void microECSEntityAddComponent(int entityId, const int componentTypeId,
                                 void *data)
 {
+  ECS_RUNTIME_ASSERT(ECS_VALID_ENTITY(entityId));
+  ECS_RUNTIME_ASSERT(ECS_VALID_COMPONENT(componentTypeId));
+  ECS_RUNTIME_ASSERT(data != NULL);
+
   // Does entity have component already?
   assert(microECSEntityHasComponent(entityId, componentTypeId) == 0);
 
@@ -173,8 +247,10 @@ void microECSEntityAddComponent(int entityId, const int componentTypeId,
 
 void microECSEntityRemoveComponent(int entityId, const int componentTypeId)
 {
-  assert(entityId >= 0 && entityId < MAX_ENTITIES);
-  assert(componentTypeId >= 0 && componentTypeId < MAX_COMPONENTS);
+  ECS_GUARD_ENTITY(entityId);
+  ECS_GUARD_COMPONENT(componentTypeId);
+  if (!microECSEntityHasComponent(entityId, componentTypeId))
+    return;
 
   // Upadte entity flags
   entities[entityId].components &= ~(1ULL << componentTypeId);
@@ -210,6 +286,8 @@ void microECSEntityRemoveComponent(int entityId, const int componentTypeId)
 
 void *microECSEntityGetComponent(int entityId, const int componentTypeId)
 {
+  ECS_GUARD_ENTITY_RET(entityId, NULL);
+  ECS_GUARD_COMPONENT_RET(componentTypeId, NULL);
   if (microECSEntityHasComponent(entityId, componentTypeId) == 0)
     return NULL;
 #ifdef DEBUG_MODE
@@ -227,6 +305,8 @@ void *microECSEntityGetComponent(int entityId, const int componentTypeId)
 
 int microECSEntityHasComponent(int entityId, const int componentTypeId)
 {
+  ECS_GUARD_ENTITY_RET(entityId, 0);
+  ECS_GUARD_COMPONENT_RET(componentTypeId, 0);
   return (entities[entityId].components & (1ULL << componentTypeId)) != 0;
 }
 
@@ -248,16 +328,21 @@ int microECSComponentRegister(int size, void (*freeComponent)(void *))
 
 void *microECSComponentsGet(int componentTypeId)
 {
+  ECS_GUARD_COMPONENT_RET(componentTypeId, NULL);
   return components[componentTypeId];
 }
 
 int microECSComponentsCount(int componentTypeId)
 {
+  ECS_GUARD_COMPONENT_RET(componentTypeId, 0);
   return components_count[componentTypeId];
 }
 
 int microECSComponentGetEntityId(int componentTypeId, int index)
 {
+  ECS_GUARD_COMPONENT_RET(componentTypeId, -1);
+  if (index < 0 || index >= components_count[componentTypeId])
+    return -1;
   return components_entity_ref[componentTypeId][index];
 }
 
@@ -289,9 +374,10 @@ int microECSSystemAdd(MicroECSSystem system)
 
 void microECSSystemRemove(int systemId)
 {
+  ECS_GUARD_SYSTEM(systemId);
   if (systems[systemId].system_free != NULL)
     systems[systemId].system_free();
-  systems[systemId].update = NULL;
+  memset(&systems[systemId], 0, sizeof(MicroECSSystem));
 }
 
 //////////////////////////////////////////

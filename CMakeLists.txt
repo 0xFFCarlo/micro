@@ -12,6 +12,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)   # needed when linking static libs into shared
 
 option(LIBRARY_BUILD "Build micro as a shared library" ON)
+option(MICRO_ECS_RUNTIME_CHECKS "Enable runtime ECS safety checks" ON)
 
 # Output dirs
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -79,6 +80,11 @@ else()
   set(MICRO_TARGET main)
 endif()
 
+target_compile_definitions(${MICRO_TARGET}
+  PRIVATE
+    MICRO_ECS_RUNTIME_CHECKS=$<IF:$<BOOL:${MICRO_ECS_RUNTIME_CHECKS}>,1,0>
+)
+
 find_package(OpenGL REQUIRED)
 
 # Include dirs needed by *your* code (not globally)
@@ -132,4 +138,3 @@ endif()
 # Build-type C flags
 set(CMAKE_C_FLAGS_DEBUG   "-g -rdynamic -O0 -pg")
 set(CMAKE_C_FLAGS_RELEASE "-O3")
-
