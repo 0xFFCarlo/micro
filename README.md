@@ -51,3 +51,25 @@ cmake .
 ```bash
 make 
 ```
+
+### Physics Toggle (Chipmunk Optional)
+
+Physics is disabled by default (`MICRO_WITH_PHYSICS=OFF`).
+Enable Chipmunk-based physics explicitly:
+
+```bash
+cmake -S . -B build -DMICRO_WITH_PHYSICS=ON
+cmake --build build
+```
+
+To keep physics disabled:
+
+```bash
+cmake -S . -B build -DMICRO_WITH_PHYSICS=OFF
+cmake --build build
+```
+
+When `MICRO_WITH_PHYSICS=OFF`:
+- Chipmunk2D is not linked into `libmicro`.
+- `Physics.c` is replaced by a stub implementation.
+- Physics creation/query APIs return fallback values (`-1`, `0`, `false`) and state-changing calls become no-ops.

@@ -7,14 +7,15 @@ typedef struct {
   void (*update)(float dt);
   void (*free)();
   double time;
+  float dt;
 } MicroState;
 
 void microStateSet(MicroState state);
-void microStateQuit();
 void microStateUpdate(float dt);
 void microStateFree();
 double microStateGetLastBusyTime();
 double microStateGetTime();
+float microStateGetDeltaTime();
 ]])
 
 local State = {}
@@ -35,7 +36,7 @@ end
 
 --- Signals the state to quit.
 function State.quit()
-	lib.microStateQuit()
+	lib.microStateFree()
 end
 
 --- Updates the current state with the given delta time.
@@ -59,6 +60,12 @@ end
 --- @return number @The current state time.
 function State.getTime()
 	return lib.microStateGetTime()
+end
+
+--- Returns the current state's delta time.
+--- @return number @The current state delta time in seconds.
+function State.getDeltaTime()
+	return lib.microStateGetDeltaTime()
 end
 
 return State

@@ -41,12 +41,6 @@ ffi.cdef([[
     // Allocate memory for components.
     void microECSAllocateComponents();
 
-    // Get number of deleted entities
-    int microECSGetDeletedEntitiesCount();
-
-    // Get the list of deleted entities
-    void microECSGetDeletedEntities(int *entities, int* size);
-
     // Notify freed entities callback type.
     typedef void (*MicroECSNotifyFreedEntitiesCb)(const int *entities, int entities_count);
 
@@ -116,6 +110,10 @@ function ECS.setFreeData(entityId, free)
 	lib.microECSEntitySetFreeData(entityId, free_cb)
 	ECS._freeCallbacks = ECS._freeCallbacks or {}
 	ECS._freeCallbacks[entityId] = free_cb
+	if ECS.entitiesData[entityId + 1] == nil then
+		ECS.entitiesData[entityId + 1] = {}
+	end
+	ECS.entitiesData[entityId + 1].free = free
 end
 
 --- Adds a component to an entity.
@@ -165,17 +163,6 @@ function ECS.allocateComponents()
 	lib.microECSAllocateComponents()
 end
 
-function ECS.getDeletedEntitiesCount()
-	return lib.microECSGetDeletedEntitiesCount()
-end
-
-function ECS.getDeletedEntities()
-	local entities = ffi.new("int[?]", ECS.getDeletedEntitiesCount())
-	local size = ffi.new("int[1]")
-	lib.microECSGetDeletedEntities(entities, size)
-	return entities, size[0]
-end
-
 function ECS._handleCleanupEntities(entities, entities_count)
 	for i = 0, entities_count - 1 do
 		local entityId = entities[i]
@@ -188,6 +175,7 @@ function ECS._handleCleanupEntities(entities, entities_count)
 		end
 	end
 end
-lib.microECSSetNotifyFreedEntitiesCb(ffi.cast("MicroECSNotifyFreedEntitiesCb", ECS._handleCleanupEntities))
+ECS._cleanup_cb = ffi.cast("MicroECSNotifyFreedEntitiesCb", ECS._handleCleanupEntities)
+lib.microECSSetNotifyFreedEntitiesCb(ECS._cleanup_cb)
 
 return ECS

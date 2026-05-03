@@ -288,6 +288,8 @@ typedef struct
 int microVAONew(int shaderId, int textureId, int vertexCount,
                 int instancesCount, const MicroAttributeData *attributes,
                 int attributesCount);
+void microVAOSubmitBytes(int vaoId, const char *attribute_name,
+                         const void *data, int byteOffset, int byteSize);
 void microVAOSubmit(int vaoId, const char *attribute_name, const void *data,
                     int start, int count);
 void microVAOSetDrawRange(int vaoId, int start, int count, int instancesCount,

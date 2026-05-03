@@ -2,12 +2,8 @@ local ffi = require("ffi")
 local lib = require("micro/lua/libmicro")
 
 ffi.cdef([[
-    // Assumed definition for MicroAABB; adjust if necessary.
     typedef struct {
-        float x;
-        float y;
-        float width;
-        float height;
+        int32_t left, right, top, bottom;
     } MicroAABB;
 
     typedef struct
@@ -103,6 +99,7 @@ Physics._HandleCollisionsCallback = ffi.cast("MicroWorldCollisionsCb", HandleCol
 Physics._HandleBodiesRemovedCallback = ffi.cast("MicroWorldBodiesRemovedCb", HandleBodiesRemovedCallback)
 Physics._bodies_collision_begin_cb = {}
 Physics._bodies_collision_update_cb = {}
+Physics._world_tilemap_solid_cbs = {}
 
 --- Creates a new physics world.
 --- @return number worldId
@@ -146,7 +143,11 @@ end
 --- @return number tilemapId
 function Physics.worldNewCollisionTilemap(worldId, is_solid, tile_size)
 	local c_is_solid = ffi.cast("bool (*)(const int, const int)", is_solid)
-	return lib.microPhysicsWorldNewCollisionTilemap(worldId, c_is_solid, tile_size)
+	local tilemapId = lib.microPhysicsWorldNewCollisionTilemap(worldId, c_is_solid, tile_size)
+	if tilemapId >= 0 then
+		Physics._world_tilemap_solid_cbs[tilemapId] = c_is_solid
+	end
+	return tilemapId
 end
 
 --- Frees a physics world.
@@ -158,6 +159,7 @@ end
 --- Frees all physics worlds.
 function Physics.worldFreeAll()
 	lib.microPhysicsWorldFreeAll()
+	Physics._world_tilemap_solid_cbs = {}
 end
 
 -- BODY FUNCTIONS

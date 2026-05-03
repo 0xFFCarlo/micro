@@ -71,6 +71,7 @@ CDrawable *CmpGetDrawable(int entity_id);
 // Hud
 typedef struct
 {
+  uint8_t _reserved;
 } CHud;
 
 extern int cid_hud;

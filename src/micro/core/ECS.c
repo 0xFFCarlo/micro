@@ -136,8 +136,10 @@ int microECSEntityNew(void *data, void (*free)(int))
   entities[id].free_entity = free;
   entities[id].data = data;
   entities[id].components = 0; // No components enabled
-  entities[id].component_offset = calloc(components_types_count,
-                                         sizeof(uint16_t));
+  entities[id].component_offset = malloc(components_types_count * sizeof(uint16_t));
+  if (entities[id].component_offset != NULL && components_types_count > 0)
+    memset(entities[id].component_offset, 0,
+           components_types_count * sizeof(uint16_t));
   assert(entities[id].component_offset != NULL || components_types_count == 0);
 
   return id;

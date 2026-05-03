@@ -18,6 +18,7 @@ CUpdate *CmpGetUpdate(int entity_id);
 // Scripted Update
 typedef struct
 {
+  uint8_t _reserved;
 } CScriptedUpdate;
 
 extern int cid_scripted_update;

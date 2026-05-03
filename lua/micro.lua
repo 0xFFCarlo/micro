@@ -7,11 +7,12 @@ typedef struct {
   void (*update)(float dt);
   void (*free)();
   double time;
+  float dt;
 } MicroState;
 
 int microInit(MicroState bootState);
 int microUpdate(int max_fps);
-int microQuit();
+void microQuit();
 ]])
 
 local Micro = {}
@@ -43,9 +44,8 @@ function Micro.update(max_fps)
 end
 
 --- Frees the resources used by the system.
---- @return number 0 on success, non-zero on error.
 function Micro.quit()
-	return lib.microQuit()
+	lib.microQuit()
 end
 
 return Micro

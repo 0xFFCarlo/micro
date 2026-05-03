@@ -38,9 +38,9 @@ ffi.cdef([[
   // Sprite buffer (Mesh)
   typedef struct {
     uint32_t VAOId;
+    bool freeVAO;
   } CMesh;
-  void CmpAddMesh(int entity_id, int shaderId, int textureId, int vertexCount,
-                  int instanceCount, const void *attributes, int attributesCount);
+  void CmpAddMesh(int entity_id, int vaoId, bool freeVAO);
   CMesh *CmpGetMesh(int entity_id);
 
   // Text
@@ -72,7 +72,11 @@ ffi.cdef([[
   void CmpAddDrawable(int entity_id, uint8_t layerId, bool visible);
   CDrawable *CmpGetDrawable(int entity_id);
 
+  typedef struct {
+    uint8_t _reserved;
+  } CHud;
   void CmpAddHud(int entity_id);
+  CHud *CmpGetHud(int entity_id);
 
   // Animation
   typedef struct {
@@ -167,19 +171,6 @@ ffi.cdef([[
                       float elasticity, float friction);
   CBody *CmpGetBody(int entity_id);
 
-  // Follow an entity
-  typedef struct
-  {
-    uint32_t target_entity_id;
-    uint8_t lock_rot;
-    int32_t offset_x;
-    int32_t offset_y;
-  } CFollow;
-
-  void CmpAddFollow(int entity_id, uint32_t target_entity_id, uint8_t lock_rot,
-                    int32_t offset_x, int32_t offset_y);
-  CFollow *CmpGetFollow(int entity_id);
-
   typedef struct
   {
     void (*update)(int, float);
@@ -272,8 +263,15 @@ function Cmp.getSprite(entity_id)
 	return cmp
 end
 
-function Cmp.addMesh(entity_id, shaderId, textureId, vertexCount, instanceCount, attributes, attributesCount)
-	lib.CmpAddMesh(entity_id, shaderId, textureId, vertexCount, instanceCount, attributes, attributesCount)
+--- Add mesh component to an entity.
+--- @param entity_id number
+--- @param vaoId number
+--- @param freeVAO boolean|nil
+function Cmp.addMesh(entity_id, vaoId, freeVAO)
+	if freeVAO == nil then
+		freeVAO = false
+	end
+	lib.CmpAddMesh(entity_id, vaoId, freeVAO)
 end
 
 function Cmp.getMesh(entity_id)
@@ -305,7 +303,9 @@ end
 --- @param layerId number
 --- @param visible boolean|nil
 function Cmp.addDrawable(entity_id, layerId, visible)
-	visible = visible or true
+	if visible == nil then
+		visible = true
+	end
 	lib.CmpAddDrawable(entity_id, layerId, visible)
 end
 
@@ -435,14 +435,6 @@ function Cmp.getBody(entity_id)
 	return lib.CmpGetBody(entity_id)
 end
 
-function Cmp.addFollow(entity_id, target_entity_id, lock_rot, offset_x, offset_y)
-	lib.CmpAddFollow(entity_id, target_entity_id, lock_rot, offset_x, offset_y)
-end
-
-function Cmp.getFollow(entity_id)
-	return lib.CmpGetFollow(entity_id)
-end
-
 --- Adds an update component to an entity.
 --- @param entity_id number The entity identifier.
 --- @param update fun(entity_id:number, delta: number) The update callback.
@@ -466,8 +458,8 @@ local function ScriptedUpdateHandler(eids, count, dt)
 	for i = 0, count - 1 do
 		local eid = eid_array[i]
 		local updateComponent = Cmp.updateComponents[eid]
-		updateComponent.is_in_use = true
 		if updateComponent then
+			updateComponent.is_in_use = true
 			if ECS.isAlive(eid) and updateComponent.update ~= nil then
 				updateComponent.update(eid, dt)
 				-- print("Updated entity: " .. eid .. " with dt: " .. dt)

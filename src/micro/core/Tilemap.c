@@ -569,21 +569,33 @@ typedef struct MicroTilemap
 
   int32_t *bufTileId;
   uint32_t *bufAnimInfo;
+  struct TileRenderData *bufTileRender;
   int startChangeBufTileId;
   int endChangeBufTileId;
   int startChangeAnimInfo;
   int endChangeAnimInfo;
 } MicroTilemap;
 
+typedef struct TileRenderData
+{
+  int32_t x;
+  int32_t y;
+  int32_t tileId;
+  uint32_t animationInfo;
+} TileRenderData;
+
 MicroTilemap tilemaps[MAX_TILEMAPS];
 
 static MicroAttributeData tile_shader_attrs[] = {
   {0, true, "vpos", 2, MICRO_FLOAT, 0, 0, NULL, false},
-  {0, true, "tilemapTransform", 4, MICRO_INT, 0, 1, NULL, false},
+  {0, true, "tilePos", 2, MICRO_INT, sizeof(TileRenderData), 1,
+   (void *)offsetof(TileRenderData, x), false},
   {0, true, "textureInfo", 4, MICRO_INT, 0, 1, NULL, false},
   {0, true, "tileSize", 1, MICRO_INT, 0, 1, NULL, false},
-  {0, true, "tileId", 1, MICRO_INT, 0, 1, NULL, false},
-  {0, true, "animationInfo", 1, MICRO_UNSIGNED_INT, 0, 1, NULL, false},
+  {0, true, "tileId", 1, MICRO_INT, sizeof(TileRenderData), 1,
+   (void *)offsetof(TileRenderData, tileId), false},
+  {0, true, "animationInfo", 1, MICRO_UNSIGNED_INT, sizeof(TileRenderData),
+   1, (void *)offsetof(TileRenderData, animationInfo), false},
 };
 
 static const float quad_verts[2 * 6] = {0,   0,   1.0, 0,   0,   1.0,
@@ -615,7 +627,7 @@ static const char
 static const char *
   tilemap_shader_vert = "#version 330 core\n"
                         "layout(location = 0) in vec2 vpos;\n"
-                        "layout(location = 1) in ivec4 tilemapTransform;\n"
+                        "layout(location = 1) in ivec2 tilePos;\n"
                         "layout(location = 2) in ivec4 textureInfo;\n"
                         "layout(location = 3) in int tileSize;\n"
                         "layout(location = 4) in int tileId;\n"
@@ -631,12 +643,8 @@ static const char *
                         "1.0);\n"
                         "        return;\n"
                         "    }\n"
-                        "    vec2 tilePos = vec2(gl_InstanceID % "
-                        "tilemapTransform.z, gl_InstanceID / "
-                        "tilemapTransform.z) * float(tileSize);\n"
-                        "    vec2 worldPos = vpos * float(tileSize) + tilePos "
-                        "+ "
-                        "tilemapTransform.xy;\n"
+                        "    vec2 worldPos = vpos * float(tileSize) + "
+                        "vec2(tilePos);\n"
                         "    worldPos = floor(worldPos);"
                         "    gl_Position = u_view * vec4(worldPos, 0.0, 1.0);\n"
                         "    int animFrames = animationInfo & 0xFF;\n"
@@ -697,32 +705,45 @@ int microTilemapNew(int textureId, float tx, float ty, float tw,
   tm->height = height;
   tm->bufTileId = malloc(sizeof(int32_t) * width * height);
   tm->bufAnimInfo = malloc(sizeof(uint32_t) * width * height);
+  tm->bufTileRender = malloc(sizeof(TileRenderData) * width * height);
   tm->startChangeBufTileId = 0;
   tm->endChangeBufTileId = 0;
   tm->startChangeAnimInfo = 0;
   tm->endChangeAnimInfo = 0;
+
+  for (int iy = 0; iy < height; iy++)
+  {
+    for (int ix = 0; ix < width; ix++)
+    {
+      const int idx = ix + iy * width;
+      tm->bufTileId[idx] = -1;
+      tm->bufAnimInfo[idx] = 0;
+      tm->bufTileRender[idx].x = tm->x + ix * tm->tileSize;
+      tm->bufTileRender[idx].y = tm->y + iy * tm->tileSize;
+      tm->bufTileRender[idx].tileId = -1;
+      tm->bufTileRender[idx].animationInfo = 0;
+    }
+  }
 
   tm->entityId = microECSEntityNew(NULL, NULL);
   CmpAddPosition(tm->entityId, tm->x, tm->y);
   CmpAddDrawable(tm->entityId, drawLayer, visible);
   tile_shader_attrs[0].vbo_id = microVBONew(2 * 6 * sizeof(float),
                                             MICRO_STATIC_DRAW, quad_verts);
-  tile_shader_attrs[1].vbo_id = microVBONew(4 * sizeof(int), MICRO_STATIC_DRAW,
-                                            NULL);
-  // Use same tilemapTransform for all tiles
-  tile_shader_attrs[1].divisor = width * height;
+  tile_shader_attrs[1].vbo_id = microVBONew(sizeof(TileRenderData) * tm->width *
+                                              tm->height,
+                                            MICRO_STATIC_DRAW,
+                                            tm->bufTileRender);
   tile_shader_attrs[2].vbo_id = microVBONew(4 * sizeof(int), MICRO_STATIC_DRAW,
                                             NULL);
   tile_shader_attrs[2].divisor = width * height;
   tile_shader_attrs[3].vbo_id = microVBONew(1 * sizeof(int), MICRO_STATIC_DRAW,
                                             NULL);
   tile_shader_attrs[3].divisor = width * height;
-  tile_shader_attrs[4].vbo_id = microVBONew(sizeof(uint32_t) * tm->width *
-                                              tm->height,
-                                            MICRO_STATIC_DRAW, NULL);
-  tile_shader_attrs[5].vbo_id = microVBONew(sizeof(uint32_t) * tm->width *
-                                              tm->height,
-                                            MICRO_STATIC_DRAW, NULL);
+  tile_shader_attrs[4].vbo_id = tile_shader_attrs[1].vbo_id;
+  tile_shader_attrs[4].consume_vbo = false;
+  tile_shader_attrs[5].vbo_id = tile_shader_attrs[1].vbo_id;
+  tile_shader_attrs[5].consume_vbo = false;
   const int vaoId = microVAONew(tilemap_shader_id, textureId, 6,
                           tm->width * tm->height, tile_shader_attrs,
                           sizeof(tile_shader_attrs) /
@@ -730,8 +751,6 @@ int microTilemapNew(int textureId, float tx, float ty, float tw,
   CmpAddMesh(tm->entityId, vaoId, true);
   CMesh *mesh = CmpGetMesh(tm->entityId);
   microVAOSubmit(mesh->VAOId, "vpos", quad_verts, 0, 6);
-  int tilemapTransform[4] = {tm->x, tm->y, tm->width, tm->height};
-  microVAOSubmit(mesh->VAOId, "tilemapTransform", tilemapTransform, 0, 1);
   debug_print("Created tilemap at %d, %d\n", tm->x, tm->y);
   int texWidth, texHeight;
   microTextureGetSize(textureId, &texWidth, &texHeight);
@@ -762,9 +781,18 @@ void microTilemapSetPosition(int tilemapId, int x, int y)
   CPosition *pos = CmpGetPosition(tm->entityId);
   pos->x = x;
   pos->y = y;
+  const int dx = x - tm->x;
+  const int dy = y - tm->y;
+  for (int i = 0; i < tm->width * tm->height; i++)
+  {
+    tm->bufTileRender[i].x += dx;
+    tm->bufTileRender[i].y += dy;
+  }
+  tm->x = x;
+  tm->y = y;
   CMesh *mesh = CmpGetMesh(tm->entityId);
-  int tilemapTransform[4] = {x, y, tm->width, tm->height};
-  microVAOSubmit(mesh->VAOId, "tilemapTransform", tilemapTransform, 0, 1);
+  microVAOSubmitBytes(mesh->VAOId, "tilePos", tm->bufTileRender, 0,
+                      sizeof(TileRenderData) * tm->width * tm->height);
 }
 
 void microTilemapGetPosition(int tilemapId, int *x, int *y)
@@ -778,9 +806,11 @@ void microTilemapGetPosition(int tilemapId, int *x, int *y)
 void microTilemapSetTile(int tilemapId, int x, int y, int tileId)
 {
   MicroTilemap *tm = &tilemaps[tilemapId];
-  tm->bufTileId[x + y * tm->width] = tileId;
-  tm->startChangeBufTileId = MIN(tm->startChangeBufTileId, x + y * tm->width);
-  tm->endChangeBufTileId = MAX(tm->endChangeBufTileId, x + y * tm->width + 1);
+  const int idx = x + y * tm->width;
+  tm->bufTileId[idx] = tileId;
+  tm->bufTileRender[idx].tileId = tileId;
+  tm->startChangeBufTileId = MIN(tm->startChangeBufTileId, idx);
+  tm->endChangeBufTileId = MAX(tm->endChangeBufTileId, idx + 1);
 }
 
 void microTilemapSetTiles(int tilemapId, int *tile_ids, int tile_start_idx,
@@ -789,6 +819,8 @@ void microTilemapSetTiles(int tilemapId, int *tile_ids, int tile_start_idx,
   MicroTilemap *tm = &tilemaps[tilemapId];
   assert(tile_start_idx + tiles_count <= tm->width * tm->height);
   memcpy(&tm->bufTileId[tile_start_idx], tile_ids, sizeof(int) * tiles_count);
+  for (int i = 0; i < tiles_count; i++)
+    tm->bufTileRender[tile_start_idx + i].tileId = tile_ids[i];
   tm->startChangeBufTileId = MIN(tm->startChangeBufTileId, tile_start_idx);
   tm->endChangeBufTileId = MAX(tm->endChangeBufTileId,
                                tile_start_idx + tiles_count);
@@ -805,11 +837,13 @@ void microTilemapSetTileAnimation(int tilemapId, int x, int y,
                                   uint8_t animOffset, uint8_t animStride)
 {
   MicroTilemap *tm = &tilemaps[tilemapId];
-  uint32_t *info = &tm->bufAnimInfo[x + y * tm->width];
+  const int idx = x + y * tm->width;
+  uint32_t *info = &tm->bufAnimInfo[idx];
   *info = (uint32_t)framesCount | ((uint32_t)animSpeed << 8) |
           ((uint32_t)animOffset << 16) | ((uint32_t)animStride << 24);
-  tm->startChangeAnimInfo = MIN(tm->startChangeAnimInfo, x + y * tm->width);
-  tm->endChangeAnimInfo = MAX(tm->endChangeAnimInfo, x + y * tm->width + 1);
+  tm->bufTileRender[idx].animationInfo = *info;
+  tm->startChangeAnimInfo = MIN(tm->startChangeAnimInfo, idx);
+  tm->endChangeAnimInfo = MAX(tm->endChangeAnimInfo, idx + 1);
 }
 
 void microTilemapSetTilesAnimation(int tilemapId,
@@ -820,6 +854,8 @@ void microTilemapSetTilesAnimation(int tilemapId,
   assert(start_idx + tiles_count <= tm->width * tm->height);
   memcpy(&tm->bufAnimInfo[start_idx], tile_anim_infos,
          sizeof(MicroTileAnimation) * tiles_count);
+  for (int i = 0; i < tiles_count; i++)
+    tm->bufTileRender[start_idx + i].animationInfo = tm->bufAnimInfo[start_idx + i];
   tm->startChangeAnimInfo = MIN(tm->startChangeAnimInfo, start_idx);
   tm->endChangeAnimInfo = MAX(tm->endChangeAnimInfo, start_idx + tiles_count);
 }
@@ -841,24 +877,19 @@ void microTilemapApplyChanges(int tilemapId)
   MicroTilemap *tm = &tilemaps[tilemapId];
   CMesh *mesh = CmpGetMesh(tm->entityId);
 
-  // Apply tile id changes, if any
-  if (tm->startChangeBufTileId != tm->width * tm->height)
+  const int startChanged = MIN(tm->startChangeBufTileId, tm->startChangeAnimInfo);
+  const int endChanged = MAX(tm->endChangeBufTileId, tm->endChangeAnimInfo);
+
+  // Apply all changed tile structs in one packed VBO update.
+  if (startChanged != tm->width * tm->height)
   {
-    microVAOSubmit(mesh->VAOId, "tileId",
-                   &tm->bufTileId[tm->startChangeBufTileId],
-                   tm->startChangeBufTileId,
-                   tm->endChangeBufTileId - tm->startChangeBufTileId);
+    microVAOSubmitBytes(mesh->VAOId, "tilePos",
+                        &tm->bufTileRender[startChanged],
+                        startChanged * sizeof(TileRenderData),
+                        (endChanged - startChanged) * sizeof(TileRenderData));
+
     tm->startChangeBufTileId = tm->width * tm->height;
     tm->endChangeBufTileId = 0;
-  }
-
-  // Apply tile animation changes, if any
-  if (tm->startChangeAnimInfo != tm->width * tm->height)
-  {
-    microVAOSubmit(mesh->VAOId, "animationInfo",
-                   &tm->bufAnimInfo[tm->startChangeAnimInfo],
-                   tm->startChangeAnimInfo,
-                   tm->endChangeAnimInfo - tm->startChangeAnimInfo);
     tm->startChangeAnimInfo = tm->width * tm->height;
     tm->endChangeAnimInfo = 0;
   }
@@ -871,6 +902,7 @@ void microTilemapFree(int tilemapId)
   tm->width = 0;
   free(tm->bufTileId);
   free(tm->bufAnimInfo);
+  free(tm->bufTileRender);
   microECSEntityQueueFree(tm->entityId);
 }
 

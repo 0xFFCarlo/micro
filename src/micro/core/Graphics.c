@@ -11,6 +11,7 @@
 #endif
 #include <dirent.h>
 #include <math.h>
+#include <stddef.h>
 
 #include "../util/vector.h"
 #include "../util/vmath.h"
@@ -297,14 +298,34 @@ static int defaultShaderId = -1;
 static int lightShaderId = -1;
 
 // renderer buffers and states
+typedef struct SpriteInstance
+{
+  float position[2];
+  float size[2];
+  float origin[2];
+  float rotation;
+  float texcoord[4];
+  unsigned char color[4];
+} SpriteInstance;
+_Static_assert(sizeof(float) == 4, "SpriteInstance requires 32-bit float");
+_Static_assert(offsetof(SpriteInstance, position) == 0,
+               "SpriteInstance.position layout mismatch");
+_Static_assert(offsetof(SpriteInstance, size) == 8,
+               "SpriteInstance.size layout mismatch");
+_Static_assert(offsetof(SpriteInstance, origin) == 16,
+               "SpriteInstance.origin layout mismatch");
+_Static_assert(offsetof(SpriteInstance, rotation) == 24,
+               "SpriteInstance.rotation layout mismatch");
+_Static_assert(offsetof(SpriteInstance, texcoord) == 28,
+               "SpriteInstance.texcoord layout mismatch");
+_Static_assert(offsetof(SpriteInstance, color) == 44,
+               "SpriteInstance.color layout mismatch");
+_Static_assert(sizeof(SpriteInstance) == 48,
+               "SpriteInstance size/layout mismatch");
+
 static const float sprites_vertex_buf[6 * 2] = {0, 0, 1, 0, 1, 1,
                                                 0, 0, 1, 1, 0, 1};
-static float sprites_pos_buf[MICRO_SPRITES_BUFFER_SIZE * 2];
-static float sprites_size_buf[MICRO_SPRITES_BUFFER_SIZE * 2];
-static float sprites_origin_buf[MICRO_SPRITES_BUFFER_SIZE * 2];
-static float sprites_rotation_buf[MICRO_SPRITES_BUFFER_SIZE];
-static float sprites_texsrc_buf[MICRO_SPRITES_BUFFER_SIZE * 4];
-static unsigned char sprites_color_buf[MICRO_SPRITES_BUFFER_SIZE * 4];
+static SpriteInstance sprites_instances_buf[MICRO_SPRITES_BUFFER_SIZE];
 static int defaultVAOId = -1;
 static RenderingDebugInfo debugInfo;
 
@@ -2249,27 +2270,23 @@ int microGraphicsInit()
   // MICRO_VERTEX_BUFFER_SIZE
   int vbo_vp = microVBONew(2 * 6 * sizeof(float), MICRO_STREAM_DRAW,
                            sprites_vertex_buf);
-  int vbo_p = microVBONew(2 * MICRO_SPRITES_BUFFER_SIZE * sizeof(float),
-                          MICRO_STREAM_DRAW, NULL);
-  int vbo_s = microVBONew(2 * MICRO_SPRITES_BUFFER_SIZE * sizeof(float),
-                          MICRO_STREAM_DRAW, NULL);
-  int vbo_o = microVBONew(2 * MICRO_SPRITES_BUFFER_SIZE * sizeof(float),
-                          MICRO_STREAM_DRAW, NULL);
-  int vbo_r = microVBONew(MICRO_SPRITES_BUFFER_SIZE * sizeof(float),
-                          MICRO_STREAM_DRAW, NULL);
-  int vbo_ts = microVBONew(4 * MICRO_SPRITES_BUFFER_SIZE * sizeof(float),
-                           MICRO_STREAM_DRAW, NULL);
-  int vbo_c = microVBONew(4 * MICRO_SPRITES_BUFFER_SIZE * sizeof(float),
-                          MICRO_STREAM_DRAW, NULL);
+  int vbo_inst = microVBONew(MICRO_SPRITES_BUFFER_SIZE * sizeof(SpriteInstance),
+                             MICRO_STREAM_DRAW, NULL);
 
   MicroAttributeData default_attrs[] = {
     {vbo_vp, true, "vpos", 2, MICRO_FLOAT, 0, 0, NULL, false},
-    {vbo_p, true, "position", 2, MICRO_FLOAT, 0, 1, NULL, false},
-    {vbo_s, true, "size", 2, MICRO_FLOAT, 0, 1, NULL, false},
-    {vbo_o, true, "origin", 2, MICRO_FLOAT, 0, 1, NULL, false},
-    {vbo_r, true, "rotation", 1, MICRO_FLOAT, 0, 1, NULL, false},
-    {vbo_ts, true, "texcoord", 4, MICRO_FLOAT, 0, 1, NULL, false},
-    {vbo_c, true, "color", 4, MICRO_UNSIGNED_BYTE, 0, 1, NULL, true},
+    {vbo_inst, true, "position", 2, MICRO_FLOAT, sizeof(SpriteInstance), 1,
+     (void *)offsetof(SpriteInstance, position), false},
+    {vbo_inst, true, "size", 2, MICRO_FLOAT, sizeof(SpriteInstance), 1,
+     (void *)offsetof(SpriteInstance, size), false},
+    {vbo_inst, true, "origin", 2, MICRO_FLOAT, sizeof(SpriteInstance), 1,
+     (void *)offsetof(SpriteInstance, origin), false},
+    {vbo_inst, true, "rotation", 1, MICRO_FLOAT, sizeof(SpriteInstance), 1,
+     (void *)offsetof(SpriteInstance, rotation), false},
+    {vbo_inst, true, "texcoord", 4, MICRO_FLOAT, sizeof(SpriteInstance), 1,
+     (void *)offsetof(SpriteInstance, texcoord), false},
+    {vbo_inst, true, "color", 4, MICRO_UNSIGNED_BYTE, sizeof(SpriteInstance),
+     1, (void *)offsetof(SpriteInstance, color), true},
   };
 
   defaultVAOId = microVAONew(defaultShaderId, -1, 6, 0, default_attrs,
@@ -2364,19 +2381,10 @@ void microGraphicsDisplay()
   // Set texture of VAO
   defaultVAO->textureGLId = currentTexture;
 
-  // Stream data to GPU
-  microVAOSubmit(defaultVAOId, "position", &sprites_pos_buf[0], 0,
-                 defaultVAO->drawCmd.instanceCount);
-  microVAOSubmit(defaultVAOId, "size", &sprites_size_buf[0], 0,
-                 defaultVAO->drawCmd.instanceCount);
-  microVAOSubmit(defaultVAOId, "origin", &sprites_origin_buf[0], 0,
-                 defaultVAO->drawCmd.instanceCount);
-  microVAOSubmit(defaultVAOId, "rotation", &sprites_rotation_buf[0], 0,
-                 defaultVAO->drawCmd.instanceCount);
-  microVAOSubmit(defaultVAOId, "texcoord", &sprites_texsrc_buf[0], 0,
-                 defaultVAO->drawCmd.instanceCount);
-  microVAOSubmit(defaultVAOId, "color", &sprites_color_buf[0], 0,
-                 defaultVAO->drawCmd.instanceCount);
+  // Stream interleaved instance data to GPU
+  microVAOSubmitBytes(defaultVAOId, "position", &sprites_instances_buf[0], 0,
+                      defaultVAO->drawCmd.instanceCount *
+                        sizeof(SpriteInstance));
 
   // Draw the VAO
   microVAODraw(defaultVAOId);
@@ -2462,6 +2470,26 @@ int microVAONew(int shaderId, int textureId, int vertexCount,
   return vec_len(microVAOs) - 1;
 }
 
+void microVAOSubmitBytes(int vaoId, const char *attribute_name, const void *data,
+                         int byteOffset, int byteSize)
+{
+  MicroVAO *vao = &microVAOs[vaoId];
+  assert(vao->attr_count < MICRO_MAX_ATTRIBUTES);
+  for (int i = 0; i < vao->attr_count; i++)
+  {
+    MicroAttributeData *attr = &vao->attrs[i];
+    if (strcmp(attr->name, attribute_name) != 0)
+      continue;
+    microVBOSubmit(attr->vbo_id, data, byteOffset, byteSize);
+    GL_CHECK_ERRORS_PRINT("vaoId %d vbo_id %d attr_name %s byteOffset %d "
+                          "byteSize %d\n",
+                          vaoId, attr->vbo_id, attribute_name, byteOffset,
+                          byteSize);
+    return;
+  }
+  abort_trace(); // Attribute not found
+}
+
 void microVAOSubmit(int vaoId, const char *attribute_name, const void *data,
                     int start, int count)
 {
@@ -2472,18 +2500,11 @@ void microVAOSubmit(int vaoId, const char *attribute_name, const void *data,
     MicroAttributeData *attr = &vao->attrs[i];
     if (strcmp(attr->name, attribute_name) != 0)
       continue;
-    microVBOSubmit(attr->vbo_id, data,
-                   start * attr->components * vao_component_sizes[attr->type],
-                   count * attr->components * vao_component_sizes[attr->type]);
-    GL_CHECK_ERRORS_PRINT("vaoId %d vbo_id %d attr_name %s start %d count %d "
-                          "components "
-                          "%d component_size %d\n",
-                          vaoId, attr->vbo_id, attribute_name,
-                          start * attr->components *
-                            vao_component_sizes[attr->type],
-                          count * attr->components *
-                            vao_component_sizes[attr->type],
-                          attr->components, vao_component_sizes[attr->type]);
+    microVAOSubmitBytes(vaoId, attribute_name, data,
+                        start * attr->components *
+                          vao_component_sizes[attr->type],
+                        count * attr->components *
+                          vao_component_sizes[attr->type]);
     return;
   }
   abort_trace(); // Attribute not found
@@ -2666,21 +2687,22 @@ void microGraphicsDrawSprite(int textureId, float tx, float ty, float tw,
     microTextureGetSize(textureId, &tex_w, &tex_h);
   }
   const int is_id = defaultVAO->drawCmd.instanceCount;
-  sprites_pos_buf[is_id * 2 + 0] = x;
-  sprites_pos_buf[is_id * 2 + 1] = y;
-  sprites_size_buf[is_id * 2 + 0] = w;
-  sprites_size_buf[is_id * 2 + 1] = h;
-  sprites_origin_buf[is_id * 2 + 0] = originX;
-  sprites_origin_buf[is_id * 2 + 1] = originY;
-  sprites_rotation_buf[is_id] = rotation;
-  sprites_texsrc_buf[is_id * 4 + 0] = tx / (float)tex_w;
-  sprites_texsrc_buf[is_id * 4 + 1] = ty / (float)tex_h;
-  sprites_texsrc_buf[is_id * 4 + 2] = tw / (float)tex_w;
-  sprites_texsrc_buf[is_id * 4 + 3] = th / (float)tex_h;
-  sprites_color_buf[is_id * 4 + 0] = r;
-  sprites_color_buf[is_id * 4 + 1] = g;
-  sprites_color_buf[is_id * 4 + 2] = b;
-  sprites_color_buf[is_id * 4 + 3] = a;
+  SpriteInstance *sprite = &sprites_instances_buf[is_id];
+  sprite->position[0] = x;
+  sprite->position[1] = y;
+  sprite->size[0] = w;
+  sprite->size[1] = h;
+  sprite->origin[0] = originX;
+  sprite->origin[1] = originY;
+  sprite->rotation = rotation;
+  sprite->texcoord[0] = tx / (float)tex_w;
+  sprite->texcoord[1] = ty / (float)tex_h;
+  sprite->texcoord[2] = tw / (float)tex_w;
+  sprite->texcoord[3] = th / (float)tex_h;
+  sprite->color[0] = r;
+  sprite->color[1] = g;
+  sprite->color[2] = b;
+  sprite->color[3] = a;
 
   defaultVAO->drawCmd.instanceCount++;
 }

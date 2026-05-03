@@ -118,7 +118,7 @@ typedef struct
 void microViewSet(MicroView view);
 const MicroView* microViewGet();
 void microViewApply(int shaderId);
-void microViewFlipY(int flipY);
+void microViewFlipY(bool flipY);
 void microViewSetViewport(float x, float y, float width, float height);
 void microViewSetCenter(float x, float y);
 void microViewSetSize(float width, float height);
@@ -206,6 +206,8 @@ typedef struct {
 int microVAONew(int shaderId, int textureId, int vertexCount,
                 int instancesCount, const MicroAttributeData *attributes,
                 int attributesCount);
+void microVAOSubmitBytes(int vaoId, const char *attribute_name,
+                         const void *data, int byteOffset, int byteSize);
 void microVAOSubmit(int vaoId, const char *attribute_name, const void *data,
                     int start, int count);
 void microVAOSetDrawRange(int vaoId, int start, int count, int instancesCount,
@@ -237,6 +239,7 @@ void microGraphicsClear();
 void microGraphicsClearColor(float r, float g, float b, float a);
 void microGraphicsDisplay();
 void microGraphicsRenderToScreen();
+void microGraphicsSetDepthTest(bool enable);
 void microGraphicsRenderToCanvas(int canvasId);
 void microGraphicsDrawSprite(int textureId, float tx, float ty, float tw,
                              float th, float x, float y, float w, float h,
@@ -250,7 +253,7 @@ void microGraphicsDrawText(int fontId, const char *text, float x, float y,
 int microGraphicsGetSpriteShaderId();
 RenderingDebugInfo microGetRenderingDebugInfo();
 void microRenderingDebugInfoClear();
-void microSwapBuffers();
+void microSystemWindowSwapBuffers();
 float microGraphicsDelayToNextFrame(float target_fps);
 ]])
 
@@ -954,7 +957,7 @@ end
 -- Each attribute table should include:
 --   vbo_id (number), consume_vbo (boolean), name (string), components (number),
 --   type (number, see MicroAttributeType), stride (number), divisor (number),
---   offset (number) and normalized (boolean).
+--   offset/offset_bytes (number) and normalized (boolean).
 -- @return vaoId number.
 function Gfx.newVAO(shaderId, textureId, vertexCount, instancesCount, attributes)
 	local count = #attributes
@@ -968,10 +971,24 @@ function Gfx.newVAO(shaderId, textureId, vertexCount, instancesCount, attributes
 		attrArray[idx].type = attr.type or 0
 		attrArray[idx].stride = attr.stride or 0
 		attrArray[idx].divisor = attr.divisor or 0
-		attrArray[idx].offset_bytes = ffi.cast("void*", attr.offset or 0)
+		local offsetBytes = attr.offset_bytes
+		if offsetBytes == nil then
+			offsetBytes = attr.offset
+		end
+		attrArray[idx].offset_bytes = ffi.cast("void*", offsetBytes or 0)
 		attrArray[idx].normalized = attr.normalized or false
 	end
 	return lib.microVAONew(shaderId, textureId, vertexCount, instancesCount, attrArray, count)
+end
+
+--- Submits raw bytes to a VAO attribute buffer.
+-- @param vaoId number.
+-- @param attributeName string attribute name.
+-- @param data userdata pointer to the data.
+-- @param byteOffset number byte offset into the attribute buffer.
+-- @param byteSize number number of bytes to submit.
+function Gfx.vaoSubmitBytes(vaoId, attributeName, data, byteOffset, byteSize)
+	lib.microVAOSubmitBytes(vaoId, attributeName, data, byteOffset, byteSize)
 end
 
 --- Submits data to a VAO attribute.
@@ -1137,7 +1154,7 @@ end
 
 --- Swaps the buffers.
 function Gfx.swapBuffers()
-	lib.microSwapBuffers()
+	lib.microSystemWindowSwapBuffers()
 end
 
 --- Caps the framerate and returns the delta time.

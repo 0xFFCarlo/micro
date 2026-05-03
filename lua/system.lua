@@ -3,12 +3,17 @@ local lib = require("micro/lua/libmicro")
 
 -- Declare the functions we need from the shared library.
 ffi.cdef([[
-int microSystemGetKey(int scancode);
+int microSystemKeyIsDown(int scancode);
+int microSystemKeyIsPress(int scancode);
+int microSystemKeyIsReleased(int scancode);
 void microSystemGetMousePos(int *x, int *y);
+void microSystemGetRelativeMousePos(int *x, int *y);
 void microSystemSetMousePos(int x, int y);
+void microSystemSetRelativeMouseMode(bool enabled);
 void microSystemGetWindowSize(int *width, int *height);
 void microSystemShowCursor(bool show);
 void microSystemFocusWindow();
+void microSystemWindowSwapBuffers();
 bool microSystemIsGamepadConnected();
 ]])
 
@@ -82,7 +87,21 @@ System.Key = {
 -- @param key number The key code.
 -- @return boolean True if the key is pressed, false otherwise.
 function System.getKey(key)
-	return (lib.microSystemGetKey(key) == 1)
+	return (lib.microSystemKeyIsDown(key) == 1)
+end
+
+-- Check if a key was pressed this frame.
+-- @param key number The key code.
+-- @return boolean True if the key was pressed this frame.
+function System.isKeyPressed(key)
+	return (lib.microSystemKeyIsPress(key) == 1)
+end
+
+-- Check if a key was released this frame.
+-- @param key number The key code.
+-- @return boolean True if the key was released this frame.
+function System.isKeyReleased(key)
+	return (lib.microSystemKeyIsReleased(key) == 1)
 end
 
 -- Get the mouse position.
@@ -99,6 +118,21 @@ end
 -- @param y number The y coordinate.
 function System.setMousePos(x, y)
 	lib.microSystemSetMousePos(x, y)
+end
+
+-- Set relative mouse mode.
+-- @param enabled boolean
+function System.setRelativeMouseMode(enabled)
+	lib.microSystemSetRelativeMouseMode(enabled)
+end
+
+-- Get relative mouse movement.
+-- @return number, number delta x and y.
+function System.getRelativeMousePos()
+	local x = ffi.new("int[1]")
+	local y = ffi.new("int[1]")
+	lib.microSystemGetRelativeMousePos(x, y)
+	return x[0], y[0]
 end
 
 -- Get the window size.
@@ -119,6 +153,11 @@ end
 -- Focus the window.
 function System.focusWindow()
 	lib.microSystemFocusWindow()
+end
+
+-- Swap window buffers.
+function System.windowSwapBuffers()
+	lib.microSystemWindowSwapBuffers()
 end
 
 -- Check if a gamepad is connected.
